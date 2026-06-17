@@ -37,7 +37,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 flex items-center justify-center px-4 relative">
+    <div className="min-h-screen bg-space-950 flex items-center justify-center px-4 relative">
       <AnimatedBackground />
 
       <motion.div

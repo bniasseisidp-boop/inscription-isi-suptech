@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -22,24 +22,24 @@ import {
 } from '../services/api'
 import api from '../services/api'
 
-// ── Sidebar ──────────────────────────────────────────────────────────────────
+// â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const NAV = [
   { id: 'dashboard',   label: 'Tableau de bord',    icon: LayoutDashboard },
-  { id: 'etudiants',   label: 'Étudiants',           icon: Users },
+  { id: 'etudiants',   label: 'Ã‰tudiants',           icon: Users },
   { id: 'paiements',   label: 'Paiements',            icon: CreditCard },
-  { id: 'filieres',    label: 'Filières & Licences',  icon: BookOpen },
-  { id: 'staff',       label: 'Équipe',               icon: Award },
+  { id: 'filieres',    label: 'FiliÃ¨res & Licences',  icon: BookOpen },
+  { id: 'staff',       label: 'Ã‰quipe',               icon: Award },
   { id: 'formateurs',  label: 'Formateurs',            icon: GraduationCap },
   { id: 'membres',     label: 'Membres admins',        icon: Building2 },
   { id: 'partenaires', label: 'Partenaires',           icon: Handshake },
-  { id: 'temoignages', label: 'Témoignages',           icon: MessageSquare },
+  { id: 'temoignages', label: 'TÃ©moignages',           icon: MessageSquare },
   { id: 'newsletter',  label: 'Newsletter',            icon: Mail },
-  { id: 'social',      label: 'Réseaux sociaux',       icon: Share2 },
+  { id: 'social',      label: 'RÃ©seaux sociaux',       icon: Share2 },
 ]
 
 function Sidebar({ active, setActive, onLogout }) {
   return (
-    <div className="w-64 flex-shrink-0 bg-navy-800/70 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
+    <div className="w-64 flex-shrink-0 bg-space-800/70 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
       <div className="p-5 border-b border-white/10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
@@ -69,14 +69,14 @@ function Sidebar({ active, setActive, onLogout }) {
 
       <div className="p-3 border-t border-white/10">
         <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all">
-          <LogOut size={17} /> Déconnexion
+          <LogOut size={17} /> DÃ©connexion
         </button>
       </div>
     </div>
   )
 }
 
-// ── Stats card ────────────────────────────────────────────────────────────────
+// â”€â”€ Stats card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatCard({ label, value, icon: Icon, color = 'brand', sub }) {
   const colors = {
     brand:  'bg-brand-600/20 border-brand-500/20 text-brand-400',
@@ -89,14 +89,14 @@ function StatCard({ label, value, icon: Icon, color = 'brand', sub }) {
       <div className="flex items-start justify-between mb-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}><Icon size={20} /></div>
       </div>
-      <div className="text-3xl font-black text-white">{value ?? '—'}</div>
+      <div className="text-3xl font-black text-white">{value ?? 'â€”'}</div>
       <div className="text-white/60 text-sm mt-1">{label}</div>
       {sub && <div className="text-white/30 text-xs mt-0.5">{sub}</div>}
     </div>
   )
 }
 
-// ── Accept/Reject modal ───────────────────────────────────────────────────────
+// â”€â”€ Accept/Reject modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ActionModal({ student, action, onClose, onDone }) {
   const [value, setValue] = useState('')
   const [loading, setLoading] = useState(false)
@@ -107,10 +107,10 @@ function ActionModal({ student, action, onClose, onDone }) {
     try {
       if (action === 'accepter') {
         await acceptStudent(student.id, { notes: value })
-        toast.success('Inscription acceptée — email envoyé !')
+        toast.success('Inscription acceptÃ©e â€” email envoyÃ© !')
       } else {
         await rejectStudent(student.id, { motif: value })
-        toast.success('Inscription rejetée')
+        toast.success('Inscription rejetÃ©e')
       }
       onDone()
       onClose()
@@ -126,10 +126,10 @@ function ActionModal({ student, action, onClose, onDone }) {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative glass-card p-6 w-full max-w-md neon-border">
         <h3 className="text-white font-bold text-lg mb-2">
-          {action === 'accepter' ? '✅ Accepter l\'inscription' : '❌ Rejeter la candidature'}
+          {action === 'accepter' ? 'âœ… Accepter l\'inscription' : 'âŒ Rejeter la candidature'}
         </h3>
         <p className="text-white/60 text-sm mb-4">
-          Étudiant : <strong className="text-white">{student.prenom} {student.nom}</strong>
+          Ã‰tudiant : <strong className="text-white">{student.prenom} {student.nom}</strong>
         </p>
         <label className="form-label">{action === 'accepter' ? 'Notes (optionnel)' : 'Motif du rejet *'}</label>
         <textarea
@@ -137,7 +137,7 @@ function ActionModal({ student, action, onClose, onDone }) {
           rows={3}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={action === 'accepter' ? 'Félicitations, notes spéciales...' : 'Dossier incomplet, critères non remplis...'}
+          placeholder={action === 'accepter' ? 'FÃ©licitations, notes spÃ©ciales...' : 'Dossier incomplet, critÃ¨res non remplis...'}
         />
         <div className="flex gap-3 mt-4">
           <button onClick={onClose} className="btn-secondary flex-1">Annuler</button>
@@ -151,7 +151,7 @@ function ActionModal({ student, action, onClose, onDone }) {
   )
 }
 
-// ── Student detail drawer ──────────────────────────────────────────────────────
+// â”€â”€ Student detail drawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StudentDrawer({ student, onClose, onRefresh }) {
   const [genCard, setGenCard] = useState(false)
 
@@ -159,10 +159,10 @@ function StudentDrawer({ student, onClose, onRefresh }) {
     setGenCard(true)
     try {
       await generateStudentCard(student.id)
-      toast.success('Carte générée et envoyée !')
+      toast.success('Carte gÃ©nÃ©rÃ©e et envoyÃ©e !')
       onRefresh()
     } catch {
-      toast.error('Erreur génération carte')
+      toast.error('Erreur gÃ©nÃ©ration carte')
     } finally {
       setGenCard(false)
     }
@@ -176,10 +176,10 @@ function StudentDrawer({ student, onClose, onRefresh }) {
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-        className="relative w-full max-w-lg bg-navy-800 border-l border-white/10 h-full overflow-y-auto flex flex-col"
+        className="relative w-full max-w-lg bg-space-800 border-l border-white/10 h-full overflow-y-auto flex flex-col"
       >
-        <div className="p-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-navy-800 z-10">
-          <h3 className="text-white font-bold">Dossier étudiant</h3>
+        <div className="p-5 border-b border-white/10 flex items-center justify-between sticky top-0 bg-space-800 z-10">
+          <h3 className="text-white font-bold">Dossier Ã©tudiant</h3>
           <button onClick={onClose} className="text-white/40 hover:text-white"><X size={20} /></button>
         </div>
 
@@ -189,7 +189,7 @@ function StudentDrawer({ student, onClose, onRefresh }) {
             <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-brand-700 to-brand-500 flex items-center justify-center overflow-hidden flex-shrink-0">
               {student.photo
                 ? <img src={`/storage/${student.photo}`} className="w-full h-full object-cover" />
-                : <span className="text-white text-3xl">👤</span>
+                : <span className="text-white text-3xl">ðŸ‘¤</span>
               }
             </div>
             <div>
@@ -198,7 +198,7 @@ function StudentDrawer({ student, onClose, onRefresh }) {
               <p className="text-white/50 text-sm mt-1">{student.user?.email}</p>
               <div className="mt-2">
                 <span className={student.statut_inscription === 'accepte' ? 'badge-accepted' : student.statut_inscription === 'rejete' ? 'badge-rejected' : 'badge-pending'}>
-                  {student.statut_inscription === 'accepte' ? 'Accepté' : student.statut_inscription === 'rejete' ? 'Rejeté' : 'En attente'}
+                  {student.statut_inscription === 'accepte' ? 'AcceptÃ©' : student.statut_inscription === 'rejete' ? 'RejetÃ©' : 'En attente'}
                 </span>
               </div>
             </div>
@@ -206,17 +206,17 @@ function StudentDrawer({ student, onClose, onRefresh }) {
 
           {/* Info grid */}
           {[
-            ['Téléphone', student.telephone],
-            ['Sexe', student.sexe === 'M' ? 'Masculin' : 'Féminin'],
-            ['Date de naissance', student.date_naissance ? new Date(student.date_naissance).toLocaleDateString('fr-FR') : '—'],
+            ['TÃ©lÃ©phone', student.telephone],
+            ['Sexe', student.sexe === 'M' ? 'Masculin' : 'FÃ©minin'],
+            ['Date de naissance', student.date_naissance ? new Date(student.date_naissance).toLocaleDateString('fr-FR') : 'â€”'],
             ['Lieu de naissance', student.lieu_naissance],
             ['Adresse', student.adresse],
-            ['Nationalité', student.nationalite],
-            ['Pays de résidence', student.pays_residence],
-            ['Filière', student.filiere?.nom],
+            ['NationalitÃ©', student.nationalite],
+            ['Pays de rÃ©sidence', student.pays_residence],
+            ['FiliÃ¨re', student.filiere?.nom],
             ['Licence', student.license?.nom],
-            ['Année scolaire', student.annee_scolaire],
-            ['Inscription payée', student.inscription_payee ? '✅ Oui' : '❌ Non'],
+            ['AnnÃ©e scolaire', student.annee_scolaire],
+            ['Inscription payÃ©e', student.inscription_payee ? 'âœ… Oui' : 'âŒ Non'],
           ].map(([label, val]) => val ? (
             <div key={label} className="flex items-center justify-between py-2 border-b border-white/5">
               <span className="text-white/40 text-sm">{label}</span>
@@ -239,7 +239,7 @@ function StudentDrawer({ student, onClose, onRefresh }) {
               className="w-full btn-secondary flex items-center justify-center gap-2 text-sm"
             >
               {genCard ? <div className="spinner w-4 h-4" /> : <FileText size={16} />}
-              Générer / Régénérer la carte étudiante
+              GÃ©nÃ©rer / RÃ©gÃ©nÃ©rer la carte Ã©tudiante
             </button>
           )}
         </div>
@@ -248,7 +248,7 @@ function StudentDrawer({ student, onClose, onRefresh }) {
   )
 }
 
-// ── Main Admin Dashboard ──────────────────────────────────────────────────────
+// â”€â”€ Main Admin Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function AdminDashboard() {
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
   const submitFiliere = async () => {
     try {
       await createFiliere(newFiliere)
-      toast.success('Filière créée !')
+      toast.success('FiliÃ¨re crÃ©Ã©e !')
       setShowCreateFiliere(false)
       getFilieres().then(({ data }) => setFilieres(data))
     } catch { toast.error('Erreur') }
@@ -332,7 +332,7 @@ export default function AdminDashboard() {
   const submitLicense = async () => {
     try {
       await createLicense(newLicense)
-      toast.success('Licence ajoutée !')
+      toast.success('Licence ajoutÃ©e !')
       getFilieres().then(({ data }) => setFilieres(data))
     } catch { toast.error('Erreur') }
   }
@@ -340,19 +340,19 @@ export default function AdminDashboard() {
   const submitStaff = async () => {
     try {
       await createStaff(newStaff)
-      toast.success('Compte créé !')
+      toast.success('Compte crÃ©Ã© !')
       setShowCreateStaff(false)
       getStaff().then(({ data }) => setStaff(data))
     } catch { toast.error('Erreur') }
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 flex">
+    <div className="min-h-screen bg-space-950 flex">
       <Sidebar active={active} setActive={setActive} onLogout={handleLogout} />
 
       <div className="flex-1 ml-64 min-h-screen">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-navy-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
+        <div className="sticky top-0 z-30 bg-space-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
           <h1 className="text-white font-semibold">{NAV.find((n) => n.id === active)?.label}</h1>
           <div className="text-brand-300 text-xs font-semibold uppercase tracking-wider">Administrateur</div>
         </div>
@@ -361,14 +361,14 @@ export default function AdminDashboard() {
           <AnimatePresence mode="wait">
             <motion.div key={active} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
 
-              {/* ── DASHBOARD ─────────────────────────────────────────── */}
+              {/* â”€â”€ DASHBOARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'dashboard' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Total étudiants"    value={stats?.total_etudiants}    icon={Users}         color="brand" />
+                    <StatCard label="Total Ã©tudiants"    value={stats?.total_etudiants}    icon={Users}         color="brand" />
                     <StatCard label="En attente"         value={stats?.en_attente}          icon={Clock}         color="yellow" />
-                    <StatCard label="Acceptés"           value={stats?.acceptes}            icon={Check}         color="green" />
-                    <StatCard label="Inscriptions payées" value={stats?.inscriptions_payees} icon={CreditCard}   color="green" />
+                    <StatCard label="AcceptÃ©s"           value={stats?.acceptes}            icon={Check}         color="green" />
+                    <StatCard label="Inscriptions payÃ©es" value={stats?.inscriptions_payees} icon={CreditCard}   color="green" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="glass-card p-5">
@@ -385,7 +385,7 @@ export default function AdminDashboard() {
 
                   {stats?.par_filiere && Object.keys(stats.par_filiere).length > 0 && (
                     <div className="glass-card p-5">
-                      <h3 className="text-white font-semibold mb-4">Répartition par filière</h3>
+                      <h3 className="text-white font-semibold mb-4">RÃ©partition par filiÃ¨re</h3>
                       <div className="space-y-3">
                         {Object.entries(stats.par_filiere).map(([filiere, count]) => {
                           const pct = (count / (stats.acceptes || 1)) * 100
@@ -393,7 +393,7 @@ export default function AdminDashboard() {
                             <div key={filiere}>
                               <div className="flex justify-between text-sm mb-1">
                                 <span className="text-white/70">{filiere}</span>
-                                <span className="text-white font-semibold">{count} étudiants</span>
+                                <span className="text-white font-semibold">{count} Ã©tudiants</span>
                               </div>
                               <div className="h-2 bg-white/10 rounded-full">
                                 <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1 }} className="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full" />
@@ -407,20 +407,20 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── ÉTUDIANTS ─────────────────────────────────────────── */}
+              {/* â”€â”€ Ã‰TUDIANTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'etudiants' && (
                 <div className="space-y-4">
                   {/* Filters */}
                   <div className="flex flex-wrap gap-3">
                     <div className="relative flex-1 min-w-48">
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                      <input className="form-input pl-9 py-2 text-sm" placeholder="Nom, prénom, matricule..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                      <input className="form-input pl-9 py-2 text-sm" placeholder="Nom, prÃ©nom, matricule..." value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
                     <select className="form-input py-2 text-sm w-auto" value={filterStatut} onChange={(e) => setFilterStatut(e.target.value)}>
                       <option value="">Tous les statuts</option>
                       <option value="en_attente">En attente</option>
-                      <option value="accepte">Acceptés</option>
-                      <option value="rejete">Rejetés</option>
+                      <option value="accepte">AcceptÃ©s</option>
+                      <option value="rejete">RejetÃ©s</option>
                     </select>
                     <button onClick={() => loadStudents()} className="btn-secondary text-sm py-2 px-4 flex items-center gap-2">
                       <RefreshCw size={14} /> Actualiser
@@ -430,13 +430,13 @@ export default function AdminDashboard() {
                   <div className="glass-card overflow-hidden">
                     <table className="data-table">
                       <thead>
-                        <tr><th>Étudiant</th><th>Filière</th><th>Statut</th><th>Paiement</th><th>Date</th><th>Actions</th></tr>
+                        <tr><th>Ã‰tudiant</th><th>FiliÃ¨re</th><th>Statut</th><th>Paiement</th><th>Date</th><th>Actions</th></tr>
                       </thead>
                       <tbody>
                         {loading ? (
                           <tr><td colSpan={6} className="text-center py-10"><div className="spinner mx-auto" /></td></tr>
                         ) : students.length === 0 ? (
-                          <tr><td colSpan={6} className="text-center py-10 text-white/30">Aucun étudiant trouvé</td></tr>
+                          <tr><td colSpan={6} className="text-center py-10 text-white/30">Aucun Ã©tudiant trouvÃ©</td></tr>
                         ) : students.map((s) => (
                           <tr key={s.id}>
                             <td>
@@ -456,12 +456,12 @@ export default function AdminDashboard() {
                             </td>
                             <td>
                               <span className={s.statut_inscription === 'accepte' ? 'badge-accepted' : s.statut_inscription === 'rejete' ? 'badge-rejected' : 'badge-pending'}>
-                                {s.statut_inscription === 'accepte' ? 'Accepté' : s.statut_inscription === 'rejete' ? 'Rejeté' : 'En attente'}
+                                {s.statut_inscription === 'accepte' ? 'AcceptÃ©' : s.statut_inscription === 'rejete' ? 'RejetÃ©' : 'En attente'}
                               </span>
                             </td>
                             <td>
                               <span className={s.inscription_payee ? 'badge-paid' : 'badge-pending'}>
-                                {s.inscription_payee ? 'Payée' : 'Non payée'}
+                                {s.inscription_payee ? 'PayÃ©e' : 'Non payÃ©e'}
                               </span>
                             </td>
                             <td className="text-white/40 text-xs">
@@ -490,9 +490,9 @@ export default function AdminDashboard() {
                     </table>
                     {pagination.last > 1 && (
                       <div className="p-4 border-t border-white/10 flex items-center justify-between">
-                        <span className="text-white/40 text-sm">Page {pagination.current} / {pagination.last} — {pagination.total} étudiants</span>
+                        <span className="text-white/40 text-sm">Page {pagination.current} / {pagination.last} â€” {pagination.total} Ã©tudiants</span>
                         <div className="flex gap-2">
-                          {pagination.current > 1 && <button onClick={() => loadStudents(pagination.current - 1)} className="btn-secondary text-xs py-1.5 px-3">Précédent</button>}
+                          {pagination.current > 1 && <button onClick={() => loadStudents(pagination.current - 1)} className="btn-secondary text-xs py-1.5 px-3">PrÃ©cÃ©dent</button>}
                           {pagination.current < pagination.last && <button onClick={() => loadStudents(pagination.current + 1)} className="btn-primary text-xs py-1.5 px-3">Suivant</button>}
                         </div>
                       </div>
@@ -501,11 +501,11 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── PAIEMENTS ─────────────────────────────────────────── */}
+              {/* â”€â”€ PAIEMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'paiements' && (
                 <div className="glass-card overflow-hidden">
                   <table className="data-table">
-                    <thead><tr><th>Étudiant</th><th>Type</th><th>Montant</th><th>Méthode</th><th>Date</th><th>Statut</th></tr></thead>
+                    <thead><tr><th>Ã‰tudiant</th><th>Type</th><th>Montant</th><th>MÃ©thode</th><th>Date</th><th>Statut</th></tr></thead>
                     <tbody>
                       {payments.length === 0
                         ? <tr><td colSpan={6} className="text-center py-10 text-white/30">Aucun paiement</td></tr>
@@ -518,7 +518,7 @@ export default function AdminDashboard() {
                             <td className="text-white/70 text-sm">{p.libelle || p.type}</td>
                             <td className="text-white font-semibold">{Number(p.montant).toLocaleString()} FCFA</td>
                             <td className="text-white/60 text-sm">{p.methode?.toUpperCase()}</td>
-                            <td className="text-white/40 text-xs">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
+                            <td className="text-white/40 text-xs">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : 'â€”'}</td>
                             <td><span className={p.statut === 'complete' ? 'badge-accepted' : 'badge-pending'}>{p.statut}</span></td>
                           </tr>
                         ))
@@ -528,18 +528,18 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── FILIÈRES ──────────────────────────────────────────── */}
+              {/* â”€â”€ FILIÃˆRES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'filieres' && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Create filiere */}
                     <div className="glass-card p-5">
-                      <h3 className="text-white font-semibold mb-4 flex items-center gap-2"><Plus size={16} /> Nouvelle filière</h3>
+                      <h3 className="text-white font-semibold mb-4 flex items-center gap-2"><Plus size={16} /> Nouvelle filiÃ¨re</h3>
                       <div className="space-y-3">
                         <div><label className="form-label text-xs">Nom</label><input className="form-input text-sm py-2" value={newFiliere.nom} onChange={(e) => setNewFiliere({ ...newFiliere, nom: e.target.value })} placeholder="Informatique" /></div>
                         <div><label className="form-label text-xs">Code</label><input className="form-input text-sm py-2" value={newFiliere.code} onChange={(e) => setNewFiliere({ ...newFiliere, code: e.target.value })} placeholder="INFO" /></div>
                         <div><label className="form-label text-xs">Description</label><textarea className="form-input text-sm py-2 resize-none" rows={2} value={newFiliere.description} onChange={(e) => setNewFiliere({ ...newFiliere, description: e.target.value })} /></div>
-                        <button onClick={submitFiliere} className="btn-primary w-full text-sm">Créer la filière</button>
+                        <button onClick={submitFiliere} className="btn-primary w-full text-sm">CrÃ©er la filiÃ¨re</button>
                       </div>
                     </div>
 
@@ -548,7 +548,7 @@ export default function AdminDashboard() {
                       <h3 className="text-white font-semibold mb-4 flex items-center gap-2"><Plus size={16} /> Nouveau niveau / licence</h3>
                       <div className="space-y-3">
                         <div>
-                          <label className="form-label text-xs">Filière</label>
+                          <label className="form-label text-xs">FiliÃ¨re</label>
                           <select className="form-input text-sm py-2" value={newLicense.filiere_id} onChange={(e) => setNewLicense({ ...newLicense, filiere_id: e.target.value })}>
                             <option value="">-- Choisir --</option>
                             {filieres.map((f) => <option key={f.id} value={f.id}>{f.nom}</option>)}
@@ -557,9 +557,9 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="form-label text-xs">Nom</label><input className="form-input text-sm py-2" placeholder="Licence 1" value={newLicense.nom} onChange={(e) => setNewLicense({ ...newLicense, nom: e.target.value })} /></div>
                           <div><label className="form-label text-xs">Code</label><input className="form-input text-sm py-2" placeholder="L1" value={newLicense.code} onChange={(e) => setNewLicense({ ...newLicense, code: e.target.value })} /></div>
-                          <div><label className="form-label text-xs">Durée (ans)</label><input className="form-input text-sm py-2" type="number" value={newLicense.duree_annees} onChange={(e) => setNewLicense({ ...newLicense, duree_annees: e.target.value })} /></div>
+                          <div><label className="form-label text-xs">DurÃ©e (ans)</label><input className="form-input text-sm py-2" type="number" value={newLicense.duree_annees} onChange={(e) => setNewLicense({ ...newLicense, duree_annees: e.target.value })} /></div>
                           <div><label className="form-label text-xs">Frais inscription</label><input className="form-input text-sm py-2" type="number" placeholder="150000" value={newLicense.frais_inscription} onChange={(e) => setNewLicense({ ...newLicense, frais_inscription: e.target.value })} /></div>
-                          <div className="col-span-2"><label className="form-label text-xs">Mensualité</label><input className="form-input text-sm py-2" type="number" placeholder="50000" value={newLicense.frais_mensuel} onChange={(e) => setNewLicense({ ...newLicense, frais_mensuel: e.target.value })} /></div>
+                          <div className="col-span-2"><label className="form-label text-xs">MensualitÃ©</label><input className="form-input text-sm py-2" type="number" placeholder="50000" value={newLicense.frais_mensuel} onChange={(e) => setNewLicense({ ...newLicense, frais_mensuel: e.target.value })} /></div>
                         </div>
                         <button onClick={submitLicense} className="btn-primary w-full text-sm">Ajouter le niveau</button>
                       </div>
@@ -582,7 +582,7 @@ export default function AdminDashboard() {
                               <div key={l.id} className="bg-white/5 rounded-lg p-3">
                                 <div className="text-white/80 text-sm font-medium">{l.nom}</div>
                                 <div className="text-white/40 text-xs mt-1">Inscription : {Number(l.frais_inscription).toLocaleString()} FCFA</div>
-                                <div className="text-white/40 text-xs">Mensualité : {Number(l.frais_mensuel).toLocaleString()} FCFA</div>
+                                <div className="text-white/40 text-xs">MensualitÃ© : {Number(l.frais_mensuel).toLocaleString()} FCFA</div>
                               </div>
                             ))}
                           </div>
@@ -593,21 +593,21 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── STAFF ─────────────────────────────────────────────── */}
+              {/* â”€â”€ STAFF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'staff' && (
                 <div className="space-y-4">
                   <button onClick={() => setShowCreateStaff(true)} className="btn-primary flex items-center gap-2">
-                    <UserPlus size={16} /> Créer un compte
+                    <UserPlus size={16} /> CrÃ©er un compte
                   </button>
 
                   {showCreateStaff && (
                     <div className="glass-card p-5 neon-border">
-                      <h3 className="text-white font-semibold mb-4">Nouveau membre de l'équipe</h3>
+                      <h3 className="text-white font-semibold mb-4">Nouveau membre de l'Ã©quipe</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div><label className="form-label text-xs">Nom complet</label><input className="form-input text-sm py-2" value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} /></div>
                         <div><label className="form-label text-xs">Email</label><input className="form-input text-sm py-2" type="email" value={newStaff.email} onChange={(e) => setNewStaff({ ...newStaff, email: e.target.value })} /></div>
                         <div>
-                          <label className="form-label text-xs">Rôle</label>
+                          <label className="form-label text-xs">RÃ´le</label>
                           <select className="form-input text-sm py-2" value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
                             <option value="admin">Administrateur</option>
                             <option value="cashier">Caissier</option>
@@ -618,14 +618,14 @@ export default function AdminDashboard() {
                       </div>
                       <div className="flex gap-3 mt-4">
                         <button onClick={() => setShowCreateStaff(false)} className="btn-secondary text-sm">Annuler</button>
-                        <button onClick={submitStaff} className="btn-primary text-sm">Créer le compte</button>
+                        <button onClick={submitStaff} className="btn-primary text-sm">CrÃ©er le compte</button>
                       </div>
                     </div>
                   )}
 
                   <div className="glass-card overflow-hidden">
                     <table className="data-table">
-                      <thead><tr><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th></tr></thead>
+                      <thead><tr><th>Nom</th><th>Email</th><th>RÃ´le</th><th>Statut</th></tr></thead>
                       <tbody>
                         {staff.map((s) => (
                           <tr key={s.id}>
@@ -649,13 +649,13 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── FORMATEURS ────────────────────────────────────────── */}
+              {/* â”€â”€ FORMATEURS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'formateurs' && (
                 <div className="space-y-6">
                   <div className="glass-card p-5">
                     <h3 className="text-white font-semibold mb-4 flex items-center gap-2"><Plus size={16} /> Ajouter un formateur</h3>
                     <div className="grid grid-cols-2 gap-4">
-                      <div><label className="form-label text-xs">Prénom *</label><input className="form-input text-sm py-2" value={newFormateur.prenom} onChange={e => setNewFormateur({...newFormateur, prenom: e.target.value})} /></div>
+                      <div><label className="form-label text-xs">PrÃ©nom *</label><input className="form-input text-sm py-2" value={newFormateur.prenom} onChange={e => setNewFormateur({...newFormateur, prenom: e.target.value})} /></div>
                       <div><label className="form-label text-xs">Nom *</label><input className="form-input text-sm py-2" value={newFormateur.nom} onChange={e => setNewFormateur({...newFormateur, nom: e.target.value})} /></div>
                       <div>
                         <label className="form-label text-xs">Titre</label>
@@ -663,7 +663,7 @@ export default function AdminDashboard() {
                           {['M.','Mme.','Dr.','Prof.','Ing.'].map(t => <option key={t}>{t}</option>)}
                         </select>
                       </div>
-                      <div><label className="form-label text-xs">Spécialité *</label><input className="form-input text-sm py-2" value={newFormateur.specialite} onChange={e => setNewFormateur({...newFormateur, specialite: e.target.value})} placeholder="Ex: Intelligence Artificielle" /></div>
+                      <div><label className="form-label text-xs">SpÃ©cialitÃ© *</label><input className="form-input text-sm py-2" value={newFormateur.specialite} onChange={e => setNewFormateur({...newFormateur, specialite: e.target.value})} placeholder="Ex: Intelligence Artificielle" /></div>
                       <div><label className="form-label text-xs">Email</label><input className="form-input text-sm py-2" type="email" value={newFormateur.email} onChange={e => setNewFormateur({...newFormateur, email: e.target.value})} /></div>
                       <div><label className="form-label text-xs">LinkedIn</label><input className="form-input text-sm py-2" value={newFormateur.linkedin} onChange={e => setNewFormateur({...newFormateur, linkedin: e.target.value})} placeholder="https://..." /></div>
                       <div className="col-span-2"><label className="form-label text-xs">Biographie</label><textarea className="form-input text-sm py-2 resize-none" rows={2} value={newFormateur.bio} onChange={e => setNewFormateur({...newFormateur, bio: e.target.value})} /></div>
@@ -679,7 +679,7 @@ export default function AdminDashboard() {
                         Object.entries(newFormateur).forEach(([k,v]) => fd.append(k, v))
                         if (formateurPhoto) fd.append('photo', formateurPhoto)
                         await adminCreateFormateur(fd)
-                        toast.success('Formateur ajouté !')
+                        toast.success('Formateur ajoutÃ© !')
                         setNewFormateur({ nom:'', prenom:'', titre:'M.', specialite:'', bio:'', email:'', linkedin:'', ordre:0 })
                         setFormateurPhoto(null)
                         adminGetFormateurs().then(({data}) => setFormateurs(data))
@@ -701,7 +701,7 @@ export default function AdminDashboard() {
                         <button onClick={async () => {
                           await adminDeleteFormateur(f.id)
                           setFormateurs(frs => frs.filter(x => x.id !== f.id))
-                          toast.success('Supprimé')
+                          toast.success('SupprimÃ©')
                         }} className="text-red-400 hover:text-red-300 p-1.5 flex-shrink-0">
                           <Trash2 size={15} />
                         </button>
@@ -711,13 +711,13 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── MEMBRES ADMINS ────────────────────────────────────────── */}
+              {/* â”€â”€ MEMBRES ADMINS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'membres' && (
                 <div className="space-y-6">
                   <div className="glass-card p-5">
                     <h3 className="text-white font-semibold mb-4 flex items-center gap-2"><Plus size={16} /> Ajouter un membre</h3>
                     <div className="grid grid-cols-2 gap-4">
-                      <div><label className="form-label text-xs">Prénom *</label><input className="form-input text-sm py-2" value={newMembre.prenom} onChange={e => setNewMembre({...newMembre, prenom: e.target.value})} /></div>
+                      <div><label className="form-label text-xs">PrÃ©nom *</label><input className="form-input text-sm py-2" value={newMembre.prenom} onChange={e => setNewMembre({...newMembre, prenom: e.target.value})} /></div>
                       <div><label className="form-label text-xs">Nom *</label><input className="form-input text-sm py-2" value={newMembre.nom} onChange={e => setNewMembre({...newMembre, nom: e.target.value})} /></div>
                       <div>
                         <label className="form-label text-xs">Titre</label>
@@ -725,7 +725,7 @@ export default function AdminDashboard() {
                           {['M.','Mme.','Dr.','Prof.'].map(t => <option key={t}>{t}</option>)}
                         </select>
                       </div>
-                      <div><label className="form-label text-xs">Poste *</label><input className="form-input text-sm py-2" value={newMembre.poste} onChange={e => setNewMembre({...newMembre, poste: e.target.value})} placeholder="Ex: Directeur Général" /></div>
+                      <div><label className="form-label text-xs">Poste *</label><input className="form-input text-sm py-2" value={newMembre.poste} onChange={e => setNewMembre({...newMembre, poste: e.target.value})} placeholder="Ex: Directeur GÃ©nÃ©ral" /></div>
                       <div><label className="form-label text-xs">Email</label><input className="form-input text-sm py-2" type="email" value={newMembre.email} onChange={e => setNewMembre({...newMembre, email: e.target.value})} /></div>
                       <div>
                         <label className="form-label text-xs">Photo</label>
@@ -738,7 +738,7 @@ export default function AdminDashboard() {
                         Object.entries(newMembre).forEach(([k,v]) => fd.append(k, v))
                         if (membrePhoto) fd.append('photo', membrePhoto)
                         await adminCreateMembre(fd)
-                        toast.success('Membre ajouté !')
+                        toast.success('Membre ajoutÃ© !')
                         setNewMembre({ nom:'', prenom:'', titre:'M.', poste:'', email:'', ordre:0 })
                         setMembrePhoto(null)
                         adminGetMembres().then(({data}) => setMembres(data))
@@ -760,7 +760,7 @@ export default function AdminDashboard() {
                         <button onClick={async () => {
                           await adminDeleteMembre(m.id)
                           setMembres(ms => ms.filter(x => x.id !== m.id))
-                          toast.success('Supprimé')
+                          toast.success('SupprimÃ©')
                         }} className="text-red-400 hover:text-red-300 p-1.5 flex-shrink-0">
                           <Trash2 size={15} />
                         </button>
@@ -770,7 +770,7 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── PARTENAIRES ───────────────────────────────────────────── */}
+              {/* â”€â”€ PARTENAIRES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'partenaires' && (
                 <div className="space-y-6">
                   <div className="glass-card p-5">
@@ -790,7 +790,7 @@ export default function AdminDashboard() {
                         Object.entries(newPartenaire).forEach(([k,v]) => fd.append(k, v))
                         if (partenaireLogo) fd.append('logo', partenaireLogo)
                         await adminCreatePartenaire(fd)
-                        toast.success('Partenaire ajouté !')
+                        toast.success('Partenaire ajoutÃ© !')
                         setNewPartenaire({ nom:'', description:'', site_web:'', ordre:0 })
                         setPartenaireLogo(null)
                         adminGetPartenaires().then(({data}) => setPartenaires(data))
@@ -809,7 +809,7 @@ export default function AdminDashboard() {
                         <button onClick={async () => {
                           await adminDeletePartenaire(p.id)
                           setPartenaires(ps => ps.filter(x => x.id !== p.id))
-                          toast.success('Supprimé')
+                          toast.success('SupprimÃ©')
                         }} className="absolute top-2 right-2 text-red-400 hover:text-red-300">
                           <Trash2 size={14} />
                         </button>
@@ -819,13 +819,13 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── TÉMOIGNAGES ───────────────────────────────────────────── */}
+              {/* â”€â”€ TÃ‰MOIGNAGES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'temoignages' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="text-white/50 text-sm">{temoignages.length} témoignage{temoignages.length !== 1 ? 's' : ''} au total</div>
-                    <span className="text-green-400 text-sm">· {temoignages.filter(t => t.approuve).length} approuvé{temoignages.filter(t => t.approuve).length !== 1 ? 's' : ''}</span>
-                    <span className="text-yellow-400 text-sm">· {temoignages.filter(t => !t.approuve).length} en attente</span>
+                    <div className="text-white/50 text-sm">{temoignages.length} tÃ©moignage{temoignages.length !== 1 ? 's' : ''} au total</div>
+                    <span className="text-green-400 text-sm">Â· {temoignages.filter(t => t.approuve).length} approuvÃ©{temoignages.filter(t => t.approuve).length !== 1 ? 's' : ''}</span>
+                    <span className="text-yellow-400 text-sm">Â· {temoignages.filter(t => !t.approuve).length} en attente</span>
                   </div>
                   <div className="space-y-3">
                     {temoignages.map(t => (
@@ -847,41 +847,41 @@ export default function AdminDashboard() {
                             <button onClick={async () => {
                               await adminApprouverTemoignage(t.id)
                               setTemoignages(ts => ts.map(x => x.id === t.id ? {...x, approuve: true} : x))
-                              toast.success('Approuvé !')
+                              toast.success('ApprouvÃ© !')
                             }} className="flex items-center gap-1 text-xs text-green-400 hover:text-green-300 bg-green-500/10 px-2 py-1 rounded-lg transition-all">
                               <ThumbsUp size={12} /> Approuver
                             </button>
                           )}
-                          {t.approuve && <span className="text-xs text-green-400 bg-green-500/10 px-2 py-1 rounded-lg">✓ Publié</span>}
+                          {t.approuve && <span className="text-xs text-green-400 bg-green-500/10 px-2 py-1 rounded-lg">âœ“ PubliÃ©</span>}
                           <button onClick={async () => {
                             await adminDeleteTemoignage(t.id)
                             setTemoignages(ts => ts.filter(x => x.id !== t.id))
-                            toast.success('Supprimé')
+                            toast.success('SupprimÃ©')
                           }} className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-red-500/10 px-2 py-1 rounded-lg transition-all">
                             <Trash2 size={12} /> Supprimer
                           </button>
                         </div>
                       </div>
                     ))}
-                    {temoignages.length === 0 && <p className="text-white/30 text-center py-10">Aucun témoignage reçu</p>}
+                    {temoignages.length === 0 && <p className="text-white/30 text-center py-10">Aucun tÃ©moignage reÃ§u</p>}
                   </div>
                 </div>
               )}
 
-              {/* ── NEWSLETTER ────────────────────────────────────────────── */}
+              {/* â”€â”€ NEWSLETTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'newsletter' && (
                 <div className="space-y-4">
-                  <div className="text-white/50 text-sm">{newsletterSubs.length} abonné{newsletterSubs.length !== 1 ? 's' : ''}</div>
+                  <div className="text-white/50 text-sm">{newsletterSubs.length} abonnÃ©{newsletterSubs.length !== 1 ? 's' : ''}</div>
                   <div className="glass-card overflow-hidden">
                     <table className="data-table">
                       <thead><tr><th>Email</th><th>Nom</th><th>Statut</th><th>Date</th></tr></thead>
                       <tbody>
                         {newsletterSubs.length === 0
-                          ? <tr><td colSpan={4} className="text-center py-10 text-white/30">Aucun abonné</td></tr>
+                          ? <tr><td colSpan={4} className="text-center py-10 text-white/30">Aucun abonnÃ©</td></tr>
                           : newsletterSubs.map(s => (
                             <tr key={s.id}>
                               <td className="text-white text-sm">{s.email}</td>
-                              <td className="text-white/60 text-sm">{s.nom || '—'}</td>
+                              <td className="text-white/60 text-sm">{s.nom || 'â€”'}</td>
                               <td><span className={s.actif ? 'badge-accepted' : 'badge-rejected'}>{s.actif ? 'Actif' : 'Inactif'}</span></td>
                               <td className="text-white/40 text-xs">{new Date(s.created_at).toLocaleDateString('fr-FR')}</td>
                             </tr>
@@ -893,12 +893,12 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* ── RÉSEAUX SOCIAUX ───────────────────────────────────────── */}
+              {/* â”€â”€ RÃ‰SEAUX SOCIAUX â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {active === 'social' && (
                 <div className="max-w-xl">
                   <div className="glass-card p-6 space-y-4">
-                    <h3 className="text-white font-semibold mb-2">Liens réseaux sociaux</h3>
-                    <p className="text-white/40 text-xs mb-4">Ces liens apparaîtront dans le footer de la page d'accueil.</p>
+                    <h3 className="text-white font-semibold mb-2">Liens rÃ©seaux sociaux</h3>
+                    <p className="text-white/40 text-xs mb-4">Ces liens apparaÃ®tront dans le footer de la page d'accueil.</p>
                     {[
                       { key: 'facebook',  label: 'Facebook',  placeholder: 'https://facebook.com/isisuptech' },
                       { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/isisuptech' },
@@ -916,7 +916,7 @@ export default function AdminDashboard() {
                     <button onClick={async () => {
                       try {
                         await api.post('/admin/contenu/social', socialLinks)
-                        toast.success('Réseaux sociaux mis à jour !')
+                        toast.success('RÃ©seaux sociaux mis Ã  jour !')
                       } catch { toast.error('Erreur') }
                     }} className="btn-primary w-full mt-2">
                       Enregistrer les liens

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -6,7 +6,7 @@ import { Search, QrCode, Users, LogOut, CheckCircle, XCircle, AlertTriangle, Ref
 import { useAuth } from '../contexts/AuthContext'
 import { getPublicStudents, verifyQR } from '../services/api'
 
-// ── Student card (accueil view) ───────────────────────────────────────────────
+// â”€â”€ Student card (accueil view) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StudentCard({ student, delay = 0 }) {
   return (
     <motion.div
@@ -24,7 +24,7 @@ function StudentCard({ student, delay = 0 }) {
       <div className="flex-1 min-w-0">
         <div className="text-white font-semibold truncate">{student.nom}</div>
         <div className="text-brand-400 text-xs font-mono">{student.matricule}</div>
-        <div className="text-white/50 text-xs mt-0.5 truncate">{student.filiere} — {student.license}</div>
+        <div className="text-white/50 text-xs mt-0.5 truncate">{student.filiere} â€” {student.license}</div>
       </div>
       <div className="flex-shrink-0 text-right">
         <div className="w-2 h-2 rounded-full bg-green-400 ml-auto mb-1 animate-pulse" />
@@ -34,7 +34,7 @@ function StudentCard({ student, delay = 0 }) {
   )
 }
 
-// ── QR Scanner result ─────────────────────────────────────────────────────────
+// â”€â”€ QR Scanner result â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function QRResult({ result, onClose }) {
   if (!result) return null
   const { valide, etudiant, message } = result
@@ -65,7 +65,7 @@ function QRResult({ result, onClose }) {
               <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand-700 to-brand-500 overflow-hidden flex-shrink-0">
                 {etudiant.photo
                   ? <img src={etudiant.photo} className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-3xl">👤</div>
+                  : <div className="w-full h-full flex items-center justify-center text-3xl">ðŸ‘¤</div>
                 }
               </div>
               <div>
@@ -76,9 +76,9 @@ function QRResult({ result, onClose }) {
 
             <div className="grid grid-cols-2 gap-3 mb-6">
               {[
-                ['Filière', etudiant.filiere],
+                ['FiliÃ¨re', etudiant.filiere],
                 ['Niveau', etudiant.license],
-                ['Année', etudiant.annee],
+                ['AnnÃ©e', etudiant.annee],
               ].map(([label, val]) => (
                 <div key={label} className="bg-white/5 rounded-lg p-3">
                   <div className="text-white/40 text-xs">{label}</div>
@@ -88,7 +88,7 @@ function QRResult({ result, onClose }) {
               <div className={`rounded-lg p-3 ${etudiant.statut_paiement === 'a_jour' ? 'bg-green-500/15' : 'bg-red-500/15'}`}>
                 <div className="text-white/40 text-xs">Paiements</div>
                 <div className={`font-bold text-sm mt-0.5 ${etudiant.statut_paiement === 'a_jour' ? 'text-green-300' : 'text-red-300'}`}>
-                  {etudiant.statut_paiement === 'a_jour' ? '✅ À jour' : '⚠ Non à jour'}
+                  {etudiant.statut_paiement === 'a_jour' ? 'âœ… Ã€ jour' : 'âš  Non Ã  jour'}
                 </div>
               </div>
             </div>
@@ -97,7 +97,7 @@ function QRResult({ result, onClose }) {
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
                 <div className="flex items-center gap-2 text-red-400 font-semibold text-sm mb-2">
                   <AlertTriangle size={16} />
-                  {etudiant.mois_non_payes.length} mois impayés
+                  {etudiant.mois_non_payes.length} mois impayÃ©s
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {etudiant.mois_non_payes.slice(0, 6).map((m) => (
@@ -112,7 +112,7 @@ function QRResult({ result, onClose }) {
                 ? 'bg-green-500/20 text-green-300'
                 : 'bg-red-500/20 text-red-300'
             }`}>
-              {etudiant.statut_paiement === 'a_jour' ? '✅ ACCÈS AUTORISÉ' : '⛔ VÉRIFIER PAIEMENTS'}
+              {etudiant.statut_paiement === 'a_jour' ? 'âœ… ACCÃˆS AUTORISÃ‰' : 'â›” VÃ‰RIFIER PAIEMENTS'}
             </div>
           </div>
         )}
@@ -121,7 +121,7 @@ function QRResult({ result, onClose }) {
   )
 }
 
-// ── Main AccueilDashboard ─────────────────────────────────────────────────────
+// â”€â”€ Main AccueilDashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function AccueilDashboard() {
   const { logout } = useAuth()
   const navigate = useNavigate()
@@ -165,16 +165,16 @@ export default function AccueilDashboard() {
       const { data } = await verifyQR(qrInput.trim())
       setQrResult(data)
     } catch {
-      toast.error('Erreur de vérification')
+      toast.error('Erreur de vÃ©rification')
     } finally {
       setScanning(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-navy-950">
+    <div className="min-h-screen bg-space-950">
       {/* Top bar */}
-      <div className="sticky top-0 z-30 bg-navy-800/90 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
+      <div className="sticky top-0 z-30 bg-space-900/90 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
             <span className="text-white font-black text-xs">ISI</span>
@@ -186,10 +186,10 @@ export default function AccueilDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-white/40 text-sm">
-            <span className="text-white font-semibold">{students.length}</span> étudiants inscrits
+            <span className="text-white font-semibold">{students.length}</span> Ã©tudiants inscrits
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 text-white/40 hover:text-red-400 text-sm transition-colors">
-            <LogOut size={16} /> Déconnexion
+            <LogOut size={16} /> DÃ©connexion
           </button>
         </div>
       </div>
@@ -200,13 +200,13 @@ export default function AccueilDashboard() {
           {/* QR Verification */}
           <div className="lg:col-span-1 space-y-4">
             <div className="glass-card p-5 neon-border">
-              <h3 className="text-white font-bold mb-1 flex items-center gap-2"><QrCode size={18} className="text-brand-400" /> Vérification QR</h3>
-              <p className="text-white/40 text-xs mb-4">Scannez ou saisissez les données du QR code étudiant.</p>
+              <h3 className="text-white font-bold mb-1 flex items-center gap-2"><QrCode size={18} className="text-brand-400" /> VÃ©rification QR</h3>
+              <p className="text-white/40 text-xs mb-4">Scannez ou saisissez les donnÃ©es du QR code Ã©tudiant.</p>
 
               <textarea
                 className="form-input resize-none text-sm font-mono text-xs"
                 rows={4}
-                placeholder="Collez ici les données du QR code..."
+                placeholder="Collez ici les donnÃ©es du QR code..."
                 value={qrInput}
                 onChange={(e) => setQrInput(e.target.value)}
               />
@@ -217,19 +217,19 @@ export default function AccueilDashboard() {
                 className="btn-primary w-full mt-3 flex items-center justify-center gap-2 text-sm"
               >
                 {scanning ? <div className="spinner w-4 h-4" /> : <QrCode size={16} />}
-                Vérifier la carte
+                VÃ©rifier la carte
               </button>
 
               <div className="mt-3 text-white/30 text-xs text-center">
-                Ou utilisez un scanner physique connecté au clavier
+                Ou utilisez un scanner physique connectÃ© au clavier
               </div>
             </div>
 
             {/* Stats */}
             <div className="glass-card p-5">
-              <h3 className="text-white font-semibold mb-3 text-sm flex items-center gap-2"><Users size={15} /> Présence aujourd'hui</h3>
+              <h3 className="text-white font-semibold mb-3 text-sm flex items-center gap-2"><Users size={15} /> PrÃ©sence aujourd'hui</h3>
               <div className="text-4xl font-black text-brand-400 mb-1">{students.length}</div>
-              <div className="text-white/50 text-sm">étudiants actifs dans l'école</div>
+              <div className="text-white/50 text-sm">Ã©tudiants actifs dans l'Ã©cole</div>
               <div className="mt-3 space-y-2">
                 {filieres.slice(0, 5).map((f) => (
                   <div key={f} className="flex items-center justify-between text-sm">
@@ -246,10 +246,10 @@ export default function AccueilDashboard() {
             <div className="flex flex-wrap gap-3">
               <div className="relative flex-1 min-w-48">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                <input className="form-input pl-9 py-2.5 text-sm" placeholder="Rechercher un étudiant..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                <input className="form-input pl-9 py-2.5 text-sm" placeholder="Rechercher un Ã©tudiant..." value={search} onChange={(e) => setSearch(e.target.value)} />
               </div>
               <select className="form-input py-2.5 text-sm w-auto" value={filterFiliere} onChange={(e) => setFilterFiliere(e.target.value)}>
-                <option value="">Toutes les filières</option>
+                <option value="">Toutes les filiÃ¨res</option>
                 {filieres.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
               <button onClick={loadStudents} className="btn-secondary text-sm py-2.5 px-4 flex items-center gap-2"><RefreshCw size={14} /></button>
@@ -260,7 +260,7 @@ export default function AccueilDashboard() {
             ) : filtered.length === 0 ? (
               <div className="text-center py-16 text-white/30">
                 <Users size={48} className="mx-auto mb-4 opacity-30" />
-                <p>Aucun étudiant trouvé</p>
+                <p>Aucun Ã©tudiant trouvÃ©</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">

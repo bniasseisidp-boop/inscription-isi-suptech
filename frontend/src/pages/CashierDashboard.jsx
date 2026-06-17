@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -71,7 +71,7 @@ export default function CashierDashboard() {
     setSubmitting(true)
     try {
       const { data } = await recordManualPayment(form)
-      toast.success('Paiement enregistré — reçu PDF généré !')
+      toast.success('Paiement enregistrÃ© â€” reÃ§u PDF gÃ©nÃ©rÃ© !')
       setShowForm(false)
       setSelectedStudent(null)
       setForm({ student_id: '', type: 'mensualite', montant: '', mois: '', methode: 'especes', notes: '' })
@@ -85,8 +85,8 @@ export default function CashierDashboard() {
   }
 
   const MOIS_LABELS = [
-    'Octobre', 'Novembre', 'Décembre', 'Janvier', 'Février', 'Mars',
-    'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre'
+    'Octobre', 'Novembre', 'DÃ©cembre', 'Janvier', 'FÃ©vrier', 'Mars',
+    'Avril', 'Mai', 'Juin', 'Juillet', 'AoÃ»t', 'Septembre'
   ]
 
   const getCurrentMoisOptions = () => {
@@ -98,9 +98,9 @@ export default function CashierDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 flex">
+    <div className="min-h-screen bg-space-950 flex">
       {/* Sidebar */}
-      <div className="w-64 flex-shrink-0 bg-navy-800/70 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
+      <div className="w-64 flex-shrink-0 bg-space-800/70 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-emerald-500 flex items-center justify-center">
@@ -130,14 +130,14 @@ export default function CashierDashboard() {
         </nav>
         <div className="p-3 border-t border-white/10">
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all">
-            <LogOut size={17} /> Déconnexion
+            <LogOut size={17} /> DÃ©connexion
           </button>
         </div>
       </div>
 
       {/* Main */}
       <div className="flex-1 ml-64">
-        <div className="sticky top-0 z-30 bg-navy-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
+        <div className="sticky top-0 z-30 bg-space-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
           <h1 className="text-white font-semibold">
             {active === 'dashboard' ? 'Tableau de bord' : active === 'paiements' ? 'Paiements' : 'Saisir un paiement'}
           </h1>
@@ -154,7 +154,7 @@ export default function CashierDashboard() {
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                     <StatBox label="Recettes du jour" value={`${Number(stats?.total_jour || 0).toLocaleString()} FCFA`} color="green" />
                     <StatBox label="Recettes du mois" value={`${Number(stats?.total_mois || 0).toLocaleString()} FCFA`} color="brand" />
-                    <StatBox label="Opérations en attente" value={stats?.en_attente || 0} color="yellow" />
+                    <StatBox label="OpÃ©rations en attente" value={stats?.en_attente || 0} color="yellow" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <StatBox label="Paiements ce jour" value={stats?.count_jour || 0} sub="transactions" />
@@ -163,12 +163,12 @@ export default function CashierDashboard() {
 
                   {stats?.par_type?.length > 0 && (
                     <div className="glass-card p-5">
-                      <h3 className="text-white font-semibold mb-4">Répartition par type</h3>
+                      <h3 className="text-white font-semibold mb-4">RÃ©partition par type</h3>
                       <div className="space-y-3">
                         {stats.par_type.map((t) => (
                           <div key={t.type} className="flex items-center justify-between py-3 border-b border-white/5">
                             <div>
-                              <div className="text-white/80 text-sm font-medium">{t.type === 'inscription' ? 'Frais d\'inscription' : t.type === 'mensualite' ? 'Mensualités' : 'Autre'}</div>
+                              <div className="text-white/80 text-sm font-medium">{t.type === 'inscription' ? 'Frais d\'inscription' : t.type === 'mensualite' ? 'MensualitÃ©s' : 'Autre'}</div>
                               <div className="text-white/40 text-xs">{t.count} transactions</div>
                             </div>
                             <div className="text-green-400 font-bold">{Number(t.total).toLocaleString()} FCFA</div>
@@ -190,13 +190,13 @@ export default function CashierDashboard() {
                   <div className="flex gap-3">
                     <div className="relative flex-1">
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                      <input className="form-input pl-9 py-2 text-sm" placeholder="Rechercher un étudiant..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                      <input className="form-input pl-9 py-2 text-sm" placeholder="Rechercher un Ã©tudiant..." value={search} onChange={(e) => setSearch(e.target.value)} />
                     </div>
                     <button onClick={loadPayments} className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"><RefreshCw size={14} /> Actualiser</button>
                   </div>
                   <div className="glass-card overflow-hidden">
                     <table className="data-table">
-                      <thead><tr><th>Étudiant</th><th>Type</th><th>Montant</th><th>Méthode</th><th>Saisi par</th><th>Date</th><th>Statut</th><th>Reçu</th></tr></thead>
+                      <thead><tr><th>Ã‰tudiant</th><th>Type</th><th>Montant</th><th>MÃ©thode</th><th>Saisi par</th><th>Date</th><th>Statut</th><th>ReÃ§u</th></tr></thead>
                       <tbody>
                         {loading
                           ? <tr><td colSpan={8} className="text-center py-10"><div className="spinner mx-auto" /></td></tr>
@@ -212,7 +212,7 @@ export default function CashierDashboard() {
                               <td className="text-white font-bold">{Number(p.montant).toLocaleString()} FCFA</td>
                               <td className="text-white/60 text-sm">{p.methode?.toUpperCase()}</td>
                               <td className="text-white/50 text-xs">{p.saiseur?.name || 'Wave'}</td>
-                              <td className="text-white/40 text-xs">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
+                              <td className="text-white/40 text-xs">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : 'â€”'}</td>
                               <td><span className={p.statut === 'complete' ? 'badge-accepted' : 'badge-pending'}>{p.statut}</span></td>
                               <td>
                                 {p.recu_pdf_path && (
@@ -233,31 +233,31 @@ export default function CashierDashboard() {
               {/* SAISIE PAIEMENT */}
               {active === 'saisie' && (
                 <div className="max-w-xl space-y-5">
-                  <p className="text-white/50 text-sm">Enregistrez manuellement un paiement (espèces, virement, chèque).</p>
+                  <p className="text-white/50 text-sm">Enregistrez manuellement un paiement (espÃ¨ces, virement, chÃ¨que).</p>
 
                   {/* Student search */}
                   <div>
-                    <label className="form-label">Rechercher l'étudiant *</label>
+                    <label className="form-label">Rechercher l'Ã©tudiant *</label>
                     {selectedStudent ? (
                       <div className="flex items-center justify-between glass-card p-4">
                         <div>
                           <div className="text-white font-semibold">{selectedStudent.prenom} {selectedStudent.nom}</div>
                           <div className="text-brand-400 text-sm font-mono">{selectedStudent.matricule}</div>
-                          <div className="text-white/40 text-xs">{selectedStudent.filiere?.nom} — {selectedStudent.license?.nom}</div>
+                          <div className="text-white/40 text-xs">{selectedStudent.filiere?.nom} â€” {selectedStudent.license?.nom}</div>
                         </div>
                         <button onClick={() => { setSelectedStudent(null); setForm((f) => ({ ...f, student_id: '' })) }} className="text-white/40 hover:text-white"><X size={16} /></button>
                       </div>
                     ) : (
                       <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                        <input className="form-input pl-9" placeholder="Nom, prénom ou matricule..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} />
+                        <input className="form-input pl-9" placeholder="Nom, prÃ©nom ou matricule..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} />
                         {students.length > 0 && (
                           <div className="absolute top-full left-0 right-0 z-20 mt-1 glass-card border border-white/20 overflow-hidden">
                             {students.map((s) => (
                               <button key={s.id} onClick={() => handleSelectStudent(s)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left">
                                 <div>
                                   <div className="text-white text-sm">{s.prenom} {s.nom}</div>
-                                  <div className="text-white/40 text-xs">{s.matricule} — {s.filiere?.nom}</div>
+                                  <div className="text-white/40 text-xs">{s.matricule} â€” {s.filiere?.nom}</div>
                                 </div>
                               </button>
                             ))}
@@ -277,16 +277,16 @@ export default function CashierDashboard() {
                       }))
                     }}>
                       <option value="inscription">Frais d'inscription</option>
-                      <option value="mensualite">Mensualité</option>
+                      <option value="mensualite">MensualitÃ©</option>
                       <option value="autre">Autre</option>
                     </select>
                   </div>
 
                   {form.type === 'mensualite' && (
                     <div>
-                      <label className="form-label">Mois concerné *</label>
+                      <label className="form-label">Mois concernÃ© *</label>
                       <select className="form-input" value={form.mois} onChange={(e) => setForm({ ...form, mois: e.target.value })}>
-                        <option value="">-- Sélectionner le mois --</option>
+                        <option value="">-- SÃ©lectionner le mois --</option>
                         {getCurrentMoisOptions().map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                     </div>
@@ -298,12 +298,12 @@ export default function CashierDashboard() {
                   </div>
 
                   <div>
-                    <label className="form-label">Méthode de paiement *</label>
+                    <label className="form-label">MÃ©thode de paiement *</label>
                     <select className="form-input" value={form.methode} onChange={(e) => setForm({ ...form, methode: e.target.value })}>
-                      <option value="especes">Espèces</option>
+                      <option value="especes">EspÃ¨ces</option>
                       <option value="wave">Wave</option>
                       <option value="virement">Virement bancaire</option>
-                      <option value="cheque">Chèque</option>
+                      <option value="cheque">ChÃ¨que</option>
                     </select>
                   </div>
 
@@ -316,7 +316,7 @@ export default function CashierDashboard() {
                     <button onClick={() => setActive('dashboard')} className="btn-secondary flex-1">Annuler</button>
                     <button onClick={handleSubmitPayment} disabled={submitting} className="btn-primary flex-1 flex items-center justify-center gap-2">
                       {submitting ? <div className="spinner w-4 h-4" /> : <CheckCircle size={16} />}
-                      Enregistrer & générer le reçu
+                      Enregistrer & gÃ©nÃ©rer le reÃ§u
                     </button>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+﻿import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
@@ -10,7 +10,7 @@ import Navbar from '../components/Navbar'
 import { submitPreInscription, getFilieres } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 
-const STEPS = ['Identité', 'Naissance & Adresse', 'Formation', 'Sécurité']
+const STEPS = ['IdentitÃ©', 'Naissance & Adresse', 'Formation', 'SÃ©curitÃ©']
 
 function StepIndicator({ current, total }) {
   return (
@@ -57,7 +57,7 @@ function PhotoDropzone({ onFile, preview }) {
           <Upload size={32} className="text-brand-400/60" />
           <div>
             <p className="font-medium text-white/70">Photo (optionnelle)</p>
-            <p className="text-xs mt-1">JPG, PNG — max 2 Mo</p>
+            <p className="text-xs mt-1">JPG, PNG â€” max 2 Mo</p>
           </div>
         </div>
       )}
@@ -135,20 +135,20 @@ export default function PreInscription() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-navy-950 relative flex items-center justify-center px-4">
+      <div className="min-h-screen bg-space-950 relative flex items-center justify-center px-4">
         <AnimatedBackground />
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="glass-card p-12 text-center max-w-lg relative z-10 neon-border"
         >
-          <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: 3 }} className="text-8xl mb-6">🎉</motion.div>
-          <h2 className="text-3xl font-black text-white mb-4">Pré-inscription envoyée !</h2>
-          <p className="text-white/60 mb-2">Votre dossier a été soumis avec succès.</p>
-          <p className="text-white/50 text-sm mb-8">Vous allez recevoir un email de confirmation. Notre équipe examinera votre candidature sous 48h.</p>
+          <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: 3 }} className="text-8xl mb-6">ðŸŽ‰</motion.div>
+          <h2 className="text-3xl font-black text-white mb-4">PrÃ©-inscription envoyÃ©e !</h2>
+          <p className="text-white/60 mb-2">Votre dossier a Ã©tÃ© soumis avec succÃ¨s.</p>
+          <p className="text-white/50 text-sm mb-8">Vous allez recevoir un email de confirmation. Notre Ã©quipe examinera votre candidature sous 48h.</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => navigate('/student')} className="btn-primary">Accéder à mon espace</button>
-            <button onClick={() => navigate('/')} className="btn-secondary">Retour à l'accueil</button>
+            <button onClick={() => navigate('/student')} className="btn-primary">AccÃ©der Ã  mon espace</button>
+            <button onClick={() => navigate('/')} className="btn-secondary">Retour Ã  l'accueil</button>
           </div>
         </motion.div>
       </div>
@@ -156,7 +156,7 @@ export default function PreInscription() {
   }
 
   return (
-    <div className="min-h-screen bg-navy-950 relative">
+    <div className="min-h-screen bg-space-950 relative">
       <AnimatedBackground />
       <Navbar />
 
@@ -164,8 +164,8 @@ export default function PreInscription() {
         <div className="max-w-2xl mx-auto">
           {/* Header */}
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-            <h1 className="text-4xl font-black text-white">Pré-Inscription</h1>
-            <p className="text-white/50 mt-2">ISI SUPTECH — Année académique {new Date().getFullYear()}-{new Date().getFullYear()+1}</p>
+            <h1 className="text-4xl font-black text-white">PrÃ©-Inscription</h1>
+            <p className="text-white/50 mt-2">ISI SUPTECH â€” AnnÃ©e acadÃ©mique {new Date().getFullYear()}-{new Date().getFullYear()+1}</p>
           </motion.div>
 
           <StepIndicator current={step} total={STEPS.length} />
@@ -185,7 +185,7 @@ export default function PreInscription() {
                   exit={{ opacity: 0, x: -30 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {/* ── STEP 0: Identité ─────────────────────────────────── */}
+                  {/* â”€â”€ STEP 0: IdentitÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                   {step === 0 && (
                     <div className="space-y-5">
                       <div className="grid grid-cols-2 gap-4">
@@ -195,8 +195,8 @@ export default function PreInscription() {
                           {errors.nom && <p className="text-red-400 text-xs mt-1">{errors.nom.message}</p>}
                         </div>
                         <div>
-                          <label className="form-label">Prénom *</label>
-                          <input className="form-input" placeholder="Moussa" {...register('prenom', { required: 'Prénom requis' })} />
+                          <label className="form-label">PrÃ©nom *</label>
+                          <input className="form-input" placeholder="Moussa" {...register('prenom', { required: 'PrÃ©nom requis' })} />
                           {errors.prenom && <p className="text-red-400 text-xs mt-1">{errors.prenom.message}</p>}
                         </div>
                       </div>
@@ -211,10 +211,10 @@ export default function PreInscription() {
                       </div>
 
                       <div>
-                        <label className="form-label">Téléphone *</label>
+                        <label className="form-label">TÃ©lÃ©phone *</label>
                         <div className="relative">
                           <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
-                          <input className="form-input pl-10" type="tel" placeholder="+221 77 000 00 00" {...register('telephone', { required: 'Téléphone requis' })} />
+                          <input className="form-input pl-10" type="tel" placeholder="+221 77 000 00 00" {...register('telephone', { required: 'TÃ©lÃ©phone requis' })} />
                         </div>
                         {errors.telephone && <p className="text-red-400 text-xs mt-1">{errors.telephone.message}</p>}
                       </div>
@@ -222,9 +222,9 @@ export default function PreInscription() {
                       <div>
                         <label className="form-label">Sexe *</label>
                         <select className="form-input" {...register('sexe', { required: 'Sexe requis' })}>
-                          <option value="">-- Sélectionner --</option>
+                          <option value="">-- SÃ©lectionner --</option>
                           <option value="M">Masculin</option>
-                          <option value="F">Féminin</option>
+                          <option value="F">FÃ©minin</option>
                         </select>
                         {errors.sexe && <p className="text-red-400 text-xs mt-1">{errors.sexe.message}</p>}
                       </div>
@@ -233,7 +233,7 @@ export default function PreInscription() {
                     </div>
                   )}
 
-                  {/* ── STEP 1: Naissance & Adresse ──────────────────────── */}
+                  {/* â”€â”€ STEP 1: Naissance & Adresse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                   {step === 1 && (
                     <div className="space-y-5">
                       <div className="grid grid-cols-2 gap-4">
@@ -253,36 +253,36 @@ export default function PreInscription() {
                         <label className="form-label">Adresse *</label>
                         <div className="relative">
                           <MapPin size={16} className="absolute left-4 top-4 text-white/30" />
-                          <input className="form-input pl-10" placeholder="Votre adresse complète" {...register('adresse', { required: 'Adresse requise' })} />
+                          <input className="form-input pl-10" placeholder="Votre adresse complÃ¨te" {...register('adresse', { required: 'Adresse requise' })} />
                         </div>
                         {errors.adresse && <p className="text-red-400 text-xs mt-1">{errors.adresse.message}</p>}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="form-label">Nationalité *</label>
+                          <label className="form-label">NationalitÃ© *</label>
                           <div className="relative">
                             <Globe size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
-                            <input className="form-input pl-10" placeholder="Sénégalaise" {...register('nationalite', { required: 'Nationalité requise' })} />
+                            <input className="form-input pl-10" placeholder="SÃ©nÃ©galaise" {...register('nationalite', { required: 'NationalitÃ© requise' })} />
                           </div>
                           {errors.nationalite && <p className="text-red-400 text-xs mt-1">{errors.nationalite.message}</p>}
                         </div>
                         <div>
-                          <label className="form-label">Pays de résidence *</label>
-                          <input className="form-input" placeholder="Sénégal" {...register('pays_residence', { required: 'Pays requis' })} />
+                          <label className="form-label">Pays de rÃ©sidence *</label>
+                          <input className="form-input" placeholder="SÃ©nÃ©gal" {...register('pays_residence', { required: 'Pays requis' })} />
                           {errors.pays_residence && <p className="text-red-400 text-xs mt-1">{errors.pays_residence.message}</p>}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* ── STEP 2: Formation ────────────────────────────────── */}
+                  {/* â”€â”€ STEP 2: Formation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                   {step === 2 && (
                     <div className="space-y-5">
                       <div>
-                        <label className="form-label">Filière souhaitée *</label>
-                        <select className="form-input" {...register('filiere_id', { required: 'Filière requise' })}>
-                          <option value="">-- Choisir une filière --</option>
+                        <label className="form-label">FiliÃ¨re souhaitÃ©e *</label>
+                        <select className="form-input" {...register('filiere_id', { required: 'FiliÃ¨re requise' })}>
+                          <option value="">-- Choisir une filiÃ¨re --</option>
                           {filieres.map((f) => (
                             <option key={f.id} value={f.id}>{f.nom}</option>
                           ))}
@@ -297,7 +297,7 @@ export default function PreInscription() {
                             <option value="">-- Choisir le niveau --</option>
                             {licenses.map((l) => (
                               <option key={l.id} value={l.id}>
-                                {l.nom} — {Number(l.frais_inscription).toLocaleString()} FCFA inscription
+                                {l.nom} â€” {Number(l.frais_inscription).toLocaleString()} FCFA inscription
                               </option>
                             ))}
                           </select>
@@ -312,18 +312,18 @@ export default function PreInscription() {
                       )}
 
                       <div className="glass-card p-4 text-sm text-white/60 leading-relaxed">
-                        <p className="text-brand-400 font-semibold mb-2">ℹ️ Processus d'inscription</p>
-                        <p>Votre candidature sera examinée par notre équipe pédagogique. Vous recevrez une réponse par email sous 48h. En cas d'acceptation, un lien de paiement Wave vous sera envoyé.</p>
+                        <p className="text-brand-400 font-semibold mb-2">â„¹ï¸ Processus d'inscription</p>
+                        <p>Votre candidature sera examinÃ©e par notre Ã©quipe pÃ©dagogique. Vous recevrez une rÃ©ponse par email sous 48h. En cas d'acceptation, un lien de paiement Wave vous sera envoyÃ©.</p>
                       </div>
                     </div>
                   )}
 
-                  {/* ── STEP 3: Mot de passe ─────────────────────────────── */}
+                  {/* â”€â”€ STEP 3: Mot de passe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                   {step === 3 && (
                     <div className="space-y-5">
                       <div className="glass-card p-4 text-sm text-white/60 mb-2">
-                        <p className="text-brand-400 font-semibold mb-1">🔐 Créez votre espace étudiant</p>
-                        <p>Ce mot de passe vous permettra de vous connecter pour suivre l'état de votre candidature et accéder à votre espace étudiant.</p>
+                        <p className="text-brand-400 font-semibold mb-1">ðŸ” CrÃ©ez votre espace Ã©tudiant</p>
+                        <p>Ce mot de passe vous permettra de vous connecter pour suivre l'Ã©tat de votre candidature et accÃ©der Ã  votre espace Ã©tudiant.</p>
                       </div>
 
                       <div>
@@ -333,8 +333,8 @@ export default function PreInscription() {
                           <input
                             className="form-input pl-10 pr-12"
                             type={showPwd ? 'text' : 'password'}
-                            placeholder="Minimum 8 caractères"
-                            {...register('mot_de_passe', { required: 'Mot de passe requis', minLength: { value: 8, message: 'Minimum 8 caractères' } })}
+                            placeholder="Minimum 8 caractÃ¨res"
+                            {...register('mot_de_passe', { required: 'Mot de passe requis', minLength: { value: 8, message: 'Minimum 8 caractÃ¨res' } })}
                           />
                           <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/70">
                             {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -350,7 +350,7 @@ export default function PreInscription() {
                           <input
                             className="form-input pl-10 pr-12"
                             type={showPwd2 ? 'text' : 'password'}
-                            placeholder="Répétez le mot de passe"
+                            placeholder="RÃ©pÃ©tez le mot de passe"
                             {...register('mot_de_passe_confirmation', {
                               required: 'Confirmation requise',
                               validate: (v) => v === watch('mot_de_passe') || 'Les mots de passe ne correspondent pas',
@@ -374,7 +374,7 @@ export default function PreInscription() {
               {/* Navigation */}
               <div className="flex justify-between mt-8 pt-6 border-t border-white/10">
                 <button type="button" onClick={prev} disabled={step === 0} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all ${step === 0 ? 'opacity-0 pointer-events-none' : 'btn-secondary'}`}>
-                  <ChevronLeft size={16} /> Précédent
+                  <ChevronLeft size={16} /> PrÃ©cÃ©dent
                 </button>
 
                 {step < STEPS.length - 1 ? (
@@ -397,5 +397,5 @@ export default function PreInscription() {
 
 const DEMO_FILIERES = [
   { id: 1, nom: 'Informatique', code: 'INFO', licenses: [{ id: 1, nom: 'Licence 1', frais_inscription: 150000 }, { id: 2, nom: 'Licence 2', frais_inscription: 150000 }] },
-  { id: 2, nom: 'Réseaux', code: 'RT', licenses: [{ id: 3, nom: 'Licence 1', frais_inscription: 150000 }] },
+  { id: 2, nom: 'RÃ©seaux', code: 'RT', licenses: [{ id: 3, nom: 'Licence 1', frais_inscription: 150000 }] },
 ]

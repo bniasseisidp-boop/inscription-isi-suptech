@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -14,7 +14,7 @@ import {
 } from '../services/api'
 import api from '../services/api'
 
-// ── Payment tracker month grid ──────────────────────────────────────────────
+// â”€â”€ Payment tracker month grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function PaymentMonthGrid({ suivi }) {
   if (!suivi || !suivi.mois) return null
   const { mois, frais_mensuel, total_paye, total_restant, mois_restants, mois_en_retard, mois_total, mois_payes, est_a_jour } = suivi
@@ -24,22 +24,22 @@ function PaymentMonthGrid({ suivi }) {
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="glass-card p-4 border border-green-500/20">
-          <div className="text-green-400 text-xs font-semibold uppercase tracking-wider mb-1">Mois payés</div>
+          <div className="text-green-400 text-xs font-semibold uppercase tracking-wider mb-1">Mois payÃ©s</div>
           <div className="text-3xl font-black text-white">{mois_payes}</div>
           <div className="text-white/40 text-xs">sur {mois_total} mois</div>
         </div>
         <div className={`glass-card p-4 border ${mois_en_retard > 0 ? 'border-red-500/30' : 'border-white/10'}`}>
           <div className={`text-xs font-semibold uppercase tracking-wider mb-1 ${mois_en_retard > 0 ? 'text-red-400' : 'text-white/40'}`}>En retard</div>
           <div className={`text-3xl font-black ${mois_en_retard > 0 ? 'text-red-400' : 'text-white'}`}>{mois_en_retard}</div>
-          <div className="text-white/40 text-xs">{mois_en_retard > 0 ? 'mois non payés' : 'Aucun retard'}</div>
+          <div className="text-white/40 text-xs">{mois_en_retard > 0 ? 'mois non payÃ©s' : 'Aucun retard'}</div>
         </div>
         <div className="glass-card p-4 border border-brand-500/20">
           <div className="text-brand-400 text-xs font-semibold uppercase tracking-wider mb-1">Restant</div>
           <div className="text-2xl font-black text-white">{Number(total_restant).toLocaleString()}</div>
-          <div className="text-white/40 text-xs">FCFA — {mois_restants} mois</div>
+          <div className="text-white/40 text-xs">FCFA â€” {mois_restants} mois</div>
         </div>
         <div className="glass-card p-4 border border-emerald-500/20">
-          <div className="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">Total payé</div>
+          <div className="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">Total payÃ©</div>
           <div className="text-2xl font-black text-white">{Number(total_paye).toLocaleString()}</div>
           <div className="text-white/40 text-xs">FCFA</div>
         </div>
@@ -48,7 +48,7 @@ function PaymentMonthGrid({ suivi }) {
       {/* Progress bar */}
       <div>
         <div className="flex justify-between text-xs text-white/50 mb-2">
-          <span>{mois_payes} mois payés</span>
+          <span>{mois_payes} mois payÃ©s</span>
           <span>{mois_restants} mois restants</span>
         </div>
         <div className="h-3 bg-white/10 rounded-full overflow-hidden">
@@ -87,7 +87,7 @@ function PaymentMonthGrid({ suivi }) {
                 </div>
               )}
               <div className={`text-lg mb-1 ${m.paye ? 'text-green-400' : m.en_retard ? 'text-red-400' : m.actuel ? 'text-brand-400' : 'text-white/20'}`}>
-                {m.paye ? '✓' : m.en_retard ? '✗' : '○'}
+                {m.paye ? 'âœ“' : m.en_retard ? 'âœ—' : 'â—‹'}
               </div>
               <div className="text-white text-[11px] font-semibold leading-tight">{m.label.split(' ')[0]}</div>
               <div className="text-white/40 text-[10px]">{m.label.split(' ')[1]}</div>
@@ -105,7 +105,7 @@ function PaymentMonthGrid({ suivi }) {
           <div>
             <p className="text-red-300 font-semibold text-sm">{mois_en_retard} mois en retard</p>
             <p className="text-red-400/70 text-xs mt-1">
-              Montant dû : {(mois_en_retard * frais_mensuel).toLocaleString()} FCFA. Régularisez votre situation pour accéder à tous les services.
+              Montant dÃ» : {(mois_en_retard * frais_mensuel).toLocaleString()} FCFA. RÃ©gularisez votre situation pour accÃ©der Ã  tous les services.
             </p>
           </div>
         </div>
@@ -114,9 +114,9 @@ function PaymentMonthGrid({ suivi }) {
   )
 }
 
-// ── Tabs complete profile ───────────────────────────────────────────────────
+// â”€â”€ Tabs complete profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PROFILE_TABS = [
-  { id: 'academique',    label: 'Académique',   icon: GraduationCap },
+  { id: 'academique',    label: 'AcadÃ©mique',   icon: GraduationCap },
   { id: 'personnelle',   label: 'Personnel',    icon: User },
   { id: 'tuteur',        label: 'Tuteur/Parent',icon: Phone },
   { id: 'autres',        label: 'Autres',       icon: FileText },
@@ -126,7 +126,7 @@ function CompleteProfileForm({ student, onSaved }) {
   const [activeTab, setActiveTab] = useState('academique')
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    // Académique
+    // AcadÃ©mique
     annee_bac: student.annee_bac || '',
     numero_pv_bac: student.numero_pv_bac || '',
     serie_college: student.serie_college || '',
@@ -176,7 +176,7 @@ function CompleteProfileForm({ student, onSaved }) {
     setSaving(true)
     try {
       const { data } = await api.put('/etudiant/profil', form)
-      toast.success('Profil enregistré !')
+      toast.success('Profil enregistrÃ© !')
       onSaved(data.student)
     } catch (e) {
       toast.error('Erreur lors de l\'enregistrement')
@@ -190,7 +190,7 @@ function CompleteProfileForm({ student, onSaved }) {
       <label className="form-label text-xs">{label}</label>
       {options ? (
         <select className="form-input text-sm py-2" value={form[name]} onChange={(e) => update(name, e.target.value)}>
-          <option value="">-- Sélectionner --</option>
+          <option value="">-- SÃ©lectionner --</option>
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       ) : textarea ? (
@@ -229,26 +229,26 @@ function CompleteProfileForm({ student, onSaved }) {
 
             {activeTab === 'academique' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <F label="Année Baccalauréat" name="annee_bac" placeholder="2022" />
-                <F label="N° PV Baccalauréat" name="numero_pv_bac" />
-                <F label="Série / Collège" name="serie_college" placeholder="S2, L2..." />
-                <F label="Région BAC" name="region_bac" placeholder="Dakar" />
-                <F label="Dernier diplôme" name="dernier_diplome" placeholder="BAC, BTS..." />
-                <F label="Année dernier diplôme" name="annee_dernier_diplome" />
-                <div className="sm:col-span-2"><F label="Dernier établissement" name="dernier_etablissement" placeholder="Lycée..." /></div>
-                <F label="N° INE" name="numero_ine" />
-                <F label="Comment vous avez découvert ISI ?" name="decouverte" placeholder="Bouche à oreille, internet..." />
-                <div className="sm:col-span-2"><F label="3 choix de spécialités" name="choix_specialites" textarea placeholder="Décrivez vos 3 choix de spécialités..." /></div>
+                <F label="AnnÃ©e BaccalaurÃ©at" name="annee_bac" placeholder="2022" />
+                <F label="NÂ° PV BaccalaurÃ©at" name="numero_pv_bac" />
+                <F label="SÃ©rie / CollÃ¨ge" name="serie_college" placeholder="S2, L2..." />
+                <F label="RÃ©gion BAC" name="region_bac" placeholder="Dakar" />
+                <F label="Dernier diplÃ´me" name="dernier_diplome" placeholder="BAC, BTS..." />
+                <F label="AnnÃ©e dernier diplÃ´me" name="annee_dernier_diplome" />
+                <div className="sm:col-span-2"><F label="Dernier Ã©tablissement" name="dernier_etablissement" placeholder="LycÃ©e..." /></div>
+                <F label="NÂ° INE" name="numero_ine" />
+                <F label="Comment vous avez dÃ©couvert ISI ?" name="decouverte" placeholder="Bouche Ã  oreille, internet..." />
+                <div className="sm:col-span-2"><F label="3 choix de spÃ©cialitÃ©s" name="choix_specialites" textarea placeholder="DÃ©crivez vos 3 choix de spÃ©cialitÃ©s..." /></div>
               </div>
             )}
 
             {activeTab === 'personnelle' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <F label="Civilité" name="civilite" options={[{value:'M.',label:'M.'},{value:'Mme',label:'Mme'},{value:'Mlle',label:'Mlle'}]} />
+                <F label="CivilitÃ©" name="civilite" options={[{value:'M.',label:'M.'},{value:'Mme',label:'Mme'},{value:'Mlle',label:'Mlle'}]} />
                 <div />
-                <F label="N° Pièce d'identité / CNI" name="numero_cni" />
-                <F label="Date de délivrance" name="date_delivrance_cni" type="date" />
-                <div className="sm:col-span-2"><F label="Notes / informations complémentaires" name="notes_personnelles" textarea /></div>
+                <F label="NÂ° PiÃ¨ce d'identitÃ© / CNI" name="numero_cni" />
+                <F label="Date de dÃ©livrance" name="date_delivrance_cni" type="date" />
+                <div className="sm:col-span-2"><F label="Notes / informations complÃ©mentaires" name="notes_personnelles" textarea /></div>
               </div>
             )}
 
@@ -259,9 +259,9 @@ function CompleteProfileForm({ student, onSaved }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <F label="Nom complet" name="tuteur_nom" />
                     <F label="Profession" name="tuteur_profession" />
-                    <F label="Téléphone" name="tuteur_telephone" type="tel" />
+                    <F label="TÃ©lÃ©phone" name="tuteur_telephone" type="tel" />
                     <F label="Email" name="tuteur_email" type="email" />
-                    <F label="N° Identité tuteur" name="tuteur_identite" />
+                    <F label="NÂ° IdentitÃ© tuteur" name="tuteur_identite" />
                   </div>
                 </div>
                 <div className="border-t border-white/10 pt-6">
@@ -269,7 +269,7 @@ function CompleteProfileForm({ student, onSaved }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <F label="Nom complet" name="tuteur2_nom" />
                     <F label="Profession" name="tuteur2_profession" />
-                    <F label="Téléphone" name="tuteur2_telephone" type="tel" />
+                    <F label="TÃ©lÃ©phone" name="tuteur2_telephone" type="tel" />
                     <F label="Email" name="tuteur2_email" type="email" />
                   </div>
                 </div>
@@ -282,7 +282,7 @@ function CompleteProfileForm({ student, onSaved }) {
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" className="w-4 h-4 rounded" checked={form.surveillance_telephone} onChange={(e) => update('surveillance_telephone', e.target.checked)} />
-                      <span className="text-white/70 text-sm">Surveillance par téléphone</span>
+                      <span className="text-white/70 text-sm">Surveillance par tÃ©lÃ©phone</span>
                     </label>
                   </div>
                 </div>
@@ -292,28 +292,28 @@ function CompleteProfileForm({ student, onSaved }) {
             {activeTab === 'autres' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2"><F label="Cursus des 2 dernières années" name="cursus_deux_ans" textarea /></div>
-                  <div className="sm:col-span-2"><F label="Langues parlées et écrites" name="langues" placeholder="Français (courant), Anglais (intermédiaire)..." /></div>
-                  <div className="sm:col-span-2"><F label="Logiciels maîtrisés (Informatique)" name="logiciels" placeholder="MS Office, Python, Photoshop..." /></div>
-                  <div className="sm:col-span-2"><F label="Expériences professionnelles" name="experiences" textarea /></div>
+                  <div className="sm:col-span-2"><F label="Cursus des 2 derniÃ¨res annÃ©es" name="cursus_deux_ans" textarea /></div>
+                  <div className="sm:col-span-2"><F label="Langues parlÃ©es et Ã©crites" name="langues" placeholder="FranÃ§ais (courant), Anglais (intermÃ©diaire)..." /></div>
+                  <div className="sm:col-span-2"><F label="Logiciels maÃ®trisÃ©s (Informatique)" name="logiciels" placeholder="MS Office, Python, Photoshop..." /></div>
+                  <div className="sm:col-span-2"><F label="ExpÃ©riences professionnelles" name="experiences" textarea /></div>
                 </div>
                 <div className="border-t border-white/10 pt-4">
-                  <h4 className="text-white/60 text-sm mb-3">Informations médicales</h4>
+                  <h4 className="text-white/60 text-sm mb-3">Informations mÃ©dicales</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <F label="Traitement médical ?" name="traitement_medical" options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
+                    <F label="Traitement mÃ©dical ?" name="traitement_medical" options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
                     <F label="Allergies ?" name="allergies" options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
-                    <F label="Vaccinations à jour ?" name="vaccinations" options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
+                    <F label="Vaccinations Ã  jour ?" name="vaccinations" options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
                   </div>
                 </div>
                 <div className="border-t border-white/10 pt-4">
-                  <h4 className="text-white/60 text-sm mb-3">Personnes à prévenir en urgence</h4>
+                  <h4 className="text-white/60 text-sm mb-3">Personnes Ã  prÃ©venir en urgence</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <F label="Personne 1 (nom)" name="contact_urgence1" />
-                    <F label="Tél. contact 1" name="tel_urgence1" type="tel" />
+                    <F label="TÃ©l. contact 1" name="tel_urgence1" type="tel" />
                     <F label="Personne 2 (nom)" name="contact_urgence2" />
-                    <F label="Tél. contact 2" name="tel_urgence2" type="tel" />
-                    <F label="Médecin de famille" name="medecin_famille" />
-                    <F label="Tél. médecin" name="tel_medecin" type="tel" />
+                    <F label="TÃ©l. contact 2" name="tel_urgence2" type="tel" />
+                    <F label="MÃ©decin de famille" name="medecin_famille" />
+                    <F label="TÃ©l. mÃ©decin" name="tel_medecin" type="tel" />
                   </div>
                 </div>
               </div>
@@ -332,7 +332,7 @@ function CompleteProfileForm({ student, onSaved }) {
   )
 }
 
-// ── Main StudentPortal ──────────────────────────────────────────────────────
+// â”€â”€ Main StudentPortal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function StudentPortal() {
   const { user, student: ctxStudent, logout } = useAuth()
   const navigate = useNavigate()
@@ -378,7 +378,7 @@ export default function StudentPortal() {
   const handleLogout = async () => { await logout(); navigate('/') }
 
   if (loading) return (
-    <div className="min-h-screen bg-navy-950 flex items-center justify-center">
+    <div className="min-h-screen bg-space-950 flex items-center justify-center">
       <div className="text-center">
         <div className="spinner mx-auto mb-4" />
         <p className="text-white/50">Chargement...</p>
@@ -391,13 +391,13 @@ export default function StudentPortal() {
   const estRejete = statut === 'rejete'
   const inscriptionPayee = student?.inscription_payee
 
-  // ── STATE 1: En attente ────────────────────────────────────────────────────
+  // â”€â”€ STATE 1: En attente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!estAccepte && !estRejete) return (
-    <div className="min-h-screen bg-navy-950 relative">
+    <div className="min-h-screen bg-space-950 relative">
       <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(30,58,95,0.3)_0%,_transparent_70%)]" />
 
       {/* Minimal navbar */}
-      <nav className="relative z-10 border-b border-white/10 bg-navy-900/80 backdrop-blur-xl">
+      <nav className="relative z-10 border-b border-white/10 bg-space-900/80 backdrop-blur-xl">
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
@@ -406,7 +406,7 @@ export default function StudentPortal() {
             <span className="text-white font-semibold text-sm">Espace Candidat</span>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors">
-            <LogOut size={16} /> Déconnexion
+            <LogOut size={16} /> DÃ©connexion
           </button>
         </div>
       </nav>
@@ -419,20 +419,20 @@ export default function StudentPortal() {
               transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
               className="text-7xl mb-6"
             >
-              ⏳
+              â³
             </motion.div>
             <div className="badge-pending mx-auto mb-4 w-fit">Dossier en cours d'examen</div>
             <h2 className="text-2xl font-black text-white mb-3">
               Bienvenue, {student?.prenom} !
             </h2>
             <p className="text-white/60 mb-6 text-sm leading-relaxed">
-              Votre pré-inscription a bien été reçue. Notre équipe pédagogique examine votre dossier et vous contactera sous <strong className="text-white">48 heures</strong>.
+              Votre prÃ©-inscription a bien Ã©tÃ© reÃ§ue. Notre Ã©quipe pÃ©dagogique examine votre dossier et vous contactera sous <strong className="text-white">48 heures</strong>.
             </p>
 
             <div className="space-y-3 text-left mb-8">
               {[
-                { done: true,  label: 'Pré-inscription soumise' },
-                { done: false, label: 'Examen du dossier pédagogique' },
+                { done: true,  label: 'PrÃ©-inscription soumise' },
+                { done: false, label: 'Examen du dossier pÃ©dagogique' },
                 { done: false, label: 'Notification par email' },
                 { done: false, label: 'Paiement des frais d\'inscription' },
               ].map((s, i) => (
@@ -455,33 +455,33 @@ export default function StudentPortal() {
               </div>
             )}
           </div>
-          <div className="text-center mt-4 text-white/20 text-xs">Multi Brain Tech — ISI SUPTECH</div>
+          <div className="text-center mt-4 text-white/20 text-xs">Multi Brain Tech â€” ISI SUPTECH</div>
         </motion.div>
       </div>
     </div>
   )
 
-  // ── STATE 2: Rejeté ────────────────────────────────────────────────────────
+  // â”€â”€ STATE 2: RejetÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (estRejete) return (
-    <div className="min-h-screen bg-navy-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-space-950 flex items-center justify-center px-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full text-center">
         <div className="glass-card p-10 border border-red-500/20">
-          <div className="text-7xl mb-6">😔</div>
+          <div className="text-7xl mb-6">ðŸ˜”</div>
           <h2 className="text-2xl font-black text-white mb-3">Candidature non retenue</h2>
-          <p className="text-white/60 mb-4 text-sm">Votre dossier a été examiné. Malheureusement, nous ne pouvons pas donner suite à votre candidature cette année.</p>
+          <p className="text-white/60 mb-4 text-sm">Votre dossier a Ã©tÃ© examinÃ©. Malheureusement, nous ne pouvons pas donner suite Ã  votre candidature cette annÃ©e.</p>
           {student?.notes_admin && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-left mb-6">
               <p className="text-red-400 text-xs font-semibold mb-1">Motif :</p>
               <p className="text-white/70 text-sm">{student.notes_admin}</p>
             </div>
           )}
-          <button onClick={handleLogout} className="btn-secondary w-full">Retour à l'accueil</button>
+          <button onClick={handleLogout} className="btn-secondary w-full">Retour Ã  l'accueil</button>
         </div>
       </motion.div>
     </div>
   )
 
-  // ── STATE 3: Accepté (dashboard complet) ──────────────────────────────────
+  // â”€â”€ STATE 3: AcceptÃ© (dashboard complet) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const navItems = [
     { id: 'accueil',   label: 'Tableau de bord', icon: GraduationCap },
     { id: 'profil',    label: 'Mon profil',       icon: User },
@@ -490,9 +490,9 @@ export default function StudentPortal() {
   ]
 
   return (
-    <div className="min-h-screen bg-navy-950 flex">
+    <div className="min-h-screen bg-space-950 flex">
       {/* Fixed sidebar */}
-      <div className="w-64 flex-shrink-0 bg-navy-800/60 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
+      <div className="w-64 flex-shrink-0 bg-space-800/60 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
         <div className="p-5 border-b border-white/10">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
@@ -500,7 +500,7 @@ export default function StudentPortal() {
             </div>
             <div>
               <div className="text-white font-bold text-sm">ISI SUPTECH</div>
-              <div className="text-brand-400 text-xs">Espace Étudiant</div>
+              <div className="text-brand-400 text-xs">Espace Ã‰tudiant</div>
             </div>
           </div>
           <div className="bg-white/5 rounded-xl p-3">
@@ -537,7 +537,7 @@ export default function StudentPortal() {
 
         <div className="p-3 border-t border-white/10">
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all">
-            <LogOut size={17} /> Déconnexion
+            <LogOut size={17} /> DÃ©connexion
           </button>
         </div>
       </div>
@@ -545,7 +545,7 @@ export default function StudentPortal() {
       {/* Main content */}
       <div className="flex-1 ml-64 min-h-screen">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-navy-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
+        <div className="sticky top-0 z-30 bg-space-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
           <h1 className="text-white font-semibold">{navItems.find((n) => n.id === activeSection)?.label}</h1>
           <div className="flex items-center gap-3">
             {student?.notifications?.filter((n) => !n.lu).length > 0 && (
@@ -556,7 +556,7 @@ export default function StudentPortal() {
                 </span>
               </button>
             )}
-            <div className="badge-accepted">{inscriptionPayee ? 'Inscrit' : 'Accepté'}</div>
+            <div className="badge-accepted">{inscriptionPayee ? 'Inscrit' : 'AcceptÃ©'}</div>
           </div>
         </div>
 
@@ -564,7 +564,7 @@ export default function StudentPortal() {
           <AnimatePresence mode="wait">
             <motion.div key={activeSection} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.25 }}>
 
-              {/* ── ACCUEIL ─────────────────────────────────────────────── */}
+              {/* â”€â”€ ACCUEIL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {activeSection === 'accueil' && (
                 <div className="space-y-6">
                   {/* Acceptation banner */}
@@ -573,10 +573,10 @@ export default function StudentPortal() {
                       <div className="flex items-start gap-4">
                         <CheckCircle size={28} className="text-green-400 flex-shrink-0" />
                         <div className="flex-1">
-                          <h3 className="text-green-300 font-bold text-lg mb-1">🎉 Félicitations ! Votre inscription est acceptée</h3>
+                          <h3 className="text-green-300 font-bold text-lg mb-1">ðŸŽ‰ FÃ©licitations ! Votre inscription est acceptÃ©e</h3>
                           <p className="text-green-400/80 text-sm mb-4">
-                            Votre matricule étudiant est <strong className="text-white">{student?.matricule}</strong>.
-                            Veuillez procéder au paiement des frais d'inscription pour finaliser votre dossier.
+                            Votre matricule Ã©tudiant est <strong className="text-white">{student?.matricule}</strong>.
+                            Veuillez procÃ©der au paiement des frais d'inscription pour finaliser votre dossier.
                           </p>
                           <button
                             onClick={() => handlePay('inscription')}
@@ -594,12 +594,12 @@ export default function StudentPortal() {
                   {/* Info cards */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="glass-card p-5">
-                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Filière</div>
-                      <div className="text-white font-bold">{student?.filiere?.nom || '—'}</div>
+                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">FiliÃ¨re</div>
+                      <div className="text-white font-bold">{student?.filiere?.nom || 'â€”'}</div>
                       <div className="text-white/50 text-sm mt-1">{student?.license?.nom}</div>
                     </div>
                     <div className="glass-card p-5">
-                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Année académique</div>
+                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">AnnÃ©e acadÃ©mique</div>
                       <div className="text-white font-bold">{student?.annee_scolaire}</div>
                       <div className="text-white/50 text-sm mt-1">En cours</div>
                     </div>
@@ -607,7 +607,7 @@ export default function StudentPortal() {
                       <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Matricule</div>
                       <div className="text-white font-bold font-mono">{student?.matricule}</div>
                       <div className={`text-xs mt-1 ${inscriptionPayee ? 'text-green-400' : 'text-yellow-400'}`}>
-                        {inscriptionPayee ? '✓ Inscription payée' : '⚠ Paiement requis'}
+                        {inscriptionPayee ? 'âœ“ Inscription payÃ©e' : 'âš  Paiement requis'}
                       </div>
                     </div>
                   </div>
@@ -615,7 +615,7 @@ export default function StudentPortal() {
                   {/* Notifications */}
                   {student?.notifications?.length > 0 && (
                     <div>
-                      <h3 className="text-white/60 text-sm font-medium mb-3">Dernières notifications</h3>
+                      <h3 className="text-white/60 text-sm font-medium mb-3">DerniÃ¨res notifications</h3>
                       <div className="space-y-3">
                         {student.notifications.slice(0, 5).map((n) => (
                           <div key={n.id} className={`glass-card p-4 border-l-4 ${
@@ -646,7 +646,7 @@ export default function StudentPortal() {
                         <User size={22} className="text-brand-400" />
                         <div className="text-left">
                           <div className="text-white font-semibold text-sm">Mon profil</div>
-                          <div className="text-white/40 text-xs">Compléter mes infos</div>
+                          <div className="text-white/40 text-xs">ComplÃ©ter mes infos</div>
                         </div>
                         <ChevronRight size={16} className="text-white/30 ml-auto" />
                       </button>
@@ -655,23 +655,23 @@ export default function StudentPortal() {
                 </div>
               )}
 
-              {/* ── PROFIL COMPLET ──────────────────────────────────────── */}
+              {/* â”€â”€ PROFIL COMPLET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {activeSection === 'profil' && student && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-white/50 text-sm">Complétez votre dossier académique et personnel.</p>
+                    <p className="text-white/50 text-sm">ComplÃ©tez votre dossier acadÃ©mique et personnel.</p>
                     {student.profil_complet && <span className="badge-accepted">Profil complet</span>}
                   </div>
                   <CompleteProfileForm student={student} onSaved={(s) => setStudent((prev) => ({ ...prev, ...s }))} />
                 </div>
               )}
 
-              {/* ── PAIEMENTS ───────────────────────────────────────────── */}
+              {/* â”€â”€ PAIEMENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {activeSection === 'paiements' && (
                 <div className="space-y-6">
                   {inscriptionPayee && (
                     <div className="glass-card p-5">
-                      <h3 className="text-white font-semibold mb-4">Payer une mensualité</h3>
+                      <h3 className="text-white font-semibold mb-4">Payer une mensualitÃ©</h3>
                       <div className="flex flex-wrap gap-3">
                         {suivi?.mois?.filter((m) => !m.paye).slice(0, 3).map((m) => (
                           <button
@@ -680,7 +680,7 @@ export default function StudentPortal() {
                             disabled={initiating}
                             className="btn-primary text-sm py-2 px-4"
                           >
-                            {m.en_retard ? '⚠ ' : ''}{m.label} — {Number(m.montant).toLocaleString()} FCFA
+                            {m.en_retard ? 'âš  ' : ''}{m.label} â€” {Number(m.montant).toLocaleString()} FCFA
                           </button>
                         ))}
                       </div>
@@ -692,7 +692,7 @@ export default function StudentPortal() {
                       <h3 className="text-white font-semibold">Historique des paiements</h3>
                     </div>
                     <table className="data-table">
-                      <thead><tr><th>Type</th><th>Montant</th><th>Méthode</th><th>Date</th><th>Statut</th><th>Reçu</th></tr></thead>
+                      <thead><tr><th>Type</th><th>Montant</th><th>MÃ©thode</th><th>Date</th><th>Statut</th><th>ReÃ§u</th></tr></thead>
                       <tbody>
                         {payments.length === 0 ? (
                           <tr><td colSpan={6} className="text-center text-white/30 py-8">Aucun paiement</td></tr>
@@ -701,9 +701,9 @@ export default function StudentPortal() {
                             <td>{p.libelle || p.type}</td>
                             <td className="font-semibold">{Number(p.montant).toLocaleString()} FCFA</td>
                             <td>{p.methode?.toUpperCase()}</td>
-                            <td>{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
+                            <td>{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : 'â€”'}</td>
                             <td><span className={p.statut === 'complete' ? 'badge-accepted' : 'badge-pending'}>{p.statut}</span></td>
-                            <td>{p.recu_pdf_path && <a href={`/api/caisse/paiement/${p.id}/recu`} target="_blank" className="text-brand-400 hover:text-brand-300 flex items-center gap-1 text-xs"><Download size={12} />Reçu</a>}</td>
+                            <td>{p.recu_pdf_path && <a href={`/api/caisse/paiement/${p.id}/recu`} target="_blank" className="text-brand-400 hover:text-brand-300 flex items-center gap-1 text-xs"><Download size={12} />ReÃ§u</a>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -712,7 +712,7 @@ export default function StudentPortal() {
                 </div>
               )}
 
-              {/* ── SUIVI MENSUEL ───────────────────────────────────────── */}
+              {/* â”€â”€ SUIVI MENSUEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
               {activeSection === 'suivi' && (
                 <div className="space-y-4">
                   {inscriptionPayee ? (
@@ -724,8 +724,8 @@ export default function StudentPortal() {
                   ) : (
                     <div className="text-center py-16">
                       <AlertCircle size={48} className="text-yellow-400 mx-auto mb-4" />
-                      <h3 className="text-white font-bold text-xl mb-2">Inscription non finalisée</h3>
-                      <p className="text-white/50 mb-6">Payez vos frais d'inscription pour accéder au suivi mensuel.</p>
+                      <h3 className="text-white font-bold text-xl mb-2">Inscription non finalisÃ©e</h3>
+                      <p className="text-white/50 mb-6">Payez vos frais d'inscription pour accÃ©der au suivi mensuel.</p>
                       <button onClick={() => handlePay('inscription')} className="btn-primary">
                         Payer l'inscription via Wave
                       </button>

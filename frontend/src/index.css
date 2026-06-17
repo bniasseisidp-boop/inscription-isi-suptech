@@ -2,136 +2,174 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Base ────────────────────────────────────────────────────────────────── */
 @layer base {
-  :root {
-    --navy-950: #020817;
-    --navy-900: #050a14;
-    --navy-800: #0a1628;
-    --brand:    #3b82f6;
-  }
-
   * { box-sizing: border-box; }
-
   html { scroll-behavior: smooth; }
 
   body {
-    @apply bg-navy-900 text-white font-sans;
+    background-color: #06050f;
+    color: white;
+    font-family: Inter, system-ui, sans-serif;
     overflow-x: hidden;
   }
 
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { @apply bg-navy-900; }
-  ::-webkit-scrollbar-thumb { @apply bg-brand-700 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-brand-500; }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track  { background-color: #0b0a1a; }
+  ::-webkit-scrollbar-thumb  { background-color: #7c3aed; border-radius: 9999px; }
+  ::-webkit-scrollbar-thumb:hover { background-color: #a78bfa; }
 }
 
+/* ── Components ──────────────────────────────────────────────────────────── */
 @layer components {
-  /* Glassmorphism card */
+
+  /* Glass cards */
   .glass-card {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;
+    @apply backdrop-blur-xl rounded-2xl;
+    background-color: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
   }
 
   .glass-card-hover {
-    @apply glass-card transition-all duration-300 hover:bg-white/10 hover:border-brand-400/30 hover:shadow-lg hover:shadow-brand-500/10;
+    @apply glass-card transition-all duration-300;
+  }
+  .glass-card-hover:hover {
+    background-color: rgba(255,255,255,0.08);
+    border-color: rgba(167,139,250,0.40);
+    box-shadow: 0 25px 50px -12px rgba(139,92,246,0.10);
+  }
+
+  /* Light mode cards */
+  .light-card {
+    @apply backdrop-blur-xl rounded-2xl;
+    background-color: rgba(255,255,255,0.80);
+    border: 1px solid rgba(255,255,255,0.60);
+    box-shadow: 0 20px 25px -5px rgba(196,181,253,0.30);
+  }
+
+  .light-card-hover {
+    @apply light-card transition-all duration-300;
+  }
+  .light-card-hover:hover {
+    box-shadow: 0 25px 50px -12px rgba(196,181,253,0.50);
+    border-color: rgba(196,181,253,0.80);
+    transform: translateY(-4px);
   }
 
   /* Gradient text */
   .gradient-text {
-    @apply bg-gradient-to-r from-brand-300 via-brand-400 to-brand-500 bg-clip-text text-transparent;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #c4b5fd, #ec4899, #a78bfa);
+    background-size: 200% auto;
+    animation: gradientX 4s ease infinite;
   }
 
   .gradient-text-gold {
-    @apply bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #fcd34d, #fbbf24, #fbbf24);
+  }
+
+  .gradient-text-light {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(to right, #7c3aed, #6366f1, #ec4899);
   }
 
   /* Buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400
-           text-white font-semibold px-6 py-3 rounded-xl
-           transition-all duration-300 transform hover:scale-105
-           shadow-lg shadow-brand-500/20 hover:shadow-brand-400/40;
+    @apply relative overflow-hidden text-white font-bold px-6 py-3 rounded-xl
+           transition-all duration-300 hover:scale-105;
+    background-image: linear-gradient(to right, #7c3aed, #8b5cf6, #ec4899);
+    background-size: 200% auto;
+    box-shadow: 0 10px 15px -3px rgba(139,92,246,0.30);
+  }
+  .btn-primary:hover {
+    background-image: linear-gradient(to right, #8b5cf6, #ec4899, #a78bfa);
+    box-shadow: 0 20px 25px -5px rgba(167,139,250,0.50);
   }
 
   .btn-secondary {
-    @apply border border-brand-400/50 text-brand-300 hover:bg-brand-500/10
-           font-semibold px-6 py-3 rounded-xl
-           transition-all duration-300;
+    @apply font-semibold px-6 py-3 rounded-xl transition-all duration-300;
+    border: 1px solid rgba(167,139,250,0.40);
+    color: #c4b5fd;
+  }
+  .btn-secondary:hover {
+    background-color: rgba(139,92,246,0.10);
+    border-color: #a78bfa;
   }
 
   .btn-danger {
-    @apply bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500
-           text-white font-semibold px-4 py-2 rounded-lg
-           transition-all duration-300 shadow-lg shadow-red-500/20;
+    @apply text-white font-semibold px-4 py-2 rounded-lg transition-all duration-300;
+    background-image: linear-gradient(to right, #be123c, #f43f5e);
+    box-shadow: 0 10px 15px -3px rgba(244,63,94,0.20);
+  }
+  .btn-danger:hover {
+    background-image: linear-gradient(to right, #e11d48, #fb7185);
   }
 
-  /* Form inputs */
+  /* Form */
   .form-input {
-    @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3
-           text-white placeholder-white/40 focus:outline-none
-           focus:border-brand-400 focus:bg-white/10 focus:ring-2 focus:ring-brand-500/20
-           transition-all duration-200;
+    @apply w-full rounded-xl px-4 py-3
+           focus:outline-none transition-all duration-200;
+    background-color: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.10);
+    color: white;
+  }
+  .form-input::placeholder { color: rgba(255,255,255,0.30); }
+  .form-input:focus {
+    border-color: rgba(139,92,246,0.60);
+    background-color: rgba(255,255,255,0.10);
+    box-shadow: 0 0 0 2px rgba(139,92,246,0.20);
   }
 
   .form-label {
-    @apply block text-sm font-medium text-brand-300 mb-2;
+    @apply block text-sm font-semibold mb-2;
+    color: #c4b5fd;
   }
 
-  /* Status badges */
-  .badge-pending  { @apply bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 px-3 py-1 rounded-full text-xs font-semibold; }
-  .badge-accepted { @apply bg-green-500/20  text-green-300  border border-green-500/30  px-3 py-1 rounded-full text-xs font-semibold; }
-  .badge-rejected { @apply bg-red-500/20    text-red-300    border border-red-500/30    px-3 py-1 rounded-full text-xs font-semibold; }
-  .badge-paid     { @apply bg-blue-500/20   text-blue-300   border border-blue-500/30   px-3 py-1 rounded-full text-xs font-semibold; }
+  /* Badges */
+  .badge-pending  { @apply px-3 py-1 rounded-full text-xs font-bold; background:rgba(245,158,11,0.15); color:#fcd34d; border:1px solid rgba(245,158,11,0.30); }
+  .badge-accepted { @apply px-3 py-1 rounded-full text-xs font-bold; background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.30); }
+  .badge-rejected { @apply px-3 py-1 rounded-full text-xs font-bold; background:rgba(244,63,94,0.15);  color:#fda4af; border:1px solid rgba(244,63,94,0.30); }
+  .badge-paid     { @apply px-3 py-1 rounded-full text-xs font-bold; background:rgba(14,165,233,0.15); color:#7dd3fc; border:1px solid rgba(14,165,233,0.30); }
+
+  /* Table */
+  .data-table { @apply w-full border-collapse; }
+  .data-table th {
+    @apply text-left text-xs font-bold uppercase tracking-widest px-4 py-3;
+    color: rgba(196,181,253,0.80);
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+  }
+  .data-table td {
+    @apply px-4 py-3 text-sm;
+    color: rgba(255,255,255,0.80);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .data-table tr:hover td { background: rgba(255,255,255,0.04); }
+
+  /* Spinner */
+  .spinner {
+    @apply w-10 h-10 rounded-full;
+    border: 3px solid rgba(139,92,246,0.15);
+    border-top-color: #8b5cf6;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* Neon border */
+  .neon-border {
+    border: 1px solid rgba(139,92,246,0.50);
+    box-shadow: 0 0 20px rgba(139,92,246,0.15), 0 0 60px rgba(236,72,153,0.08),
+                inset 0 0 20px rgba(139,92,246,0.04);
+  }
+
+  /* Glow */
+  .glow-purple      { box-shadow: 0 0 40px rgba(139,92,246,0.35); }
+  .glow-purple-hover:hover { box-shadow: 0 0 80px rgba(139,92,246,0.60); transition: box-shadow 0.4s; }
 }
 
-/* ── Particles / starfield ─────────────────────────────────────────────── */
-.particle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(59, 130, 246, 0.6);
-  animation: particleDrift linear infinite;
-  pointer-events: none;
-}
-
-@keyframes particleDrift {
-  0%   { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-  10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
-}
-
-/* ── 360 tour ──────────────────────────────────────────────────────────── */
-.tour-container {
-  perspective: 800px;
-  transform-style: preserve-3d;
-}
-
-.tour-inner {
-  transform-style: preserve-3d;
-  transition: transform 0.1s linear;
-}
-
-/* ── Glow effects ─────────────────────────────────────────────────────── */
-.glow-blue   { box-shadow: 0 0 40px rgba(59,130,246,0.3); }
-.glow-blue-hover:hover { box-shadow: 0 0 60px rgba(59,130,246,0.6); transition: box-shadow 0.3s; }
-
-/* ── Neon border ─────────────────────────────────────────────────────── */
-.neon-border {
-  border: 1px solid rgba(59,130,246,0.5);
-  box-shadow: 0 0 10px rgba(59,130,246,0.2), inset 0 0 10px rgba(59,130,246,0.05);
-}
-
-/* ── Loading spinner ─────────────────────────────────────────────────── */
-.spinner {
-  width: 40px; height: 40px;
-  border: 3px solid rgba(59,130,246,0.2);
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
+/* ── Keyframes ────────────────────────────────────────────────────────────── */
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Table ──────────────────────────────────────────────────────────── */
-.data-table { @apply w-full border-collapse; }
-.data-table th { @apply text-left text-xs font-semibold text-brand-300 uppercase tracking-wider px-4 py-3 bg-white/5 border-b border-white/10; }
-.data-table td { @apply px-4 py-3 text-sm text-white/80 border-b border-white/5; }
-.data-table tr:hover td { @apply bg-white/5; }
+@keyframes gradientX {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}

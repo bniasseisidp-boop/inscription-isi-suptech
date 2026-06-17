@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+﻿import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Landing from './pages/Landing'
 import PreInscription from './pages/PreInscription'
@@ -10,7 +10,7 @@ import AccueilDashboard from './pages/AccueilDashboard'
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-navy-900"><div className="spinner" /></div>
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-space-900"><div className="spinner" /></div>
   if (!user) return <Navigate to="/connexion" replace />
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />
   return children
