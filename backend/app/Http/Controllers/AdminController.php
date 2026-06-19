@@ -350,12 +350,14 @@ class AdminController extends Controller
             \Log::warning('Reset storage: ' . $e->getMessage());
         }
 
-        // Truncate data tables (keep users, filieres, licenses, staff)
+        // Truncate data tables (keep staff/admin users, filieres, licenses)
         \DB::statement('PRAGMA foreign_keys = OFF');
         Payment::query()->forceDelete();
         \App\Models\StudentCard::query()->forceDelete();
         StudentNotification::query()->truncate();
         Student::withTrashed()->forceDelete();
+        // Delete student user accounts so emails can be reused
+        User::where('role', 'student')->delete();
         \DB::statement('PRAGMA foreign_keys = ON');
 
         return response()->json(['message' => 'Toutes les données de test ont été supprimées.']);
@@ -381,6 +383,22 @@ class AdminController extends Controller
         ]));
 
         return response()->json($user, 201);
+    }
+
+    /** Delete a staff member */
+    public function deleteStaff(User $user)
+    {
+        if ($user->role === 'admin') {
+            $adminCount = User::where('role', 'admin')->count();
+            if ($adminCount <= 1) {
+                return response()->json(['message' => 'Impossible de supprimer le dernier administrateur.'], 422);
+            }
+        }
+        if ($user->role === 'student') {
+            return response()->json(['message' => 'Utilisez la gestion étudiants pour supprimer un étudiant.'], 422);
+        }
+        $user->delete();
+        return response()->json(['message' => 'Membre supprimé.']);
     }
 
     /** All payments report */

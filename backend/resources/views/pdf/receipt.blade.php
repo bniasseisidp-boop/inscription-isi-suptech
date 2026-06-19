@@ -253,9 +253,15 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5px; color:#1e293
 <div class="lettres"><span class="lbl">En toutes lettres : </span>{{ $montantLettres }}</div>
 
 {{-- ══ ALERTE PAIEMENT PARTIEL ════════════════════════════════════════════ --}}
-@if($deficitCeMois)
+@if($payment->type === 'inscription' && $inscriptionRestant > 0)
 <div class="deficit-box">
-  Paiement partiel pour {{ $titreLabel }} : {{ number_format($deficitCeMois['paye'], 0, ',', ' ') }} FCFA versés
+  ⚠️ Paiement partiel — Frais d'inscription : {{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA versés
+  sur {{ number_format($fraisInscription, 0, ',', ' ') }} FCFA attendus — <strong>Solde restant dû :
+  <span style="color:#dc2626;">{{ number_format($inscriptionRestant, 0, ',', ' ') }} FCFA</span></strong>
+</div>
+@elseif($deficitCeMois)
+<div class="deficit-box">
+  ⚠️ Paiement partiel pour {{ $titreLabel }} : {{ number_format($deficitCeMois['paye'], 0, ',', ' ') }} FCFA versés
   sur {{ number_format($deficitCeMois['attendu'], 0, ',', ' ') }} FCFA — Solde restant dû :
   <span style="color:#dc2626;">{{ number_format($deficitCeMois['manque'], 0, ',', ' ') }} FCFA</span>
 </div>

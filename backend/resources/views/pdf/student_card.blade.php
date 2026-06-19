@@ -3,16 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <style>
-@page { margin:0; padding:0; size:245pt 155pt; }
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { width:245pt; height:155pt; overflow:hidden; font-family:'DejaVu Sans', sans-serif; font-size:0; }
+@page { margin:0pt; padding:0pt; size:245pt 155pt; }
+* { margin:0pt; padding:0pt; box-sizing:border-box; }
+html { margin:0pt; padding:0pt; width:245pt; height:155pt; }
+body { margin:0pt; padding:0pt; width:245pt; height:155pt; overflow:hidden; font-family:'DejaVu Sans', sans-serif; font-size:0; }
 
 /* ══ FOND BLANC ════════════════════════════════════════════════ */
 .card {
-  width:245pt; height:155pt;
+  width:245pt; height:155pt; max-height:155pt;
   background:#ffffff;
   position:relative;
   overflow:hidden;
+  page-break-inside:avoid;
+  page-break-after:avoid;
 }
 
 /* ══ Triangles décoration coin supérieur droit ════════════════ */

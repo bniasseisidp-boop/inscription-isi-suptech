@@ -83,6 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Staff
         Route::get('/staff', [AdminController::class, 'staff']);
         Route::post('/staff', [AdminController::class, 'createStaff']);
+        Route::delete('/staff/{user}', [AdminController::class, 'deleteStaff']);
         // Mois désactivés
         Route::get('/mois-desactives', [AdminController::class, 'getMoisDesactives']);
         Route::post('/mois-desactives', [AdminController::class, 'toggleMoisDesactive']);
