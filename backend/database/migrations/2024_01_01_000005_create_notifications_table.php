@@ -23,6 +23,7 @@ return new class extends Migration {
             $table->string('numero_carte')->unique();
             $table->string('qr_code_data');
             $table->string('qr_code_image')->nullable();
+            $table->string('qr_pdf_path')->nullable();
             $table->string('annee_validite');
             $table->boolean('actif')->default(true);
             $table->timestamp('date_generation');

@@ -16,8 +16,10 @@ export default function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm()
 
   // Redirect if already logged in
+  const ROLE_PATHS = { admin: '/admin', student: '/student', cashier: '/caisse', accueil: '/accueil', pedagogique: '/pedagogique' }
+
   if (user) {
-    const path = { admin: '/admin', student: '/student', cashier: '/caisse', accueil: '/accueil' }[user.role] || '/'
+    const path = ROLE_PATHS[user.role] || '/'
     navigate(path, { replace: true })
     return null
   }
@@ -26,7 +28,7 @@ export default function Login() {
     setLoading(true)
     try {
       const result = await login(data)
-      const path = { admin: '/admin', student: '/student', cashier: '/caisse', accueil: '/accueil' }[result.user.role] || '/'
+      const path = ROLE_PATHS[result.user.role] || '/'
       toast.success(`Bienvenue, ${result.user.name} !`)
       navigate(path, { replace: true })
     } catch (err) {

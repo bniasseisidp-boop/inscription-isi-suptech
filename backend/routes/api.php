@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\ContentController;
+use App\Http\Controllers\AccueilPedagogiqueController;
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
@@ -45,22 +46,46 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profil', [StudentProfileController::class, 'show']);
         Route::put('/profil', [StudentProfileController::class, 'update']);
         Route::get('/suivi-paiements', [StudentProfileController::class, 'suiviPaiements']);
+        Route::post('/profil/photo', [StudentProfileController::class, 'updatePhoto']);
+        Route::delete('/paiement/{id}', [StudentProfileController::class, 'cancelPayment']);
+        Route::get('/paiement/{id}/recu', [StudentProfileController::class, 'downloadReceipt']);
+        Route::get('/carte/telecharger', [StudentProfileController::class, 'downloadCard']);
     });
 
     // ── Admin routes ────────────────────────────────────────────────────────
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
+        // Étudiants
         Route::get('/etudiants', [AdminController::class, 'students']);
         Route::post('/etudiants', [AdminController::class, 'createStudent']);
         Route::post('/etudiants/{student}/accepter', [AdminController::class, 'acceptStudent']);
         Route::post('/etudiants/{student}/rejeter', [AdminController::class, 'rejectStudent']);
+        Route::post('/etudiants/{student}/verrouiller-profil', [AdminController::class, 'lockProfile']);
         Route::post('/etudiants/{student}/carte', [AdminController::class, 'generateCard']);
+        Route::delete('/etudiants/{student}', [AdminController::class, 'deleteStudent']);
+        // Corbeille
+        Route::get('/etudiants/corbeille', [AdminController::class, 'trashedStudents']);
+        Route::post('/etudiants/{id}/restaurer', [AdminController::class, 'restoreStudent']);
+        Route::delete('/etudiants/{id}/forcer', [AdminController::class, 'forceDeleteStudent']);
+        // Paiements
         Route::get('/paiements', [AdminController::class, 'payments']);
+        // Filières & niveaux
         Route::get('/filieres', [AdminController::class, 'filieres']);
         Route::post('/filieres', [AdminController::class, 'createFiliere']);
+        Route::put('/filieres/{filiere}', [AdminController::class, 'updateFiliere']);
+        Route::delete('/filieres/{filiere}', [AdminController::class, 'deleteFiliere']);
         Route::post('/licenses', [AdminController::class, 'createLicense']);
+        Route::put('/licenses/{license}', [AdminController::class, 'updateLicense']);
+        Route::delete('/licenses/{license}', [AdminController::class, 'deleteLicense']);
+        // Paramètres admin
+        Route::get('/settings', [AdminController::class, 'getSettings']);
+        Route::put('/settings', [AdminController::class, 'updateSettings']);
+        // Staff
         Route::get('/staff', [AdminController::class, 'staff']);
         Route::post('/staff', [AdminController::class, 'createStaff']);
+        // Mois désactivés
+        Route::get('/mois-desactives', [AdminController::class, 'getMoisDesactives']);
+        Route::post('/mois-desactives', [AdminController::class, 'toggleMoisDesactive']);
 
         // Content management
         Route::prefix('contenu')->group(function () {
@@ -95,11 +120,46 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/paiement', [PaymentController::class, 'manualPayment']);
         Route::get('/stats', [PaymentController::class, 'stats']);
         Route::get('/paiement/{payment}/recu', [PaymentController::class, 'downloadReceipt']);
+        Route::get('/etudiants-attente', [PaymentController::class, 'etudiantsAttentePaiement']);
+        Route::get('/etudiants', [PaymentController::class, 'etudiantsList']);
+        Route::get('/etudiants/{id}/suivi', [PaymentController::class, 'etudiantSuivi']);
+        Route::get('/mois-desactives', [PaymentController::class, 'moisDesactives']);
+        Route::get('/impayes-mois', [PaymentController::class, 'impayesMois']);
+        Route::get('/impayes-mois/pdf', [PaymentController::class, 'impayesMoisPdf']);
     });
+
+    // ── Admin — reset données test ──────────────────────────────────────────
+    Route::middleware('role:admin')->post('/admin/reset-donnees-test', [AdminController::class, 'resetDonneesTest']);
 
     // ── Accueil routes ──────────────────────────────────────────────────────
     Route::middleware('role:accueil,admin')->prefix('accueil')->group(function () {
         Route::get('/etudiants', [StudentController::class, 'publicList']);
         Route::post('/qr/verify', [StudentController::class, 'verifyQR']);
+        Route::get('/verify-matricule/{matricule}', [StudentController::class, 'verifyMatricule']);
+    });
+
+    // ── Accueil Pédagogique routes ──────────────────────────────────────────
+    Route::middleware('role:pedagogique,admin')->prefix('pedagogique')->group(function () {
+        Route::get('/classes',                                [AccueilPedagogiqueController::class, 'classes']);
+        Route::get('/classes/liste-pdf',                      [AccueilPedagogiqueController::class, 'classListPdf']);
+        Route::get('/etudiants',                              [AccueilPedagogiqueController::class, 'students']);
+        Route::post('/etudiants',                             [AccueilPedagogiqueController::class, 'addStudent']);
+        Route::get('/etudiants/{student}',                    [AccueilPedagogiqueController::class, 'studentDetail']);
+        Route::post('/etudiants/{student}/carte',             [AccueilPedagogiqueController::class, 'generateCard']);
+        Route::get('/etudiants/{student}/carte/telecharger',  [AccueilPedagogiqueController::class, 'downloadCard']);
+        Route::post('/etudiants/{student}/verrouiller',       [AccueilPedagogiqueController::class, 'toggleLock']);
+        Route::post('/etudiants/{student}/photo',             [AccueilPedagogiqueController::class, 'updatePhoto']);
+        Route::get('/candidats',                              [AccueilPedagogiqueController::class, 'pendingStudents']);
+        Route::post('/candidats/{student}/accepter',          [AccueilPedagogiqueController::class, 'acceptStudent']);
+        // Paramètres pédagogique (lecture seule)
+        Route::get('/settings',                               [AdminController::class, 'getPedagogiqueSettings']);
+        // Filières & niveaux (admin + pédagogique)
+        Route::get('/filieres',                               [AdminController::class, 'filieres']);
+        Route::post('/filieres',                              [AdminController::class, 'createFiliere']);
+        Route::put('/filieres/{filiere}',                     [AdminController::class, 'updateFiliere']);
+        Route::delete('/filieres/{filiere}',                  [AdminController::class, 'deleteFiliere']);
+        Route::post('/licenses',                              [AdminController::class, 'createLicense']);
+        Route::put('/licenses/{license}',                     [AdminController::class, 'updateLicense']);
+        Route::delete('/licenses/{license}',                  [AdminController::class, 'deleteLicense']);
     });
 });

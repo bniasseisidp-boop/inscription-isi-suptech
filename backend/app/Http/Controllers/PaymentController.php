@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Student;
+use App\Models\MoisDesactive;
+use App\Models\StudentNotification;
 use App\Services\WavePaymentService;
 use App\Services\PDFService;
 use Illuminate\Http\Request;
@@ -47,7 +49,7 @@ class PaymentController extends Controller
         return response()->json($payments);
     }
 
-    /** Cashier manually records a payment */
+    /** Cashier manually records a payment — immediately complete */
     public function manualPayment(Request $request)
     {
         $request->validate([
@@ -59,31 +61,81 @@ class PaymentController extends Controller
             'notes'      => 'nullable|string',
         ]);
 
+        $student = Student::with('license')->findOrFail($request->student_id);
+
+        // Libellé automatique
+        $libelle = match($request->type) {
+            'inscription' => "Frais d'inscription — " . ($student->license?->nom ?? ''),
+            'mensualite'  => 'Mensualité ' . ($request->mois ?? date('Y-m')),
+            default       => 'Paiement divers',
+        };
+
         $payment = Payment::create([
-            'student_id' => $request->student_id,
-            'type'       => $request->type,
-            'montant'    => $request->montant,
-            'mois'       => $request->mois,
-            'annee'      => date('Y'),
-            'statut'     => 'en_attente',
-            'methode'    => $request->methode,
-            'saisi_par'  => $request->user()->id,
-            'notes'      => $request->notes,
+            'student_id'   => $request->student_id,
+            'type'         => $request->type,
+            'libelle'      => $libelle,
+            'montant'      => $request->montant,
+            'mois'         => $request->mois,
+            'annee'        => date('Y'),
+            'statut'       => 'complete',
+            'methode'      => $request->methode,
+            'date_paiement'=> now(),
+            'saisi_par'    => $request->user()->id,
+            'notes'        => $request->notes,
         ]);
 
-        $this->waveService->recordManualPayment($payment, $request->methode);
-
+        // Si paiement inscription → activer le compte étudiant
         if ($request->type === 'inscription') {
-            $payment->student()->update(['inscription_payee' => true]);
+            $student->update([
+                'inscription_payee'  => true,
+                'statut_inscription' => 'accepte',
+            ]);
+
+            StudentNotification::create([
+                'student_id' => $student->id,
+                'titre'      => '✅ Paiement confirmé — Inscription validée !',
+                'message'    => "Votre paiement d'inscription a été enregistré. Votre compte étudiant est maintenant actif. Bienvenue à ISI SUPTECH !",
+                'type'       => 'success',
+            ]);
         }
 
+        // Générer le reçu PDF
+        try {
+            $this->pdfService->generateReceipt($payment->load('student.license'));
+        } catch (\Exception $e) {
+            \Log::warning('PDF reçu: ' . $e->getMessage());
+        }
+
+        $payment->refresh();
+
         return response()->json([
-            'message'  => 'Paiement enregistré',
-            'payment'  => $payment->fresh(['student.user']),
+            'message'  => 'Paiement enregistré avec succès',
+            'payment'  => $payment->load(['student.user', 'student.filiere', 'student.license']),
             'recu_url' => $payment->recu_pdf_path
                 ? asset('storage/' . $payment->recu_pdf_path)
                 : null,
         ]);
+    }
+
+    /** Students waiting for payment (statut en_attente_paiement) */
+    public function etudiantsAttentePaiement(Request $request)
+    {
+        $query = Student::with(['filiere', 'license', 'user'])
+            ->where('statut_inscription', 'en_attente_paiement')
+            ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
+                $q2->where('nom', 'like', '%' . $request->search . '%')
+                   ->orWhere('prenom', 'like', '%' . $request->search . '%')
+                   ->orWhere('matricule', 'like', '%' . $request->search . '%');
+            }))
+            ->latest();
+
+        return response()->json($query->get());
+    }
+
+    /** Mois désactivés list (for cashier to know which months to skip) */
+    public function moisDesactives()
+    {
+        return response()->json(MoisDesactive::orderBy('mois')->pluck('mois'));
     }
 
     /** Download receipt PDF */

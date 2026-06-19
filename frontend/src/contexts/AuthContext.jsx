@@ -45,16 +45,17 @@ export function AuthProvider({ children }) {
 
   const refreshStudent = (newData) => setStudent(newData)
 
-  const isAdmin    = user?.role === 'admin'
-  const isCashier  = user?.role === 'cashier'
-  const isStudent  = user?.role === 'student'
-  const isAccueil  = user?.role === 'accueil'
+  const isAdmin        = user?.role === 'admin'
+  const isCashier      = user?.role === 'cashier'
+  const isStudent      = user?.role === 'student'
+  const isAccueil      = user?.role === 'accueil'
+  const isPedagogique  = user?.role === 'pedagogique'
 
   return (
     <AuthContext.Provider value={{
       user, student, loading,
       login, logout, refreshStudent,
-      isAdmin, isCashier, isStudent, isAccueil,
+      isAdmin, isCashier, isStudent, isAccueil, isPedagogique,
     }}>
       {children}
     </AuthContext.Provider>

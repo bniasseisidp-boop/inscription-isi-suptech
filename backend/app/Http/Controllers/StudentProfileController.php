@@ -6,6 +6,7 @@ use App\Models\Student;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Services\PDFService;
 
 class StudentProfileController extends Controller
 {
@@ -63,6 +64,8 @@ class StudentProfileController extends Controller
             'surveillance_mail'    => 'boolean',
             'surveillance_telephone' => 'boolean',
 
+            'photo'                => 'nullable|image|max:2048',
+
             // Autres
             'cursus_deux_ans'      => 'nullable|string',
             'langues'              => 'nullable|string',
@@ -79,7 +82,28 @@ class StudentProfileController extends Controller
             'tel_medecin'          => 'nullable|string|max:20',
         ]);
 
+        // handle photo upload
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('photos', 'public');
+            $validated['photo'] = $photoPath;
+        }
+
         $student->update(array_merge($validated, ['profil_complet' => true]));
+
+        // If student has a matricule but no StudentCard yet, generate it (creates QR + PDF).
+        // If a card exists, regenerate the PDF so the new photo is embedded.
+        try {
+            if ($student->matricule && !$student->card) {
+                app(\App\Services\QRCodeService::class)->generateStudentCard($student->fresh());
+            } elseif ($student->card) {
+                app(PDFService::class)->generateStudentCard($student->fresh());
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Unable to regenerate student card after photo upload: ' . $e->getMessage());
+        }
+
+        // return the student with relations so frontend shows updated card/photo immediately
+        $student = $student->fresh(['filiere', 'license', 'card', 'user']);
 
         return response()->json([
             'message' => 'Profil mis à jour avec succès !',

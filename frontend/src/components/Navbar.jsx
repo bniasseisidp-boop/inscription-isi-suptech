@@ -1,12 +1,13 @@
-﻿import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, LogOut, User, LayoutDashboard } from 'lucide-react'
+import { Menu, X, LogOut, User, LayoutDashboard, BookOpen } from 'lucide-react'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('isi_theme') === 'dark')
@@ -17,11 +18,9 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handler)
   }, [])
 
-  // Sync with Landing theme toggle
   useEffect(() => {
     const onStorage = () => setIsDark(localStorage.getItem('isi_theme') === 'dark')
     window.addEventListener('storage', onStorage)
-    // Also poll every 300ms since same-tab changes don't trigger 'storage'
     const interval = setInterval(() => {
       setIsDark(localStorage.getItem('isi_theme') === 'dark')
     }, 300)
@@ -33,6 +32,20 @@ export default function Navbar() {
     navigate('/')
   }
 
+  const scrollTo = (id) => {
+    setOpen(false)
+    if (location.pathname === '/') {
+      const el = document.getElementById(id)
+      if (el) {
+        const y = el.getBoundingClientRect().top + window.scrollY - 72
+        window.scrollTo({ top: y, behavior: 'smooth' })
+      }
+    } else {
+      sessionStorage.setItem('isi_scroll_to', id)
+      navigate('/')
+    }
+  }
+
   const dashboardPath = {
     admin:   '/admin',
     student: '/student',
@@ -40,19 +53,18 @@ export default function Navbar() {
     accueil: '/accueil',
   }[user?.role] || '/'
 
-  // Theme-aware classes
-  const navBg = isDark
-    ? scrolled ? 'bg-space-900/95 backdrop-blur-xl border-b border-white/10 shadow-2xl' : 'bg-transparent'
-    : scrolled ? 'bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-lg'    : 'bg-white/60 backdrop-blur-sm'
+  const navBg = scrolled
+    ? 'bg-white border-b border-slate-200 shadow-lg'
+    : 'bg-white border-b border-slate-100'
 
-  const textColor    = isDark ? 'text-white'          : 'text-slate-800'
-  const textSubColor = isDark ? 'text-white/70'       : 'text-slate-600'
-  const subLabel     = isDark ? 'text-brand-400'      : 'text-brand-600'
-  const hoverColor   = isDark ? 'hover:text-white'    : 'hover:text-brand-600'
-  const mobileMenuBg = isDark ? 'bg-space-800/98 border-white/10' : 'bg-white border-slate-200'
-  const userPill     = isDark ? 'bg-white/5 border-white/10'     : 'bg-slate-100 border-slate-200'
-  const logoutColor  = isDark ? 'text-red-400 hover:text-red-300 hover:bg-red-500/5' : 'text-red-500 hover:text-red-600 hover:bg-red-50'
-  const connBtn      = isDark ? 'border-white/30 text-white hover:bg-white/10'       : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+  const textColor    = 'text-slate-800'
+  const textSubColor = 'text-slate-600'
+  const subLabel     = 'text-brand-600'
+  const hoverColor   = 'hover:text-brand-600'
+  const mobileMenuBg = 'bg-white border-slate-200'
+  const userPill     = 'bg-slate-100 border-slate-200'
+  const logoutColor  = 'text-red-500 hover:text-red-600 hover:bg-red-50'
+  const connBtn      = 'border-slate-300 text-slate-700 hover:bg-slate-100'
 
   return (
     <motion.nav
@@ -63,7 +75,7 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
           <img
             src="/isi-logo.png"
             alt="ISI SUPTECH"
@@ -73,9 +85,7 @@ export default function Navbar() {
               e.target.nextSibling.style.display = 'flex'
             }}
           />
-          <div
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 items-center justify-center shadow-lg hidden"
-          >
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 items-center justify-center shadow-lg hidden">
             <span className="text-white font-black text-sm">ISI</span>
           </div>
           <div>
@@ -85,19 +95,32 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-1">
           {!user ? (
             <>
-              <Link to="/#filieres" className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${textSubColor} ${hoverColor}`}>
-                FiliÃ¨res
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => scrollTo('filieres')}
+                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${textSubColor} ${hoverColor} hover:bg-white/8`}>
+                Filières
+              </motion.button>
+
+              <Link to="/formations"
+                className="px-4 py-2 rounded-lg transition-all text-sm font-medium flex items-center gap-1.5 text-brand-700 hover:text-brand-800 hover:bg-brand-50">
+                <BookOpen size={14}/> Nos Formations
               </Link>
-              <Link to="/#campus" className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${textSubColor} ${hoverColor}`}>
+
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => scrollTo('campus')}
+                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${textSubColor} ${hoverColor} hover:bg-white/8`}>
                 Campus
-              </Link>
-              <Link to="/connexion" className={`border font-semibold px-4 py-2 rounded-xl text-sm transition-all ${connBtn}`}>
+              </motion.button>
+
+              <Link to="/connexion" className={`border font-semibold px-4 py-2 rounded-xl text-sm transition-all ml-1 ${connBtn}`}>
                 Connexion
               </Link>
-              <Link to="/pre-inscription" className="btn-primary text-sm py-2 px-5">
+              <Link to="/pre-inscription" className="btn-primary text-sm py-2 px-5 ml-1">
                 S'inscrire
               </Link>
             </>
@@ -113,7 +136,7 @@ export default function Navbar() {
                 <span className={`text-sm font-medium ${textColor}`}>{user.name}</span>
               </div>
               <button onClick={handleLogout} className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-sm ${logoutColor}`}>
-                <LogOut size={16} /> DÃ©connexion
+                <LogOut size={16} /> Déconnexion
               </button>
             </>
           )}
@@ -137,7 +160,20 @@ export default function Navbar() {
             <div className="px-4 py-4 flex flex-col gap-2">
               {!user ? (
                 <>
-                  <Link to="/connexion" onClick={() => setOpen(false)} className={`border font-semibold py-2.5 px-4 rounded-xl text-sm text-center transition-all ${connBtn}`}>
+                  <button onClick={() => scrollTo('filieres')}
+                    className="py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-all text-slate-600 hover:bg-slate-100">
+                    Filières
+                  </button>
+                  <Link to="/formations" onClick={() => setOpen(false)}
+                    className="py-2.5 px-4 rounded-xl text-sm font-bold flex items-center gap-2 text-brand-700 bg-brand-50">
+                    <BookOpen size={14}/> Nos Formations
+                  </Link>
+                  <button onClick={() => scrollTo('campus')}
+                    className="py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-all text-slate-600 hover:bg-slate-100">
+                    Campus
+                  </button>
+                  <div className="my-1 border-t border-slate-100"/>
+                  <Link to="/connexion" onClick={() => setOpen(false)} className={`border font-semibold py-2.5 px-4 rounded-xl text-sm text-center transition-all border-slate-300 text-slate-700 hover:bg-slate-100`}>
                     Connexion
                   </Link>
                   <Link to="/pre-inscription" onClick={() => setOpen(false)} className="btn-primary text-center">
@@ -150,7 +186,7 @@ export default function Navbar() {
                     Tableau de bord
                   </Link>
                   <button onClick={handleLogout} className={`py-2 text-sm transition-colors ${logoutColor}`}>
-                    DÃ©connexion
+                    Déconnexion
                   </button>
                 </>
               )}

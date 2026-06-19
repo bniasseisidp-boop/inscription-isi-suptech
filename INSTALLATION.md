@@ -83,7 +83,7 @@ Le site sera disponible sur : http://localhost:3000
 ## 4. Configuration Wave Payment
 Dans .env :
 ```
-WAVE_API_KEY=sk_wave_xxxxxxxxxxxxxxxx
+WAVE_API_KEY=sk_wave_784567893
 WAVE_WEBHOOK_SECRET=whsec_xxxxxxxxxx
 ```
 

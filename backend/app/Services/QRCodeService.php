@@ -26,6 +26,7 @@ class QRCodeService
             'annee'       => $student->annee_scolaire,
             'numero'      => $numeroCarte,
             'verification'=> base64_encode($student->matricule . ':' . config('app.key')),
+            'statut_paiement' => $student->inscription_payee ? 'a_jour' : 'non_a_jour',
         ]);
 
         $qrImageSvg = QrCode::format('svg')
@@ -46,7 +47,17 @@ class QRCodeService
             'date_generation' => now(),
         ]);
 
-        $student->update(['qr_code_path' => $qrPath]);
+            $student->update(['qr_code_path' => $qrPath]);
+
+            // Generate PDF card and save path
+            try {
+                $pdfPath = app(\App\Services\PDFService::class)->generateStudentCard($student);
+                if ($card) {
+                    $card->update(['qr_pdf_path' => $pdfPath]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('PDF generation failed: ' . $e->getMessage());
+            }
 
         return $card;
     }

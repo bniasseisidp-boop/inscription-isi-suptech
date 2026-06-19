@@ -15,6 +15,8 @@ class Student extends Model
         'pays_residence', 'photo', 'filiere_id', 'license_id',
         'annee_scolaire', 'statut_inscription', 'date_acceptation',
         'accepte_par', 'inscription_payee', 'qr_code_path', 'notes_admin',
+        'doc_bac', 'doc_releve_notes', 'doc_cin', 'doc_acte_naissance',
+        'doc_bulletin_transfert', 'est_transfert', 'statut_documents',
     ];
 
     protected $casts = [
@@ -41,6 +43,11 @@ class Student extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function cards(): HasMany
+    {
+        return $this->hasMany(StudentCard::class);
     }
 
     public function card(): HasOne

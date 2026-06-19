@@ -1,12 +1,14 @@
 ﻿import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Landing from './pages/Landing'
+import Formations from './pages/Formations'
 import PreInscription from './pages/PreInscription'
 import Login from './pages/Login'
 import StudentPortal from './pages/StudentPortal'
 import AdminDashboard from './pages/AdminDashboard'
 import CashierDashboard from './pages/CashierDashboard'
 import AccueilDashboard from './pages/AccueilDashboard'
+import AccueilPedagogiqueDashboard from './pages/AccueilPedagogiqueDashboard'
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
@@ -20,6 +22,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/"              element={<Landing />} />
+      <Route path="/formations"    element={<Formations />} />
       <Route path="/pre-inscription" element={<PreInscription />} />
       <Route path="/connexion"     element={<Login />} />
 
@@ -44,6 +47,12 @@ export default function App() {
       <Route path="/accueil/*" element={
         <ProtectedRoute roles={['accueil', 'admin']}>
           <AccueilDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/pedagogique/*" element={
+        <ProtectedRoute roles={['pedagogique', 'admin']}>
+          <AccueilPedagogiqueDashboard />
         </ProtectedRoute>
       } />
 
