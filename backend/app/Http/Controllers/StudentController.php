@@ -9,6 +9,7 @@ use App\Services\WavePaymentService;
 use App\Services\QRCodeService;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\InscriptionReceived;
@@ -70,39 +71,43 @@ class StudentController extends Controller
             }
         }
 
-        $user = User::create([
-            'name'     => $request->prenom . ' ' . $request->nom,
-            'email'    => $request->email,
-            'password' => Hash::make($request->mot_de_passe),
-            'role'     => 'student',
-        ]);
+        [$user, $student] = DB::transaction(function () use ($request, $photoPath, $docs, $estTransfert) {
+            $user = User::create([
+                'name'     => $request->prenom . ' ' . $request->nom,
+                'email'    => $request->email,
+                'password' => Hash::make($request->mot_de_passe),
+                'role'     => 'student',
+            ]);
 
-        $student = Student::create(array_merge([
-            'user_id'            => $user->id,
-            'nom'                => $request->nom,
-            'prenom'             => $request->prenom,
-            'telephone'          => $request->telephone,
-            'sexe'               => $request->sexe,
-            'date_naissance'     => $request->date_naissance,
-            'lieu_naissance'     => $request->lieu_naissance,
-            'adresse'            => $request->adresse,
-            'nationalite'        => $request->nationalite,
-            'pays_residence'     => $request->pays_residence,
-            'filiere_id'         => $request->filiere_id,
-            'license_id'         => $request->license_id,
-            'annee_scolaire'     => date('Y') . '-' . (date('Y') + 1),
-            'photo'              => $photoPath,
-            'statut_inscription' => 'en_attente',
-            'est_transfert'      => $estTransfert,
-            'statut_documents'   => 'en_attente',
-        ], $docs));
+            $student = Student::create(array_merge([
+                'user_id'            => $user->id,
+                'nom'                => $request->nom,
+                'prenom'             => $request->prenom,
+                'telephone'          => $request->telephone,
+                'sexe'               => $request->sexe,
+                'date_naissance'     => $request->date_naissance,
+                'lieu_naissance'     => $request->lieu_naissance,
+                'adresse'            => $request->adresse,
+                'nationalite'        => $request->nationalite,
+                'pays_residence'     => $request->pays_residence,
+                'filiere_id'         => $request->filiere_id,
+                'license_id'         => $request->license_id,
+                'annee_scolaire'     => date('Y') . '-' . (date('Y') + 1),
+                'photo'              => $photoPath,
+                'statut_inscription' => 'en_attente',
+                'est_transfert'      => $estTransfert,
+                'statut_documents'   => 'en_attente',
+            ], $docs));
 
-        StudentNotification::create([
-            'student_id' => $student->id,
-            'titre'      => 'Pré-inscription reçue',
-            'message'    => 'Votre dossier de pré-inscription a bien été reçu. Notre équipe pédagogique l\'examinera sous 48h et vous notifiera par email.',
-            'type'       => 'info',
-        ]);
+            StudentNotification::create([
+                'student_id' => $student->id,
+                'titre'      => 'Pré-inscription reçue',
+                'message'    => 'Votre dossier de pré-inscription a bien été reçu. Notre équipe pédagogique l\'examinera sous 48h et vous notifiera par email.',
+                'type'       => 'info',
+            ]);
+
+            return [$user, $student];
+        });
 
         // Email de confirmation au candidat
         try {
