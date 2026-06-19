@@ -7,18 +7,18 @@
 * { margin:0pt; padding:0pt; box-sizing:border-box; }
 html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'DejaVu Sans', sans-serif; font-size:0; }
 
-/* ══ Table maîtresse — barre or gauche via border-left ══════ */
+/* ══ Table maîtresse — largeurs absolues totalisant exactement 245pt ══ */
 .master {
   width:245pt;
   border-collapse:collapse;
   table-layout:fixed;
-  border-left:4pt solid #C9A84C;
 }
 
 /* ─── HEADER ─────────────────────────────────────────────── */
-.h-logo  { width:30pt;  padding:5pt 2pt 4pt 8pt; vertical-align:middle; }
-.h-name  { width:125pt; padding:5pt 3pt 4pt 3pt;  vertical-align:middle; overflow:hidden; }
-.h-right { width:86pt;  padding:5pt 8pt 4pt 3pt;  vertical-align:middle; text-align:right; }
+.h-bar   { width:4pt;   background:#C9A84C; padding:0; }
+.h-logo  { width:28pt;  padding:5pt 2pt 4pt 6pt; vertical-align:middle; }
+.h-name  { width:123pt; padding:5pt 3pt 4pt 3pt;  vertical-align:middle; overflow:hidden; }
+.h-right { width:90pt;  padding:5pt 8pt 4pt 3pt;  vertical-align:middle; text-align:right; }
 
 .h-logo img  { width:22pt; height:22pt; display:block; }
 .school-name { font-size:8pt;   font-weight:900; color:#0f2352; letter-spacing:.5pt; }
@@ -30,9 +30,10 @@ html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'De
 .gold-line td { height:1.5pt; background:#C9A84C; padding:0; font-size:0; line-height:0; }
 
 /* ─── CORPS ─────────────────────────────────────────────── */
-.b-photo { width:64pt;  padding:7pt 4pt 7pt 8pt; vertical-align:middle; }
-.b-info  { width:115pt; padding:7pt 5pt; vertical-align:middle; overflow:hidden; }
-.b-qr    { width:62pt;  padding:7pt 8pt 7pt 4pt;  vertical-align:middle; text-align:center; }
+.b-bar   { width:4pt;   background:#C9A84C; padding:0; }
+.b-photo { width:64pt;  padding:7pt 4pt 7pt 6pt; vertical-align:middle; }
+.b-info  { width:113pt; padding:7pt 5pt; vertical-align:middle; overflow:hidden; }
+.b-qr    { width:64pt;  padding:7pt 8pt 7pt 4pt;  vertical-align:middle; text-align:center; }
 
 /* Photo carrée – cadre or */
 .ph-frame { width:48pt; height:48pt; background:#C9A84C; border-radius:3pt; padding:1.5pt; }
@@ -55,8 +56,9 @@ html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'De
 .qr-lbl { font-size:3.5pt; color:#94a3b8; margin-top:2pt; text-transform:uppercase; letter-spacing:.3pt; }
 
 /* ─── FOOTER ─────────────────────────────────────────────── */
-.f-left  { width:155pt; padding:4pt 4pt 4pt 8pt; vertical-align:middle; background:#ffffff; }
-.f-right { width:86pt;  padding:4pt 8pt 4pt 4pt;  vertical-align:middle; text-align:right; background:#ffffff; }
+.f-bar   { width:4pt;   background:#C9A84C; padding:0; }
+.f-left  { width:151pt; padding:4pt 4pt 4pt 6pt; vertical-align:middle; }
+.f-right { width:90pt;  padding:4pt 8pt 4pt 4pt;  vertical-align:middle; text-align:right; }
 .f-lbl   { font-size:3.5pt; color:#94a3b8; text-transform:uppercase; letter-spacing:.5pt; }
 .f-no    { font-size:7pt;   font-weight:700; color:#C9A84C; font-family:monospace; letter-spacing:.8pt; margin-top:1pt; }
 .f-brand { font-size:3.5pt; color:#94a3b8; text-transform:uppercase; letter-spacing:.3pt; }
@@ -67,8 +69,9 @@ html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'De
 
   <table class="master">
 
-    {{-- ══ HEADER ══ --}}
+    {{-- ══ HEADER : barre or (4) + logo (28) + nom (123) + right (90) = 245 ══ --}}
     <tr>
+      <td class="h-bar"></td>
       <td class="h-logo"><img src="{{ public_path('isi-logo.png') }}" alt="ISI"/></td>
       <td class="h-name">
         <div class="school-name">ISI SUPTECH</div>
@@ -81,10 +84,11 @@ html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'De
     </tr>
 
     {{-- ══ LIGNE OR ══ --}}
-    <tr class="gold-line"><td colspan="3"></td></tr>
+    <tr class="gold-line"><td colspan="4"></td></tr>
 
-    {{-- ══ CORPS ══ --}}
+    {{-- ══ CORPS : barre or (4) + photo (64) + info (113) + qr (64) = 245 ══ --}}
     <tr>
+      <td class="b-bar"></td>
 
       {{-- Photo --}}
       <td class="b-photo">
@@ -127,10 +131,11 @@ html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'De
     </tr>
 
     {{-- ══ LIGNE OR ══ --}}
-    <tr class="gold-line"><td colspan="3"></td></tr>
+    <tr class="gold-line"><td colspan="4"></td></tr>
 
-    {{-- ══ FOOTER ══ --}}
+    {{-- ══ FOOTER : barre or (4) + left colspan=2 (151+113=264? non: 4+151+90=245) ══ --}}
     <tr>
+      <td class="f-bar"></td>
       <td class="f-left" colspan="2">
         <div class="f-lbl">Numéro de carte</div>
         <div class="f-no">{{ $student->card?->numero_carte ?? ('ISI-'.date('Y').'-'.str_pad($student->id,6,'0',STR_PAD_LEFT)) }}</div>

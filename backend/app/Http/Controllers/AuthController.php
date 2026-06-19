@@ -19,9 +19,16 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
+            return response()->json([
+                'message'    => 'Aucun compte trouvé avec cet email.',
+                'no_account' => true,
+            ], 422);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['Identifiants incorrects.'],
+                'email' => ['Mot de passe incorrect.'],
             ]);
         }
 

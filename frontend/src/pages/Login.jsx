@@ -12,6 +12,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [noAccount, setNoAccount] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm()
 
@@ -27,12 +28,18 @@ export default function Login() {
   const onSubmit = async (data) => {
     setLoading(true)
     try {
+      setNoAccount(false)
       const result = await login(data)
       const path = ROLE_PATHS[result.user.role] || '/'
       toast.success(`Bienvenue, ${result.user.name} !`)
       navigate(path, { replace: true })
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Identifiants incorrects')
+      const data = err.response?.data
+      if (data?.no_account) {
+        setNoAccount(true)
+      } else {
+        toast.error(data?.errors?.email?.[0] || data?.message || 'Identifiants incorrects')
+      }
     } finally {
       setLoading(false)
     }
@@ -95,6 +102,25 @@ export default function Login() {
               {loading ? <div className="spinner w-5 h-5" /> : <><LogIn size={18} /> Se connecter</>}
             </button>
           </form>
+
+          {noAccount && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-5 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-center"
+            >
+              <p className="text-amber-300 text-sm font-semibold mb-1">Aucun compte avec cet email</p>
+              <p className="text-white/50 text-xs mb-3">
+                Vous n'avez pas encore de compte ISI SUPTECH. Commencez par une pré-inscription en ligne.
+              </p>
+              <Link
+                to="/pre-inscription"
+                className="inline-block px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-bold rounded-lg transition-colors"
+              >
+                Faire ma pré-inscription →
+              </Link>
+            </motion.div>
+          )}
 
           <div className="mt-6 text-center">
             <p className="text-white/40 text-sm">
