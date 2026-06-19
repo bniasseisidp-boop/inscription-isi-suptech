@@ -5,58 +5,20 @@
 <style>
 @page { margin:0pt; padding:0pt; size:245pt 155pt; }
 * { margin:0pt; padding:0pt; box-sizing:border-box; }
-html { margin:0pt; padding:0pt; width:245pt; height:155pt; }
-body { margin:0pt; padding:0pt; width:245pt; height:155pt; overflow:hidden; font-family:'DejaVu Sans', sans-serif; font-size:0; }
+html, body { margin:0pt; padding:0pt; width:245pt; height:155pt; font-family:'DejaVu Sans', sans-serif; font-size:0; }
 
-/* ══ FOND BLANC ════════════════════════════════════════════════ */
-.card {
-  width:245pt; height:155pt; max-height:155pt;
-  background:#ffffff;
-  position:relative;
-  overflow:hidden;
-  page-break-inside:avoid;
-  page-break-after:avoid;
-}
-
-/* ══ Triangles décoration coin supérieur droit ════════════════ */
-.tri-gold {
-  position:absolute; top:0; right:0;
-  width:0; height:0; border-style:solid;
-  border-width:0 55pt 55pt 0;
-  border-color:transparent #C9A84C transparent transparent;
-}
-.tri-dark {
-  position:absolute; top:0; right:0;
-  width:0; height:0; border-style:solid;
-  border-width:0 44pt 44pt 0;
-  border-color:transparent #ffffff transparent transparent;
-}
-
-/* ══ Barre verticale or gauche ════════════════════════════════ */
-.bar-left {
-  position:absolute; top:0; left:0; bottom:0;
-  width:4pt; background:#C9A84C;
-}
-
-/* ══ Filigrane de fond ════════════════════════════════════════ */
-.watermark {
-  position:absolute; bottom:10pt; left:60pt;
-  font-size:70pt; font-weight:900;
-  color:rgba(15,35,82,.04);
-  letter-spacing:-4pt; line-height:1;
-}
-
-/* ══ Table maîtresse : layout-fixed, largeurs absolues ═══════ */
+/* ══ Table maîtresse — barre or gauche via border-left ══════ */
 .master {
   width:245pt;
   border-collapse:collapse;
   table-layout:fixed;
+  border-left:4pt solid #C9A84C;
 }
 
-/* ─── HEADER ──────────────────────────────────────────────── */
-.h-logo  { width:32pt;  padding:5pt 3pt 4pt 10pt; vertical-align:middle; }
-.h-name  { width:123pt; padding:5pt 3pt 4pt 3pt;  vertical-align:middle; overflow:hidden; }
-.h-right { width:90pt;  padding:5pt 9pt 4pt 3pt;  vertical-align:middle; text-align:right; }
+/* ─── HEADER ─────────────────────────────────────────────── */
+.h-logo  { width:30pt;  padding:5pt 2pt 4pt 8pt; vertical-align:middle; }
+.h-name  { width:125pt; padding:5pt 3pt 4pt 3pt;  vertical-align:middle; overflow:hidden; }
+.h-right { width:86pt;  padding:5pt 8pt 4pt 3pt;  vertical-align:middle; text-align:right; }
 
 .h-logo img  { width:22pt; height:22pt; display:block; }
 .school-name { font-size:8pt;   font-weight:900; color:#0f2352; letter-spacing:.5pt; }
@@ -64,13 +26,13 @@ body { margin:0pt; padding:0pt; width:245pt; height:155pt; overflow:hidden; font
 .carte-lbl   { font-size:6pt;   font-weight:900; color:#C9A84C; text-transform:uppercase; letter-spacing:.4pt; }
 .carte-year  { font-size:4.5pt; color:#94a3b8;  margin-top:1.5pt; }
 
-/* ─── LIGNE OR ────────────────────────────────────────────── */
+/* ─── LIGNE OR ─────────────────────────────────────────── */
 .gold-line td { height:1.5pt; background:#C9A84C; padding:0; font-size:0; line-height:0; }
 
-/* ─── CORPS ───────────────────────────────────────────────── */
-.b-photo { width:68pt;  padding:8pt 4pt 8pt 10pt; vertical-align:middle; }
-.b-info  { width:112pt; padding:8pt 6pt; vertical-align:middle; overflow:hidden; }
-.b-qr    { width:65pt;  padding:8pt 9pt 8pt 4pt;  vertical-align:middle; text-align:center; }
+/* ─── CORPS ─────────────────────────────────────────────── */
+.b-photo { width:64pt;  padding:7pt 4pt 7pt 8pt; vertical-align:middle; }
+.b-info  { width:115pt; padding:7pt 5pt; vertical-align:middle; overflow:hidden; }
+.b-qr    { width:62pt;  padding:7pt 8pt 7pt 4pt;  vertical-align:middle; text-align:center; }
 
 /* Photo carrée – cadre or */
 .ph-frame { width:48pt; height:48pt; background:#C9A84C; border-radius:3pt; padding:1.5pt; }
@@ -92,9 +54,9 @@ body { margin:0pt; padding:0pt; width:245pt; height:155pt; overflow:hidden; font
 .qr-inner img { width:47pt; height:47pt; display:block; }
 .qr-lbl { font-size:3.5pt; color:#94a3b8; margin-top:2pt; text-transform:uppercase; letter-spacing:.3pt; }
 
-/* ─── FOOTER ──────────────────────────────────────────────── */
-.f-left  { width:155pt; padding:4pt 4pt 4pt 10pt; vertical-align:middle; background:#ffffff; }
-.f-right { width:90pt;  padding:4pt 9pt 4pt 4pt;  vertical-align:middle; text-align:right; background:#ffffff; }
+/* ─── FOOTER ─────────────────────────────────────────────── */
+.f-left  { width:155pt; padding:4pt 4pt 4pt 8pt; vertical-align:middle; background:#ffffff; }
+.f-right { width:86pt;  padding:4pt 8pt 4pt 4pt;  vertical-align:middle; text-align:right; background:#ffffff; }
 .f-lbl   { font-size:3.5pt; color:#94a3b8; text-transform:uppercase; letter-spacing:.5pt; }
 .f-no    { font-size:7pt;   font-weight:700; color:#C9A84C; font-family:monospace; letter-spacing:.8pt; margin-top:1pt; }
 .f-brand { font-size:3.5pt; color:#94a3b8; text-transform:uppercase; letter-spacing:.3pt; }
@@ -102,11 +64,6 @@ body { margin:0pt; padding:0pt; width:245pt; height:155pt; overflow:hidden; font
 </style>
 </head>
 <body>
-<div class="card">
-
-  {{-- Décorations fond --}}
-  <div class="watermark">ISI</div>
-  <div class="bar-left"></div>
 
   <table class="master">
 
@@ -185,6 +142,6 @@ body { margin:0pt; padding:0pt; width:245pt; height:155pt; overflow:hidden; font
     </tr>
 
   </table>
-</div>
+
 </body>
 </html>
