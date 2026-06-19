@@ -19,7 +19,7 @@ import {
   downloadClassListPdf,
   updateAdminFiliere, deleteAdminFiliere, createLicense, updateAdminLicense, deleteAdminLicense,
   getAdminSettings, updateAdminSettings,
-  getStaff, createStaff, resetDonneesTest,
+  getStaff, createStaff, deleteStaff, resetDonneesTest,
   adminGetMoisDesactives, adminToggleMoisDesactive, lockStudentProfile,
 } from '../services/api'
 import api from '../services/api'
@@ -725,8 +725,19 @@ export default function AdminDashboard() {
     } catch { toast.error('Erreur téléchargement liste') } finally { setDlListId(null) }
   }
   const submitStaff = async () => {
-    try { await createStaff(newStaff); toast.success('Compte créé !'); setShowCreateStaff(false); getStaff().then(({ data }) => setStaff(data)) }
-    catch { toast.error('Erreur') }
+    try { 
+      await createStaff(newStaff)
+      toast.success('Compte créé !'); 
+      setShowCreateStaff(false)
+      setNewStaff({ name: '', email: '', role: 'cashier', password: '' })
+      getStaff().then(({ data }) => setStaff(data)) 
+    }
+    catch (e) { 
+      const msg = e.response?.data?.message || e.response?.data?.errors 
+        ? (typeof e.response?.data?.errors === 'object' ? Object.values(e.response?.data?.errors).flat().join(', ') : e.response?.data?.errors)
+        : 'Erreur'
+      toast.error(msg) 
+    }
   }
   const submitNewStudent = async () => {
     setSavingStudent(true)
@@ -1308,7 +1319,7 @@ export default function AdminDashboard() {
                   )}
                   <div className={`${T.card} overflow-hidden`}>
                     <table className={T.table}>
-                      <thead><tr>{['Nom','Email','Rôle','Statut'].map(h=><th key={h} className={isDark?'':T.th}>{h}</th>)}</tr></thead>
+                      <thead><tr>{['Nom','Email','Rôle','Statut','Actions'].map(h=><th key={h} className={isDark?'':T.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {staff.map(s => (
                           <tr key={s.id} className={isDark?'':T.tr}>
@@ -1320,6 +1331,17 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td className={isDark?'':T.td}><span className={s.actif ? 'badge-accepted' : 'badge-rejected'}>{s.actif ? 'Actif' : 'Inactif'}</span></td>
+                            <td className={`${isDark?'':T.td} flex gap-2 justify-center`}>
+                              <button onClick={() => {
+                                if (confirm(`Êtes-vous sûr de vouloir supprimer ${s.name} ?`)) {
+                                  deleteStaff(s.id)
+                                    .then(() => { toast.success('Membre supprimé'); getStaff().then(({ data }) => setStaff(data)) })
+                                    .catch(e => toast.error(e.response?.data?.message || 'Erreur'))
+                                }
+                              }} className="text-red-500 hover:text-red-700 p-1" title="Supprimer">
+                                <Trash2 size={16}/>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

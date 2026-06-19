@@ -11,7 +11,6 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use App\Services\PDFService;
 use App\Mail\InscriptionReceived;
 use App\Mail\NouvelleInscription;
 use Illuminate\Support\Facades\Mail;
@@ -152,35 +151,6 @@ class StudentController extends Controller
         ]);
     }
 
-    /** Download student card PDF (student) */
-    public function downloadCard(Request $request)
-    {
-        $student = Student::where('user_id', $request->user()->id)->with('card')->firstOrFail();
-        $card = $student->card;
-        // If no card exists, or PDF path missing or file missing, try to (re)generate using QRCodeService
-        if (!$card || !$card->qr_pdf_path || !file_exists(storage_path('app/public/' . ($card->qr_pdf_path ?? '')))) {
-            try {
-                // ensure a StudentCard + QR are created and PDF generated
-                app(QRCodeService::class)->generateStudentCard($student->fresh());
-                $student->refresh();
-                $card = $student->card;
-            } catch (\Exception $e) {
-                \Log::warning('Regeneration carte failed: ' . $e->getMessage());
-            }
-        }
-
-        if (!$card || !$card->qr_pdf_path) {
-            return response()->json(['message' => 'Aucune carte PDF disponible'], 404);
-        }
-
-        $path = storage_path('app/public/' . $card->qr_pdf_path);
-        if (!file_exists($path)) {
-            return response()->json(['message' => 'Fichier introuvable'], 404);
-        }
-
-        return response()->download($path, basename($path));
-    }
-
     /**
      * Initiate Wave payment
      */
@@ -245,45 +215,53 @@ class StudentController extends Controller
      */
     public function verifyQR(Request $request)
     {
-        $request->validate([
-            'qr_data'   => 'nullable|string',
-            'matricule' => 'nullable|string',
-        ]);
+        $request->validate(['qr_data' => 'required|string']);
+        return response()->json($this->qrService->verifyQRCode($request->qr_data));
+    }
 
-        // If matricule provided, lookup student directly
-        if ($request->filled('matricule')) {
-            $mat = $request->matricule;
-            $student = Student::where('matricule', $mat)
-                ->with(['filiere', 'license', 'payments'])
-                ->first();
+    /**
+     * Verify student by matricule (accueil desk)
+     */
+    public function verifyMatricule(Request $request, string $matricule)
+    {
+        $student = Student::where('matricule', strtoupper(trim($matricule)))
+            ->with(['filiere', 'license', 'payments'])
+            ->first();
 
-            if (!$student) {
-                return response()->json(['valide' => false, 'message' => 'Étudiant introuvable'], 404);
-            }
-
-            $moisNonPaies = $student->mois_non_payes;
-            $dernierMoisNonPaye = !empty($moisNonPaies);
-
+        if (!$student) {
             return response()->json([
-                'valide'   => true,
-                'etudiant' => [
-                    'nom' => $student->full_name,
-                    'matricule' => $student->matricule,
-                    'filiere' => $student->filiere?->nom,
-                    'license' => $student->license?->nom,
-                    'annee' => $student->annee_scolaire,
-                    'photo' => $student->photo ? asset('storage/' . $student->photo) : null,
-                    'statut_paiement' => $dernierMoisNonPaye ? 'non_a_jour' : 'a_jour',
-                    'mois_non_payes' => $moisNonPaies,
-                ],
+                'valide'  => false,
+                'message' => 'Matricule introuvable — étudiant non reconnu.',
             ]);
         }
 
-        if (!$request->filled('qr_data')) {
-            return response()->json(['valide' => false, 'message' => 'Aucun QR ou matricule fourni'], 422);
+        $moisNonPayes      = $student->mois_non_payes;
+        $inscriptionPayee  = (bool) $student->inscription_payee;
+        $statutInscription = $student->statut_inscription;
+
+        if (!$inscriptionPayee) {
+            $statutPaiement = 'inscription_non_payee';
+        } elseif (!empty($moisNonPayes)) {
+            $statutPaiement = 'non_a_jour';
+        } else {
+            $statutPaiement = 'a_jour';
         }
 
-        return response()->json($this->qrService->verifyQRCode($request->qr_data));
+        return response()->json([
+            'valide'  => true,
+            'etudiant' => [
+                'nom'              => $student->full_name,
+                'matricule'        => $student->matricule,
+                'filiere'          => $student->filiere?->nom,
+                'license'          => $student->license?->nom,
+                'annee'            => $student->annee_scolaire,
+                'photo'            => $student->photo ? asset('storage/' . $student->photo) : null,
+                'inscription_payee'=> $inscriptionPayee,
+                'statut_inscription' => $statutInscription,
+                'statut_paiement'  => $statutPaiement,
+                'mois_non_payes'   => $moisNonPayes,
+            ],
+        ]);
     }
 
     /**

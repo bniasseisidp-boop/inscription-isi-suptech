@@ -94,6 +94,7 @@ export const updatePedagogiqueLicense = (id, data) => api.put(`/pedagogique/lice
 export const deletePedagogiqueLicense = (id) => api.delete(`/pedagogique/licenses/${id}`)
 export const getStaff = () => api.get('/admin/staff')
 export const createStaff = (data) => api.post('/admin/staff', data)
+export const deleteStaff = (id) => api.delete(`/admin/staff/${id}`)
 
 // Admin content
 export const adminGetFormateurs = () => api.get('/admin/contenu/formateurs')
