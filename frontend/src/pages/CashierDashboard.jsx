@@ -61,9 +61,9 @@ function QuickPayModal({ student, onClose, onSuccess }) {
     if (type === 'inscription') {
       setMontant(inscDetail?.restant || inscDetail?.total_du || student.license?.frais_inscription || '')
     } else if (type === 'mensualite') {
-      const avance = suivi?.avance_paiement ?? 0
-      const frais = Number(student.license?.frais_mensuel || 0)
-      setMontant(Math.max(0, frais - avance) || frais || '')
+      const avance = Math.round(suivi?.avance_paiement ?? 0)
+      const frais = Math.round(Number(student.license?.frais_mensuel || 0))
+      setMontant(Math.round(Math.max(0, frais - avance)) || frais || '')
     } else {
       setMontant('')
     }
@@ -204,8 +204,9 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                     onClick={() => {
                       setType('mensualite')
                       setMoisSelectionne(m.cle)
-                      const avance = suivi?.avance_paiement ?? 0
-                      setMontant(Math.max(0, (Number(student.license?.frais_mensuel) || 0) - avance) || student.license?.frais_mensuel || '')
+                      const avance = Math.round(suivi?.avance_paiement ?? 0)
+                      const frais = Math.round(Number(student.license?.frais_mensuel) || 0)
+                      setMontant(Math.round(Math.max(0, frais - avance)) || frais || '')
                     }}
                     className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${
                       moisSelectionne === m.cle
@@ -227,8 +228,8 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                 : 'bg-amber-500/10 border-amber-500/25 text-amber-300'
             }`}>
               {avancePaiement > 0
-                ? <>Avance disponible : <strong>+{fmt(avancePaiement)} FCFA</strong> — Montant à payer ce mois : <strong>{fmt(Math.max(0, (Number(student.license?.frais_mensuel) || 0) - avancePaiement))} FCFA</strong></>
-                : <>Déficit reporté : <strong>{fmt(avancePaiement)} FCFA</strong> — Montant à régulariser : <strong>{fmt((Number(student.license?.frais_mensuel) || 0) + Math.abs(avancePaiement))} FCFA</strong></>
+                ? <>Avance disponible : <strong>+{fmt(Math.round(avancePaiement))} FCFA</strong> — Montant à payer ce mois : <strong>{fmt(Math.round(Math.max(0, (Number(student.license?.frais_mensuel) || 0) - avancePaiement)))} FCFA</strong></>
+                : <>Déficit reporté : <strong>{fmt(Math.round(avancePaiement))} FCFA</strong> — Montant à régulariser : <strong>{fmt(Math.round((Number(student.license?.frais_mensuel) || 0) + Math.abs(avancePaiement)))} FCFA</strong></>
               }
             </div>
           )}
@@ -259,22 +260,22 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                     const isSelected = moisSelectionne === m.cle
                     return (
                       <button key={m.cle}
-                        disabled={isPaid || isFutur}
+                        disabled={isPaid}
                         onClick={() => {
                           setMoisSelectionne(m.cle)
-                          const avance = suivi?.avance_paiement ?? 0
-                          const frais = Number(student.license?.frais_mensuel || 0)
-                          setMontant(Math.max(0, frais - avance) || frais)
+                          const avance = Math.round(suivi?.avance_paiement ?? 0)
+                          const frais = Math.round(Number(student.license?.frais_mensuel || 0))
+                          setMontant(Math.round(Math.max(0, frais - avance)) || frais)
                         }}
                         className={`text-xs px-2 py-2 rounded-lg border text-center transition-all font-medium ${
                           isPaid     ? 'bg-green-500/10 border-green-500/20 text-green-500/40 cursor-not-allowed'
-                          : isFutur  ? 'bg-white/3 border-white/8 text-white/20 cursor-not-allowed'
                           : isSelected ? 'bg-brand-500 border-brand-400 text-white'
                           : isRetard ? 'bg-red-500/15 border-red-500/30 text-red-300 hover:bg-red-500/25'
                           : isActuel ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                          : isFutur  ? 'bg-blue-500/8 border-blue-500/20 text-blue-300/70 hover:bg-blue-500/15 hover:text-blue-200'
                           : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                         }`}>
-                        {isPaid ? '✓ ' : isRetard ? '⚠ ' : ''}{m.label.split(' ')[0]}
+                        {isPaid ? '✓ ' : isRetard ? '⚠ ' : isFutur ? '◷ ' : ''}{m.label.split(' ')[0]}
                         <div className="text-[9px] opacity-60">{m.label.split(' ')[1]}</div>
                       </button>
                     )
@@ -285,11 +286,21 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                   <option value="">-- Sélectionner un mois --</option>
                 </select>
               )}
-              {moisSelectionne && (
-                <p className="text-brand-300 text-xs mt-1 font-semibold">
-                  Mois sélectionné : {suivi?.mois?.find(m => m.cle === moisSelectionne)?.label || moisSelectionne}
-                </p>
-              )}
+              {moisSelectionne && (() => {
+                const selectedMoisInfo = suivi?.mois?.find(m => m.cle === moisSelectionne)
+                return (
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-brand-300 text-xs font-semibold">
+                      Mois sélectionné : {selectedMoisInfo?.label || moisSelectionne}
+                    </p>
+                    {selectedMoisInfo?.futur && (
+                      <span className="text-[9px] bg-blue-500/15 border border-blue-500/25 text-blue-300 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                        Anticipé
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
           )}
 
