@@ -77,9 +77,8 @@ class PaymentController extends Controller
         $dernierMoisCle      = null;
 
         if ($request->type === 'inscription') {
-            $fraisInscriptionBase = floatval($student->license?->frais_inscription ?? 0);
-            // Total dû = inscription + AMEA + tenue + assurance + dernier mois
-            $montantDu = $fraisInscriptionBase + $fraisAmea + $fraisTenue + $fraisAssurance + $fraisMensuel;
+            // frais_inscription sur la licence = TOTAL (scolarité + AMEA + tenue + assurance + dernier mois)
+            $montantDu = floatval($student->license?->frais_inscription ?? 0);
             $dejaPayeInscription = floatval(
                 Payment::where('student_id', $request->student_id)->where('type', 'inscription')->sum('montant')
             );
@@ -201,16 +200,18 @@ class PaymentController extends Controller
 
         $extraData = [];
         if ($request->type === 'inscription') {
+            $totalInsc = $montantDu;
+            $fraisScolarite = max(0, $totalInsc - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
             $extraData['inscription_detail'] = [
-                'frais_inscription' => floatval($student->license?->frais_inscription ?? 0),
-                'frais_amea'        => $fraisAmea,
-                'frais_tenue'       => $fraisTenue,
-                'frais_assurance'   => $fraisAssurance,
-                'frais_dernier_mois'=> $fraisMensuel,
-                'total_du'          => $montantDu,
-                'total_paye'        => $dejaPayeInscription + floatval($request->montant),
-                'restant'           => max(0, $montantDu - ($dejaPayeInscription + floatval($request->montant))),
-                'dernier_mois_cle'  => $dernierMoisCle,
+                'frais_scolarite'    => $fraisScolarite,
+                'frais_amea'         => $fraisAmea,
+                'frais_tenue'        => $fraisTenue,
+                'frais_assurance'    => $fraisAssurance,
+                'frais_dernier_mois' => $fraisMensuel,
+                'total_du'           => $totalInsc,
+                'total_paye'         => $dejaPayeInscription + floatval($request->montant),
+                'restant'            => max(0, $totalInsc - ($dejaPayeInscription + floatval($request->montant))),
+                'dernier_mois_cle'   => $dernierMoisCle,
             ];
         }
         if ($request->type === 'mensualite') {
@@ -409,13 +410,14 @@ class PaymentController extends Controller
         }
         unset($m);
 
-        // Frais annexes inscription
+        // Frais annexes inscription (frais_inscription = TOTAL; scolarité = dérivée)
         $settingsAvance = DB::table('site_settings')->pluck('valeur', 'cle');
         $fraisAmeaS  = floatval($settingsAvance['frais_amea']      ?? 10000);
         $fraisTenueS = floatval($settingsAvance['frais_tenue']     ?? 60000);
         $fraisAssurS = floatval($settingsAvance['frais_assurance'] ?? 10000);
-        $dejaInscription = Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant');
-        $totalInscDu = floatval($license?->frais_inscription ?? 0) + $fraisAmeaS + $fraisTenueS + $fraisAssurS + $fraisMensuel;
+        $dejaInscription = floatval(Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant'));
+        $totalInscDu     = floatval($license?->frais_inscription ?? 0);
+        $fraisScolariteS = max(0, $totalInscDu - $fraisAmeaS - $fraisTenueS - $fraisAssurS - $fraisMensuel);
 
         return response()->json([
             'student'           => $student,
@@ -427,14 +429,14 @@ class PaymentController extends Controller
             'annee_scolaire'    => $anneeDebut . '-' . ($anneeDebut + 1),
             'avance_paiement'   => $avancePaiement,
             'inscription_detail'=> [
-                'frais_inscription'  => floatval($license?->frais_inscription ?? 0),
+                'frais_scolarite'    => $fraisScolariteS,
                 'frais_amea'         => $fraisAmeaS,
                 'frais_tenue'        => $fraisTenueS,
                 'frais_assurance'    => $fraisAssurS,
                 'frais_dernier_mois' => $fraisMensuel,
                 'total_du'           => $totalInscDu,
-                'deja_paye'          => floatval($dejaInscription),
-                'restant'            => max(0, $totalInscDu - floatval($dejaInscription)),
+                'deja_paye'          => $dejaInscription,
+                'restant'            => max(0, $totalInscDu - $dejaInscription),
             ],
         ]);
     }
@@ -448,8 +450,9 @@ class PaymentController extends Controller
         $fraisTenue     = floatval($settings['frais_tenue']     ?? 60000);
         $fraisAssurance = floatval($settings['frais_assurance'] ?? 10000);
         $fraisMensuel   = floatval($student->license?->frais_mensuel ?? 0);
-        $fraisInscBase  = floatval($student->license?->frais_inscription ?? 0);
-        $totalDu        = $fraisInscBase + $fraisAmea + $fraisTenue + $fraisAssurance + $fraisMensuel;
+        // frais_inscription = TOTAL; scolarité = total - amea - tenue - assurance - dernier mois
+        $totalDu        = floatval($student->license?->frais_inscription ?? 0);
+        $fraisScolarite = max(0, $totalDu - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
         $dejaPaye       = floatval(Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant'));
 
         $dernierMoisCle = null;
@@ -463,7 +466,7 @@ class PaymentController extends Controller
         }
 
         return response()->json([
-            'frais_inscription'  => $fraisInscBase,
+            'frais_scolarite'    => $fraisScolarite,
             'frais_amea'         => $fraisAmea,
             'frais_tenue'        => $fraisTenue,
             'frais_assurance'    => $fraisAssurance,

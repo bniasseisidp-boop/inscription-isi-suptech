@@ -158,12 +158,12 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                 : (
                   <div className="divide-y divide-white/5">
                     {[
-                      { label: 'Frais de scolarité',    val: inscDetail?.frais_inscription ?? student.license?.frais_inscription },
-                      { label: 'Participation AMEA',    val: inscDetail?.frais_amea ?? 10000 },
-                      { label: 'Tenue scolaire',        val: inscDetail?.frais_tenue ?? 60000 },
-                      { label: 'Assurance scolaire',    val: inscDetail?.frais_assurance ?? 10000 },
+                      { label: 'Frais de scolarité',    val: inscDetail?.frais_scolarite },
+                      { label: 'Participation AMEA',    val: inscDetail?.frais_amea },
+                      { label: 'Tenue scolaire',        val: inscDetail?.frais_tenue },
+                      { label: 'Assurance scolaire',    val: inscDetail?.frais_assurance },
                       { label: `Dernier mois (avance)${inscDetail?.dernier_mois_cle ? ' — ' + inscDetail.dernier_mois_cle : ''}`,
-                        val: inscDetail?.frais_dernier_mois ?? student.license?.frais_mensuel },
+                        val: inscDetail?.frais_dernier_mois },
                     ].map(({ label, val }) => (
                       <div key={label} className="flex justify-between items-center px-3 py-1.5">
                         <span className="text-white/50 text-xs">{label}</span>

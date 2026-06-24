@@ -164,8 +164,9 @@ class PDFService
         $dureeAnnees       = intval($license->duree_annees ?? 1);
         $nbMoisAnnee       = 10; // mois effectifs par an
 
-        // Total inscription = base + AMEA + tenue + assurance + dernier mois
-        $inscriptionTotal  = $fraisInscription + $fraisAmea + $fraisTenue + $fraisAssurance + $fraisMensuel;
+        // frais_inscription = TOTAL; scolarité = dérivée (total - amea - tenue - assurance - dernier mois)
+        $inscriptionTotal   = $fraisInscription; // le total est la valeur du champ frais_inscription de la licence
+        $fraisScolarite     = max(0, $inscriptionTotal - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
 
         $inscriptionPaid   = $allPmts->where('type', 'inscription')->sum('montant');
         $mensualitesPaid   = $allPmts->where('type', 'mensualite')->sum('montant');
@@ -226,7 +227,7 @@ class PDFService
 
         $data = compact(
             'payment', 'student',
-            'fraisInscription', 'fraisAmea', 'fraisTenue', 'fraisAssurance',
+            'fraisInscription', 'fraisScolarite', 'fraisAmea', 'fraisTenue', 'fraisAssurance',
             'inscriptionTotal', 'dernierMoisCle',
             'fraisMensuel', 'dureeAnnees', 'nbMoisAnnee',
             'inscriptionPaid', 'mensualitesPaid', 'totalPaid',

@@ -262,7 +262,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5px; color:#1e293
   </tr>
   <tr>
     <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;width:55%;">Frais de scolarité</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisInscription, 0, ',', ' ') }} FCFA</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisScolarite ?? ($fraisInscription - ($fraisAmea ?? 0) - ($fraisTenue ?? 0) - ($fraisAssurance ?? 0) - $fraisMensuel), 0, ',', ' ') }} FCFA</td>
   </tr>
   <tr>
     <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Participation AMEA</td>

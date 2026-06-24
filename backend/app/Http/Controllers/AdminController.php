@@ -306,23 +306,45 @@ class AdminController extends Controller
 
     public function getSettings()
     {
-        $locked = \DB::table('site_settings')->where('cle', 'filieres_lock_pedagogique')->value('valeur');
+        $s = \DB::table('site_settings')->pluck('valeur', 'cle');
         return response()->json([
-            'filieres_lock_pedagogique' => $locked === '1',
+            'filieres_lock_pedagogique' => ($s['filieres_lock_pedagogique'] ?? '0') === '1',
+            'frais_amea'                => floatval($s['frais_amea']      ?? 10000),
+            'frais_tenue'               => floatval($s['frais_tenue']     ?? 60000),
+            'frais_assurance'           => floatval($s['frais_assurance'] ?? 10000),
         ]);
     }
 
     public function updateSettings(Request $request)
     {
         $validated = $request->validate([
-            'filieres_lock_pedagogique' => 'required|boolean',
+            'filieres_lock_pedagogique' => 'sometimes|boolean',
+            'frais_amea'                => 'sometimes|numeric|min:0',
+            'frais_tenue'               => 'sometimes|numeric|min:0',
+            'frais_assurance'           => 'sometimes|numeric|min:0',
         ]);
-        \DB::table('site_settings')->updateOrInsert(
-            ['cle' => 'filieres_lock_pedagogique'],
-            ['valeur' => $validated['filieres_lock_pedagogique'] ? '1' : '0', 'updated_at' => now(), 'created_at' => now()]
-        );
+
+        if (array_key_exists('filieres_lock_pedagogique', $validated)) {
+            \DB::table('site_settings')->updateOrInsert(
+                ['cle' => 'filieres_lock_pedagogique'],
+                ['valeur' => $validated['filieres_lock_pedagogique'] ? '1' : '0', 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+        foreach (['frais_amea', 'frais_tenue', 'frais_assurance'] as $key) {
+            if (isset($validated[$key])) {
+                \DB::table('site_settings')->updateOrInsert(
+                    ['cle' => $key],
+                    ['valeur' => (string) $validated[$key], 'updated_at' => now(), 'created_at' => now()]
+                );
+            }
+        }
+
+        $s = \DB::table('site_settings')->pluck('valeur', 'cle');
         return response()->json([
-            'filieres_lock_pedagogique' => $validated['filieres_lock_pedagogique'],
+            'filieres_lock_pedagogique' => ($s['filieres_lock_pedagogique'] ?? '0') === '1',
+            'frais_amea'                => floatval($s['frais_amea']      ?? 10000),
+            'frais_tenue'               => floatval($s['frais_tenue']     ?? 60000),
+            'frais_assurance'           => floatval($s['frais_assurance'] ?? 10000),
         ]);
     }
 

@@ -610,6 +610,8 @@ export default function AdminDashboard() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [filiereLocked, setFiliereLocked] = useState(false)
   const [loadingLock, setLoadingLock] = useState(false)
+  const [fraisAnnexes, setFraisAnnexes] = useState({ frais_amea: 10000, frais_tenue: 60000, frais_assurance: 10000 })
+  const [savingFrais, setSavingFrais] = useState(false)
   const [dlListId, setDlListId] = useState(null)
   const [formateurPhoto, setFormateurPhoto] = useState(null)
   const [membrePhoto, setMembrePhoto]       = useState(null)
@@ -628,7 +630,13 @@ export default function AdminDashboard() {
       }
     }
     if (active === 'paiements')  getAdminPayments().then(({ data }) => setPayments(data.data || [])).catch(() => {})
-    if (active === 'filieres')   { getFilieres().then(({ data }) => setFilieres(data)).catch(() => {}); getAdminSettings().then(({ data }) => setFiliereLocked(data.filieres_lock_pedagogique)).catch(() => {}) }
+    if (active === 'filieres')   {
+      getFilieres().then(({ data }) => setFilieres(data)).catch(() => {})
+      getAdminSettings().then(({ data }) => {
+        setFiliereLocked(data.filieres_lock_pedagogique)
+        setFraisAnnexes({ frais_amea: data.frais_amea ?? 10000, frais_tenue: data.frais_tenue ?? 60000, frais_assurance: data.frais_assurance ?? 10000 })
+      }).catch(() => {})
+    }
     if (active === 'staff')      getStaff().then(({ data }) => setStaff(data)).catch(() => {})
     if (active === 'corbeille')   { setTrashLoading(true); getTrashedStudents().then(({ data }) => setTrash(data)).catch(() => {}).finally(() => setTrashLoading(false)) }
     if (active === 'mois')        adminGetMoisDesactives().then(({ data }) => setMoisDesactives(data)).catch(() => {})
@@ -708,6 +716,14 @@ export default function AdminDashboard() {
       setFiliereLocked(data.filieres_lock_pedagogique)
       toast.success(data.filieres_lock_pedagogique ? 'Pédagogique verrouillé — plus de modifications filières.' : 'Pédagogique déverrouillé.')
     } catch { toast.error('Erreur') } finally { setLoadingLock(false) }
+  }
+  const saveFraisAnnexes = async () => {
+    setSavingFrais(true)
+    try {
+      const { data } = await updateAdminSettings(fraisAnnexes)
+      setFraisAnnexes({ frais_amea: data.frais_amea, frais_tenue: data.frais_tenue, frais_assurance: data.frais_assurance })
+      toast.success('Frais annexes mis à jour !')
+    } catch { toast.error('Erreur lors de la sauvegarde') } finally { setSavingFrais(false) }
   }
   const downloadAdminList = async (filiereId, licenseId = null, filiereName = '', licenseName = '') => {
     const key = licenseId ? `l${licenseId}` : `f${filiereId}`
@@ -1141,6 +1157,41 @@ export default function AdminDashboard() {
               {/* FILIERES */}
               {active === 'filieres' && (
                 <div className="space-y-6">
+                  {/* Frais annexes inscription */}
+                  <div className={`${T.card} p-5`}>
+                    <div className={`font-semibold text-sm mb-1 ${T.title}`}>Frais annexes inscription (globaux)</div>
+                    <div className={`text-xs mb-4 ${T.mute}`}>
+                      Le champ "Frais inscription" sur chaque niveau = TOTAL (scolarité + AMEA + tenue + assurance + dernier mois).
+                      La scolarité est calculée automatiquement : Total − AMEA − Tenue − Assurance − Mensualité.
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <label className={T.label}>Participation AMEA (FCFA)</label>
+                        <input className={T.input} type="number" min="0"
+                          value={fraisAnnexes.frais_amea}
+                          onChange={e => setFraisAnnexes(f => ({ ...f, frais_amea: Number(e.target.value) }))}/>
+                      </div>
+                      <div>
+                        <label className={T.label}>Tenue scolaire (FCFA)</label>
+                        <input className={T.input} type="number" min="0"
+                          value={fraisAnnexes.frais_tenue}
+                          onChange={e => setFraisAnnexes(f => ({ ...f, frais_tenue: Number(e.target.value) }))}/>
+                      </div>
+                      <div>
+                        <label className={T.label}>Assurance scolaire (FCFA)</label>
+                        <input className={T.input} type="number" min="0"
+                          value={fraisAnnexes.frais_assurance}
+                          onChange={e => setFraisAnnexes(f => ({ ...f, frais_assurance: Number(e.target.value) }))}/>
+                      </div>
+                    </div>
+                    <div className={`text-xs mb-3 p-2 rounded-lg ${isDark ? 'bg-white/5 text-white/50' : 'bg-gray-50 text-gray-500'}`}>
+                      Le dernier mois est la mensualité du niveau (modifiable par niveau ci-dessous).
+                    </div>
+                    <button onClick={saveFraisAnnexes} disabled={savingFrais} className="btn-primary text-sm px-6">
+                      {savingFrais ? 'Enregistrement…' : 'Enregistrer les frais annexes'}
+                    </button>
+                  </div>
+
                   {/* Toggle verrou pédagogique */}
                   <div className={`${T.card} p-4 flex items-center justify-between gap-4`}>
                     <div>
