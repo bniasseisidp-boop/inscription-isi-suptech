@@ -253,7 +253,8 @@ function QuickPayModal({ student, onClose, onSuccess }) {
               ) : suivi?.mois ? (
                 <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                   {suivi.mois.map(m => {
-                    const isPaid     = m.paye
+                    const isPaid     = m.paye       // bloqué (payé complet OU partiel)
+                    const isPartiel  = m.partiel    // bloqué mais paiement partiel (déficit reporté)
                     const isRetard   = m.en_retard
                     const isActuel   = m.actuel
                     const isFutur    = m.futur
@@ -268,15 +269,16 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                           setMontant(Math.round(Math.max(0, frais - avance)) || frais)
                         }}
                         className={`text-xs px-2 py-2 rounded-lg border text-center transition-all font-medium ${
-                          isPaid     ? 'bg-green-500/10 border-green-500/20 text-green-500/40 cursor-not-allowed'
+                          isPaid && !isPartiel ? 'bg-green-500/10 border-green-500/20 text-green-500/40 cursor-not-allowed'
+                          : isPartiel ? 'bg-amber-500/10 border-amber-500/25 text-amber-400/50 cursor-not-allowed'
                           : isSelected ? 'bg-brand-500 border-brand-400 text-white'
                           : isRetard ? 'bg-red-500/15 border-red-500/30 text-red-300 hover:bg-red-500/25'
                           : isActuel ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
                           : isFutur  ? 'bg-blue-500/8 border-blue-500/20 text-blue-300/70 hover:bg-blue-500/15 hover:text-blue-200'
                           : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
                         }`}>
-                        {isPaid ? '✓ ' : isRetard ? '⚠ ' : isFutur ? '◷ ' : ''}{m.label.split(' ')[0]}
-                        <div className="text-[9px] opacity-60">{m.label.split(' ')[1]}</div>
+                        {isPaid && !isPartiel ? '✓ ' : isPartiel ? '½ ' : isRetard ? '⚠ ' : isFutur ? '◷ ' : ''}{m.label.split(' ')[0]}
+                        <div className="text-[9px] opacity-60">{isPartiel ? 'partiel' : m.label.split(' ')[1]}</div>
                       </button>
                     )
                   })}
