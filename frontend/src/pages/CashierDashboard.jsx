@@ -12,7 +12,7 @@ import {
   getCashierPayments, recordManualPayment, getCashierStats,
   getAdminStudents, getEtudiantsAttentePaiement, getMoisDesactives,
   downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob,
-  getCashierStudents, getCashierStudentSuivi,
+  getCashierStudents, getCashierStudentSuivi, getInscriptionDetails,
 } from '../services/api'
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
@@ -31,41 +31,47 @@ function StatBox({ label, value, sub, color = 'brand' }) {
 
 /* ── Quick-pay modal ──────────────────────────────────────────────────────── */
 function QuickPayModal({ student, onClose, onSuccess }) {
-  const [type, setType]           = useState(student.inscription_payee ? 'mensualite' : 'inscription')
-  const [methode, setMethode]     = useState('especes')
-  const [montant, setMontant]     = useState('')
-  const [notes, setNotes]         = useState('')
+  const [type, setType]             = useState(student.inscription_payee ? 'mensualite' : 'inscription')
+  const [methode, setMethode]       = useState('especes')
+  const [montant, setMontant]       = useState('')
+  const [notes, setNotes]           = useState('')
   const [moisSelectionne, setMoisSelectionne] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [suivi, setSuivi]         = useState(null)
+  const [suivi, setSuivi]           = useState(null)
+  const [inscDetail, setInscDetail] = useState(null)
   const [loadingSuivi, setLoadingSuivi] = useState(false)
 
   useEffect(() => {
-    if (student.inscription_payee) {
-      setLoadingSuivi(true)
-      getCashierStudentSuivi(student.id)
-        .then(({ data }) => setSuivi(data))
-        .catch(() => {})
-        .finally(() => setLoadingSuivi(false))
-    }
-    // Auto-fill montant based on type
-    const m = type === 'inscription'
-      ? student.license?.frais_inscription
-      : student.license?.frais_mensuel
-    setMontant(m || '')
+    setLoadingSuivi(true)
+    const p1 = student.inscription_payee
+      ? getCashierStudentSuivi(student.id).then(({ data }) => setSuivi(data)).catch(() => {})
+      : Promise.resolve()
+    const p2 = !student.inscription_payee
+      ? getInscriptionDetails(student.id).then(({ data }) => {
+          setInscDetail(data)
+          setMontant(data.restant || data.total_du || '')
+        }).catch(() => {
+          setMontant(student.license?.frais_inscription || '')
+        })
+      : Promise.resolve()
+    Promise.all([p1, p2]).finally(() => setLoadingSuivi(false))
   }, [student.id])
 
   useEffect(() => {
-    const m = type === 'inscription'
-      ? student.license?.frais_inscription
-      : type === 'mensualite'
-      ? student.license?.frais_mensuel
-      : ''
-    setMontant(m || '')
+    if (type === 'inscription') {
+      setMontant(inscDetail?.restant || inscDetail?.total_du || student.license?.frais_inscription || '')
+    } else if (type === 'mensualite') {
+      const avance = suivi?.avance_paiement ?? 0
+      const frais = Number(student.license?.frais_mensuel || 0)
+      setMontant(Math.max(0, frais - avance) || frais || '')
+    } else {
+      setMontant('')
+    }
     setMoisSelectionne(null)
   }, [type])
 
   const moisImpayesDus = suivi?.mois?.filter(m => !m.paye && (m.en_retard || m.actuel)) || []
+  const avancePaiement = suivi?.avance_paiement ?? 0
 
   const submit = async () => {
     if (!montant) { toast.error('Montant requis'); return }
@@ -122,7 +128,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-white/4 rounded-xl p-3">
               <p className="text-white/40 text-xs mb-1">Inscription</p>
-              <p className="text-white font-bold text-sm">{fmt(student.license?.frais_inscription)} FCFA</p>
+              <p className="text-white font-bold text-sm">{fmt(inscDetail?.total_du ?? student.license?.frais_inscription)} FCFA</p>
               {student.inscription_payee
                 ? <p className="text-green-400 text-xs">✓ Payée</p>
                 : <p className="text-amber-400 text-xs">⚠ Non réglée</p>}
@@ -130,12 +136,64 @@ function QuickPayModal({ student, onClose, onSuccess }) {
             <div className="bg-white/4 rounded-xl p-3">
               <p className="text-white/40 text-xs mb-1">Mensualité</p>
               <p className="text-white font-bold text-sm">{fmt(student.license?.frais_mensuel)} FCFA/mois</p>
-              {suivi && <p className="text-xs text-white/40">{suivi.mois_payes}/{suivi.mois_total} mois payés</p>}
+              {suivi
+                ? <p className="text-xs text-white/40">{suivi.mois_payes}/{suivi.mois_total} mois payés</p>
+                : avancePaiement !== 0 && (
+                  <p className={`text-xs font-semibold ${avancePaiement > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {avancePaiement > 0 ? `Avance : +${fmt(avancePaiement)}` : `Déficit : ${fmt(avancePaiement)}`} FCFA
+                  </p>
+                )
+              }
             </div>
           </div>
 
+          {/* Inscription fee breakdown — shown when type = inscription */}
+          {type === 'inscription' && (
+            <div className="bg-white/4 rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-brand-500/10 border-b border-white/8">
+                <p className="text-brand-300 text-xs font-bold uppercase tracking-wider">Détail des frais d'inscription</p>
+              </div>
+              {loadingSuivi && !inscDetail
+                ? <div className="p-3 text-white/40 text-xs">Chargement…</div>
+                : (
+                  <div className="divide-y divide-white/5">
+                    {[
+                      { label: 'Frais de scolarité',    val: inscDetail?.frais_inscription ?? student.license?.frais_inscription },
+                      { label: 'Participation AMEA',    val: inscDetail?.frais_amea ?? 10000 },
+                      { label: 'Tenue scolaire',        val: inscDetail?.frais_tenue ?? 60000 },
+                      { label: 'Assurance scolaire',    val: inscDetail?.frais_assurance ?? 10000 },
+                      { label: `Dernier mois (avance)${inscDetail?.dernier_mois_cle ? ' — ' + inscDetail.dernier_mois_cle : ''}`,
+                        val: inscDetail?.frais_dernier_mois ?? student.license?.frais_mensuel },
+                    ].map(({ label, val }) => (
+                      <div key={label} className="flex justify-between items-center px-3 py-1.5">
+                        <span className="text-white/50 text-xs">{label}</span>
+                        <span className="text-white text-xs font-semibold">{fmt(val)} FCFA</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center px-3 py-2 bg-brand-500/10">
+                      <span className="text-brand-300 text-xs font-bold uppercase">Total dû</span>
+                      <span className="text-brand-300 text-sm font-black">{fmt(inscDetail?.total_du)} FCFA</span>
+                    </div>
+                    {(inscDetail?.deja_paye ?? 0) > 0 && (
+                      <div className="flex justify-between items-center px-3 py-1.5">
+                        <span className="text-green-400/70 text-xs">Déjà versé</span>
+                        <span className="text-green-400 text-xs font-semibold">{fmt(inscDetail.deja_paye)} FCFA</span>
+                      </div>
+                    )}
+                    {(inscDetail?.restant ?? 0) > 0 && (
+                      <div className="flex justify-between items-center px-3 py-2 bg-red-500/10">
+                        <span className="text-red-400 text-xs font-bold">Solde restant</span>
+                        <span className="text-red-400 text-sm font-black">{fmt(inscDetail.restant)} FCFA</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+            </div>
+          )}
+
           {/* Months in arrears alert */}
-          {moisImpayesDus.length > 0 && (
+          {moisImpayesDus.length > 0 && type !== 'inscription' && (
             <div className="bg-red-500/10 border border-red-500/25 rounded-xl p-3">
               <p className="text-red-400 text-xs font-bold mb-2 flex items-center gap-1.5">
                 <AlertTriangle size={12}/> {moisImpayesDus.length} mois impayé{moisImpayesDus.length > 1 ? 's' : ''} — arriéré dû
@@ -143,7 +201,12 @@ function QuickPayModal({ student, onClose, onSuccess }) {
               <div className="flex flex-wrap gap-1.5">
                 {moisImpayesDus.map(m => (
                   <button key={m.cle}
-                    onClick={() => { setType('mensualite'); setMoisSelectionne(m.cle); setMontant(student.license?.frais_mensuel || '') }}
+                    onClick={() => {
+                      setType('mensualite')
+                      setMoisSelectionne(m.cle)
+                      const avance = suivi?.avance_paiement ?? 0
+                      setMontant(Math.max(0, (Number(student.license?.frais_mensuel) || 0) - avance) || student.license?.frais_mensuel || '')
+                    }}
                     className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${
                       moisSelectionne === m.cle
                         ? 'bg-red-500 border-red-400 text-white'
@@ -153,6 +216,20 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Avance/déficit banner for mensualite */}
+          {type === 'mensualite' && avancePaiement !== 0 && (
+            <div className={`rounded-xl p-3 text-xs font-semibold border ${
+              avancePaiement > 0
+                ? 'bg-green-500/10 border-green-500/25 text-green-300'
+                : 'bg-amber-500/10 border-amber-500/25 text-amber-300'
+            }`}>
+              {avancePaiement > 0
+                ? <>Avance disponible : <strong>+{fmt(avancePaiement)} FCFA</strong> — Montant à payer ce mois : <strong>{fmt(Math.max(0, (Number(student.license?.frais_mensuel) || 0) - avancePaiement))} FCFA</strong></>
+                : <>Déficit reporté : <strong>{fmt(avancePaiement)} FCFA</strong> — Montant à régulariser : <strong>{fmt((Number(student.license?.frais_mensuel) || 0) + Math.abs(avancePaiement))} FCFA</strong></>
+              }
             </div>
           )}
 
@@ -175,15 +252,20 @@ function QuickPayModal({ student, onClose, onSuccess }) {
               ) : suivi?.mois ? (
                 <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                   {suivi.mois.map(m => {
-                    const isPaid    = m.paye
-                    const isRetard  = m.en_retard
-                    const isActuel  = m.actuel
-                    const isFutur   = m.futur
+                    const isPaid     = m.paye
+                    const isRetard   = m.en_retard
+                    const isActuel   = m.actuel
+                    const isFutur    = m.futur
                     const isSelected = moisSelectionne === m.cle
                     return (
                       <button key={m.cle}
                         disabled={isPaid || isFutur}
-                        onClick={() => setMoisSelectionne(m.cle)}
+                        onClick={() => {
+                          setMoisSelectionne(m.cle)
+                          const avance = suivi?.avance_paiement ?? 0
+                          const frais = Number(student.license?.frais_mensuel || 0)
+                          setMontant(Math.max(0, frais - avance) || frais)
+                        }}
                         className={`text-xs px-2 py-2 rounded-lg border text-center transition-all font-medium ${
                           isPaid     ? 'bg-green-500/10 border-green-500/20 text-green-500/40 cursor-not-allowed'
                           : isFutur  ? 'bg-white/3 border-white/8 text-white/20 cursor-not-allowed'
@@ -213,9 +295,12 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
           {/* Amount */}
           <div>
-            <label className="form-label text-xs">Montant (FCFA) *</label>
+            <label className="form-label text-xs">Montant versé (FCFA) *</label>
             <input className="form-input text-sm" type="number" value={montant}
               onChange={(e) => setMontant(e.target.value)} placeholder="150000" />
+            {type === 'inscription' && inscDetail?.total_du && (
+              <p className="text-white/40 text-xs mt-1">Total inscription : {fmt(inscDetail.total_du)} FCFA</p>
+            )}
           </div>
 
           {/* Method */}

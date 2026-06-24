@@ -141,6 +141,7 @@ export const downloadImpayesPdfBlob = (mois) => api.get(`/caisse/impayes-mois/pd
 // Cashier — student browser
 export const getCashierStudents = (params) => api.get('/caisse/etudiants', { params })
 export const getCashierStudentSuivi = (id) => api.get(`/caisse/etudiants/${id}/suivi`)
+export const getInscriptionDetails = (id) => api.get(`/caisse/etudiants/${id}/inscription-details`)
 
 // Admin — settings
 export const getAdminSettings = () => api.get('/admin/settings')

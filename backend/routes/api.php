@@ -124,6 +124,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/etudiants-attente', [PaymentController::class, 'etudiantsAttentePaiement']);
         Route::get('/etudiants', [PaymentController::class, 'etudiantsList']);
         Route::get('/etudiants/{id}/suivi', [PaymentController::class, 'etudiantSuivi']);
+        Route::get('/etudiants/{student}/inscription-details', [PaymentController::class, 'inscriptionDetails']);
         Route::get('/mois-desactives', [PaymentController::class, 'moisDesactives']);
         Route::get('/impayes-mois', [PaymentController::class, 'impayesMois']);
         Route::get('/impayes-mois/pdf', [PaymentController::class, 'impayesMoisPdf']);

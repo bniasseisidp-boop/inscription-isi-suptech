@@ -9,6 +9,7 @@ use App\Models\StudentNotification;
 use App\Services\WavePaymentService;
 use App\Services\PDFService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
@@ -64,25 +65,46 @@ class PaymentController extends Controller
 
         $student = Student::with('license')->findOrFail($request->student_id);
 
-        // Montant attendu selon le type
-        $montantDu = match($request->type) {
-            'inscription' => floatval($student->license?->frais_inscription ?? 0),
-            'mensualite'  => floatval($student->license?->frais_mensuel ?? 0),
-            default       => floatval($request->montant), // 'autre' → toujours complet
-        };
+        // Frais annexes fixes (depuis site_settings)
+        $settings       = DB::table('site_settings')->pluck('valeur', 'cle');
+        $fraisAmea      = floatval($settings['frais_amea']      ?? 10000);
+        $fraisTenue     = floatval($settings['frais_tenue']     ?? 60000);
+        $fraisAssurance = floatval($settings['frais_assurance'] ?? 10000);
+        $fraisMensuel   = floatval($student->license?->frais_mensuel ?? 0);
 
-        // Pour l'inscription, cumuler les paiements précédents
+        // Montant attendu selon le type
         $dejaPayeInscription = 0;
+        $dernierMoisCle      = null;
+
         if ($request->type === 'inscription') {
+            $fraisInscriptionBase = floatval($student->license?->frais_inscription ?? 0);
+            // Total dû = inscription + AMEA + tenue + assurance + dernier mois
+            $montantDu = $fraisInscriptionBase + $fraisAmea + $fraisTenue + $fraisAssurance + $fraisMensuel;
             $dejaPayeInscription = floatval(
-                Payment::where('student_id', $request->student_id)
-                    ->where('type', 'inscription')
-                    ->sum('montant')
+                Payment::where('student_id', $request->student_id)->where('type', 'inscription')->sum('montant')
             );
             $totalApresVersement = $dejaPayeInscription + floatval($request->montant);
             $statut = $totalApresVersement >= $montantDu ? 'complete' : 'partiel';
+            // Calculer le dernier mois (utilisé si inscription complète)
+            if ($student->license) {
+                $moisFin    = intval($student->license->mois_fin    ?? 6);
+                $moisDebut  = intval($student->license->mois_debut  ?? 9);
+                $now        = \Carbon\Carbon::now();
+                $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+                $anneeFin   = $anneeDebut + ($moisFin < $moisDebut ? 1 : 0);
+                $dernierMoisCle = $anneeFin . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+            }
+        } elseif ($request->type === 'mensualite') {
+            $montantDu   = $fraisMensuel;
+            $avanceActuelle = floatval($student->avance_paiement ?? 0);
+            // Montant effectif = versement + avance antérieure (positive = crédit, négative = déficit)
+            $montantEffectif = floatval($request->montant) + $avanceActuelle;
+            $statut = $montantEffectif >= $fraisMensuel ? 'complete' : 'partiel';
+            // Nouvelle avance (positive = surplus reporté, négative = déficit reporté)
+            $nouvelleAvance = round($montantEffectif - $fraisMensuel, 2);
         } else {
-            $statut = floatval($request->montant) >= $montantDu ? 'complete' : 'partiel';
+            $montantDu = floatval($request->montant);
+            $statut    = 'complete';
         }
 
         // Libellé automatique
@@ -106,17 +128,36 @@ class PaymentController extends Controller
             'notes'        => $request->notes,
         ]);
 
-        // Si paiement inscription → n'activer que si paiement complet
+        // ── Inscription : activation + dernier mois automatique ──
         if ($request->type === 'inscription' && $statut === 'complete') {
             $student->update([
                 'inscription_payee'  => true,
                 'statut_inscription' => 'accepte',
             ]);
-
+            // Créer automatiquement le paiement du dernier mois (avance)
+            if ($dernierMoisCle) {
+                $dejaPayeDernierMois = Payment::where('student_id', $student->id)
+                    ->where('type', 'mensualite')->where('mois', $dernierMoisCle)->sum('montant');
+                if ($dejaPayeDernierMois == 0) {
+                    Payment::create([
+                        'student_id'    => $student->id,
+                        'type'          => 'mensualite',
+                        'libelle'       => 'Dernier mois (avance inscription) — ' . $dernierMoisCle,
+                        'montant'       => $fraisMensuel,
+                        'mois'          => $dernierMoisCle,
+                        'annee'         => date('Y'),
+                        'statut'        => 'complete',
+                        'methode'       => $request->methode,
+                        'date_paiement' => now(),
+                        'saisi_par'     => $request->user()->id,
+                        'notes'         => 'Créé automatiquement lors du paiement complet de l\'inscription',
+                    ]);
+                }
+            }
             StudentNotification::create([
                 'student_id' => $student->id,
                 'titre'      => '✅ Paiement confirmé — Inscription validée !',
-                'message'    => "Votre paiement d'inscription a été enregistré. Votre compte étudiant est maintenant actif. Bienvenue à ISI SUPTECH !",
+                'message'    => "Votre paiement d'inscription a été enregistré (frais d'inscription + AMEA + tenue + assurance + dernier mois). Votre compte étudiant est maintenant actif. Bienvenue à ISI SUPTECH !",
                 'type'       => 'success',
             ]);
         } elseif ($request->type === 'inscription' && $statut === 'partiel') {
@@ -124,9 +165,29 @@ class PaymentController extends Controller
             StudentNotification::create([
                 'student_id' => $student->id,
                 'titre'      => '⚠️ Paiement partiel enregistré',
-                'message'    => "Un versement partiel de " . number_format($request->montant, 0, ',', ' ') . " FCFA a été enregistré. Solde restant dû : " . number_format($soldeRestant, 0, ',', ' ') . " FCFA. Votre inscription sera validée dès réception du solde.",
+                'message'    => "Un versement partiel de " . number_format($request->montant, 0, ',', ' ') . " FCFA a été enregistré. Solde restant dû : " . number_format($soldeRestant, 0, ',', ' ') . " FCFA. Votre inscription sera validée dès réception du solde complet.",
                 'type'       => 'warning',
             ]);
+        }
+
+        // ── Mensualité : mettre à jour l'avance/déficit ──
+        if ($request->type === 'mensualite') {
+            $student->update(['avance_paiement' => $nouvelleAvance]);
+            if ($nouvelleAvance < 0) {
+                StudentNotification::create([
+                    'student_id' => $student->id,
+                    'titre'      => '⚠️ Paiement partiel — Déficit reporté',
+                    'message'    => "Versement de " . number_format($request->montant, 0, ',', ' ') . " FCFA enregistré. Déficit de " . number_format(abs($nouvelleAvance), 0, ',', ' ') . " FCFA reporté sur le mois suivant.",
+                    'type'       => 'warning',
+                ]);
+            } elseif ($nouvelleAvance > 0) {
+                StudentNotification::create([
+                    'student_id' => $student->id,
+                    'titre'      => '✅ Mensualité payée — Avance reportée',
+                    'message'    => "Mensualité réglée. Avance de " . number_format($nouvelleAvance, 0, ',', ' ') . " FCFA reportée sur le mois suivant.",
+                    'type'       => 'success',
+                ]);
+            }
         }
 
         // Générer le reçu PDF
@@ -138,13 +199,31 @@ class PaymentController extends Controller
 
         $payment->refresh();
 
-        return response()->json([
+        $extraData = [];
+        if ($request->type === 'inscription') {
+            $extraData['inscription_detail'] = [
+                'frais_inscription' => floatval($student->license?->frais_inscription ?? 0),
+                'frais_amea'        => $fraisAmea,
+                'frais_tenue'       => $fraisTenue,
+                'frais_assurance'   => $fraisAssurance,
+                'frais_dernier_mois'=> $fraisMensuel,
+                'total_du'          => $montantDu,
+                'total_paye'        => $dejaPayeInscription + floatval($request->montant),
+                'restant'           => max(0, $montantDu - ($dejaPayeInscription + floatval($request->montant))),
+                'dernier_mois_cle'  => $dernierMoisCle,
+            ];
+        }
+        if ($request->type === 'mensualite') {
+            $extraData['avance_paiement'] = $nouvelleAvance;
+        }
+
+        return response()->json(array_merge([
             'message'  => 'Paiement enregistré avec succès',
             'payment'  => $payment->load(['student.user', 'student.filiere', 'student.license']),
             'recu_url' => $payment->recu_pdf_path
                 ? asset('storage/' . $payment->recu_pdf_path)
                 : null,
-        ]);
+        ], $extraData));
     }
 
     /** Students waiting for payment (statut en_attente_paiement) */
@@ -245,12 +324,13 @@ class PaymentController extends Controller
         ]);
     }
 
-    /** List all active students (paid inscription) for cashier browser */
+    /** List students for cashier browser — inclut en_attente pour que le caissier trouve tout étudiant pré-inscrit */
     public function etudiantsList(Request $request)
     {
-        $statuts = ($request->statut && in_array($request->statut, ['accepte', 'en_attente_paiement']))
+        $statutsDisponibles = ['accepte', 'en_attente_paiement', 'en_attente'];
+        $statuts = ($request->statut && in_array($request->statut, $statutsDisponibles))
             ? [$request->statut]
-            : ['accepte', 'en_attente_paiement'];
+            : $statutsDisponibles;
 
         $query = Student::with(['filiere', 'license', 'user'])
             ->whereIn('statut_inscription', $statuts)
@@ -314,14 +394,84 @@ class PaymentController extends Controller
         $moisPayes    = count(array_filter($mois, fn($m) => $m['paye']));
         $moisEnRetard = count(array_filter($mois, fn($m) => $m['en_retard']));
 
+        $avancePaiement = floatval($student->avance_paiement ?? 0);
+
+        // Pour le premier mois impayé, afficher le montant réel avec avance/déficit
+        $premierImpayeTrouve = false;
+        foreach ($mois as &$m) {
+            $m['montant_reel'] = $fraisMensuel;
+            $m['avance_appliquee'] = 0;
+            if (!$m['paye'] && !$m['futur'] && !$premierImpayeTrouve) {
+                $premierImpayeTrouve = true;
+                $m['montant_reel'] = max(0, round($fraisMensuel - $avancePaiement, 2));
+                $m['avance_appliquee'] = $avancePaiement;
+            }
+        }
+        unset($m);
+
+        // Frais annexes inscription
+        $settingsAvance = DB::table('site_settings')->pluck('valeur', 'cle');
+        $fraisAmeaS  = floatval($settingsAvance['frais_amea']      ?? 10000);
+        $fraisTenueS = floatval($settingsAvance['frais_tenue']     ?? 60000);
+        $fraisAssurS = floatval($settingsAvance['frais_assurance'] ?? 10000);
+        $dejaInscription = Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant');
+        $totalInscDu = floatval($license?->frais_inscription ?? 0) + $fraisAmeaS + $fraisTenueS + $fraisAssurS + $fraisMensuel;
+
         return response()->json([
-            'student'        => $student,
-            'mois'           => $mois,
-            'frais_mensuel'  => $fraisMensuel,
-            'mois_payes'     => $moisPayes,
-            'mois_en_retard' => $moisEnRetard,
-            'mois_total'     => $moisTotal,
-            'annee_scolaire' => $anneeDebut . '-' . ($anneeDebut + 1),
+            'student'           => $student,
+            'mois'              => $mois,
+            'frais_mensuel'     => $fraisMensuel,
+            'mois_payes'        => $moisPayes,
+            'mois_en_retard'    => $moisEnRetard,
+            'mois_total'        => $moisTotal,
+            'annee_scolaire'    => $anneeDebut . '-' . ($anneeDebut + 1),
+            'avance_paiement'   => $avancePaiement,
+            'inscription_detail'=> [
+                'frais_inscription'  => floatval($license?->frais_inscription ?? 0),
+                'frais_amea'         => $fraisAmeaS,
+                'frais_tenue'        => $fraisTenueS,
+                'frais_assurance'    => $fraisAssurS,
+                'frais_dernier_mois' => $fraisMensuel,
+                'total_du'           => $totalInscDu,
+                'deja_paye'          => floatval($dejaInscription),
+                'restant'            => max(0, $totalInscDu - floatval($dejaInscription)),
+            ],
+        ]);
+    }
+
+    /** Fee breakdown for inscription — fetched before payment so cashier sees all items */
+    public function inscriptionDetails(Student $student)
+    {
+        $student->load('license');
+        $settings       = DB::table('site_settings')->pluck('valeur', 'cle');
+        $fraisAmea      = floatval($settings['frais_amea']      ?? 10000);
+        $fraisTenue     = floatval($settings['frais_tenue']     ?? 60000);
+        $fraisAssurance = floatval($settings['frais_assurance'] ?? 10000);
+        $fraisMensuel   = floatval($student->license?->frais_mensuel ?? 0);
+        $fraisInscBase  = floatval($student->license?->frais_inscription ?? 0);
+        $totalDu        = $fraisInscBase + $fraisAmea + $fraisTenue + $fraisAssurance + $fraisMensuel;
+        $dejaPaye       = floatval(Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant'));
+
+        $dernierMoisCle = null;
+        if ($student->license) {
+            $moisFin    = intval($student->license->mois_fin    ?? 6);
+            $moisDebut  = intval($student->license->mois_debut  ?? 9);
+            $now        = \Carbon\Carbon::now();
+            $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+            $anneeFin   = $anneeDebut + ($moisFin < $moisDebut ? 1 : 0);
+            $dernierMoisCle = $anneeFin . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+        }
+
+        return response()->json([
+            'frais_inscription'  => $fraisInscBase,
+            'frais_amea'         => $fraisAmea,
+            'frais_tenue'        => $fraisTenue,
+            'frais_assurance'    => $fraisAssurance,
+            'frais_dernier_mois' => $fraisMensuel,
+            'dernier_mois_cle'   => $dernierMoisCle,
+            'total_du'           => $totalDu,
+            'deja_paye'          => $dejaPaye,
+            'restant'            => max(0, $totalDu - $dejaPaye),
         ]);
     }
 

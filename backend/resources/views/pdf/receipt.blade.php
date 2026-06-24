@@ -252,14 +252,67 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5px; color:#1e293
 
 <div class="lettres"><span class="lbl">En toutes lettres : </span>{{ $montantLettres }}</div>
 
+{{-- ══ DÉTAIL FRAIS INSCRIPTION ════════════════════════════════════════════ --}}
+@if($payment->type === 'inscription')
+<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+  <tr>
+    <td style="background:#f1f5f9;font-size:7px;font-weight:900;color:#0d1f3c;text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border:1px solid #cbd5e1;border-bottom:none;" colspan="2">
+      Détail des frais d'inscription
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;width:55%;">Frais de scolarité</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisInscription, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Participation AMEA</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisAmea, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Tenue scolaire</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisTenue, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Assurance scolaire</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisAssurance, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Dernier mois (avance){{ $dernierMoisCle ? ' — ' . ($moisNoms[substr($dernierMoisCle,5,2)] ?? '') . ' ' . substr($dernierMoisCle,0,4) : '' }}</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisMensuel, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  <tr>
+    <td style="padding:4px 8px;font-size:8px;font-weight:900;color:#0d1f3c;background:#dbeafe;border:1.5px solid #93c5fd;border-top:none;">TOTAL DÛ</td>
+    <td style="padding:4px 8px;font-size:8px;font-weight:900;color:#1d4ed8;background:#dbeafe;border:1.5px solid #93c5fd;border-top:none;border-left:none;text-align:right;">{{ number_format($inscriptionTotal, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Déjà versé</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#15803d;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  @if($inscriptionRestant > 0)
+  <tr>
+    <td style="padding:3px 8px;font-size:7.5px;color:#dc2626;font-weight:700;border:1px solid #fecaca;border-top:none;background:#fff5f5;">Solde restant dû</td>
+    <td style="padding:3px 8px;font-size:7.5px;font-weight:900;color:#dc2626;border:1px solid #fecaca;border-top:none;border-left:none;text-align:right;background:#fff5f5;">{{ number_format($inscriptionRestant, 0, ',', ' ') }} FCFA</td>
+  </tr>
+  @endif
+</table>
+@endif
+
 {{-- ══ ALERTE PAIEMENT PARTIEL ════════════════════════════════════════════ --}}
 @if($payment->type === 'inscription' && $inscriptionRestant > 0)
 <div class="deficit-box">
-  ⚠️ Paiement partiel — Frais d'inscription : {{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA versés
-  sur {{ number_format($fraisInscription, 0, ',', ' ') }} FCFA attendus — <strong>Solde restant dû :
+  ⚠️ Paiement partiel — {{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA versés
+  sur {{ number_format($inscriptionTotal, 0, ',', ' ') }} FCFA attendus — <strong>Solde restant dû :
   <span style="color:#dc2626;">{{ number_format($inscriptionRestant, 0, ',', ' ') }} FCFA</span></strong>
 </div>
-@elseif($deficitCeMois)
+@elseif($payment->type === 'mensualite' && isset($avancePaiement) && $avancePaiement != 0)
+<div class="deficit-box" style="{{ $avancePaiement > 0 ? 'border-color:#22c55e;background:#f0fdf4;color:#166534;' : '' }}">
+  @if($avancePaiement < 0)
+    ⚠️ Paiement partiel pour {{ $titreLabel }} — Déficit de <span style="color:#dc2626;">{{ number_format(abs($avancePaiement), 0, ',', ' ') }} FCFA</span> reporté sur le mois suivant.
+  @else
+    ✅ Mensualité réglée — Avance de <span style="color:#15803d;">{{ number_format($avancePaiement, 0, ',', ' ') }} FCFA</span> reportée sur le mois suivant.
+  @endif
+</div>
+@elseif($deficitCeMois && $payment->type !== 'inscription')
 <div class="deficit-box">
   ⚠️ Paiement partiel pour {{ $titreLabel }} : {{ number_format($deficitCeMois['paye'], 0, ',', ' ') }} FCFA versés
   sur {{ number_format($deficitCeMois['attendu'], 0, ',', ' ') }} FCFA — Solde restant dû :
@@ -269,7 +322,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5px; color:#1e293
 
 {{-- ══ FRAIS GRID ══════════════════════════════════════════════════════════ --}}
 <table class="fg-table"><tr>
-  <td><div class="fc-l">Frais inscription</div><div class="fc-v">{{ number_format($fraisInscription, 0, ',', ' ') }}</div></td>
+  <td><div class="fc-l">Inscription (total)</div><div class="fc-v">{{ number_format($inscriptionTotal, 0, ',', ' ') }}</div></td>
   <td><div class="fc-l">Mensualité/mois</div><div class="fc-v">{{ number_format($fraisMensuel, 0, ',', ' ') }}</div></td>
   <td><div class="fc-l">Total payé</div><div class="fc-v">{{ number_format($totalPaid, 0, ',', ' ') }}</div></td>
   <td><div class="fc-l">Reste à payer</div><div class="fc-v" style="color:#dc2626;">{{ number_format($totalRestant, 0, ',', ' ') }}</div></td>
