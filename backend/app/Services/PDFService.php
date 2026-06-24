@@ -173,15 +173,19 @@ class PDFService
         $totalPaid         = floatval($allPmts->sum('montant'));
         $inscriptionRestant = max(0, $inscriptionTotal - $inscriptionPaid);
 
-        // Dernier mois clé pour l'inscription
+        // Dernier mois clé pour l'inscription (avec correction d'année si année scolaire déjà terminée)
         $dernierMoisCle = null;
         if ($license) {
             $moisFin    = intval($license->mois_fin    ?? 6);
             $moisDebutL = intval($license->mois_debut  ?? 9);
             $now2       = \Carbon\Carbon::now();
             $anneeD2    = ($now2->month >= $moisDebutL) ? $now2->year : $now2->year - 1;
-            $anneeF2    = $anneeD2 + ($moisFin < $moisDebutL ? 1 : 0);
-            $dernierMoisCle = $anneeF2 . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+            $anneeFinOff2 = ($moisFin < $moisDebutL) ? 1 : 0;
+            $tentEnd2   = \Carbon\Carbon::create($anneeD2 + $anneeFinOff2, $moisFin, 1)->endOfMonth();
+            if ($tentEnd2->lt($now2)) {
+                $anneeD2++;
+            }
+            $dernierMoisCle = ($anneeD2 + $anneeFinOff2) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
         }
 
         // Months already paid

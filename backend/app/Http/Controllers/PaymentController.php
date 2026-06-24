@@ -84,14 +84,18 @@ class PaymentController extends Controller
             );
             $totalApresVersement = $dejaPayeInscription + floatval($request->montant);
             $statut = $totalApresVersement >= $montantDu ? 'complete' : 'partiel';
-            // Calculer le dernier mois (utilisé si inscription complète)
+            // Calculer le dernier mois avec correction d'année (si année scolaire déjà terminée → avancer d'un an)
             if ($student->license) {
-                $moisFin    = intval($student->license->mois_fin    ?? 6);
-                $moisDebut  = intval($student->license->mois_debut  ?? 9);
-                $now        = \Carbon\Carbon::now();
-                $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-                $anneeFin   = $anneeDebut + ($moisFin < $moisDebut ? 1 : 0);
-                $dernierMoisCle = $anneeFin . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+                $moisFin       = intval($student->license->mois_fin    ?? 6);
+                $moisDebut     = intval($student->license->mois_debut  ?? 9);
+                $now           = \Carbon\Carbon::now();
+                $anneeDebut    = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+                $anneeFinOff   = ($moisFin < $moisDebut) ? 1 : 0;
+                $tentativeEnd  = \Carbon\Carbon::create($anneeDebut + $anneeFinOff, $moisFin, 1)->endOfMonth();
+                if ($tentativeEnd->lt($now)) {
+                    $anneeDebut++;
+                }
+                $dernierMoisCle = ($anneeDebut + $anneeFinOff) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
             }
         } elseif ($request->type === 'mensualite') {
             $montantDu   = $fraisMensuel;
@@ -127,44 +131,28 @@ class PaymentController extends Controller
             'notes'        => $request->notes,
         ]);
 
-        // ── Inscription : activation + dernier mois automatique ──
+        // ── Inscription : activation ──
         if ($request->type === 'inscription' && $statut === 'complete') {
             $student->update([
                 'inscription_payee'  => true,
                 'statut_inscription' => 'accepte',
+                // Le dernier mois est inclus dans l'inscription — géré automatiquement dans etudiantSuivi
             ]);
-            // Créer automatiquement le paiement du dernier mois (avance)
-            if ($dernierMoisCle) {
-                $dejaPayeDernierMois = Payment::where('student_id', $student->id)
-                    ->where('type', 'mensualite')->where('mois', $dernierMoisCle)->sum('montant');
-                if ($dejaPayeDernierMois == 0) {
-                    Payment::create([
-                        'student_id'    => $student->id,
-                        'type'          => 'mensualite',
-                        'libelle'       => 'Dernier mois (avance inscription) — ' . $dernierMoisCle,
-                        'montant'       => $fraisMensuel,
-                        'mois'          => $dernierMoisCle,
-                        'annee'         => date('Y'),
-                        'statut'        => 'complete',
-                        'methode'       => $request->methode,
-                        'date_paiement' => now(),
-                        'saisi_par'     => $request->user()->id,
-                        'notes'         => 'Créé automatiquement lors du paiement complet de l\'inscription',
-                    ]);
-                }
-            }
             StudentNotification::create([
                 'student_id' => $student->id,
                 'titre'      => '✅ Paiement confirmé — Inscription validée !',
-                'message'    => "Votre paiement d'inscription a été enregistré (frais d'inscription + AMEA + tenue + assurance + dernier mois). Votre compte étudiant est maintenant actif. Bienvenue à ISI SUPTECH !",
+                'message'    => "Votre paiement d'inscription a été enregistré (frais de scolarité + AMEA + tenue + assurance + dernier mois inclus : " . ($dernierMoisCle ?? '—') . "). Votre compte étudiant est maintenant actif. Bienvenue à ISI SUPTECH !",
                 'type'       => 'success',
             ]);
         } elseif ($request->type === 'inscription' && $statut === 'partiel') {
-            $soldeRestant = $montantDu - ($dejaPayeInscription + floatval($request->montant));
+            // Reporter le solde restant en déficit sur avance_paiement pour les mois suivants
+            $soldeRestant   = $montantDu - ($dejaPayeInscription + floatval($request->montant));
+            $avanceActuelle = floatval($student->avance_paiement ?? 0);
+            $student->update(['avance_paiement' => round($avanceActuelle - $soldeRestant, 2)]);
             StudentNotification::create([
                 'student_id' => $student->id,
-                'titre'      => '⚠️ Paiement partiel enregistré',
-                'message'    => "Un versement partiel de " . number_format($request->montant, 0, ',', ' ') . " FCFA a été enregistré. Solde restant dû : " . number_format($soldeRestant, 0, ',', ' ') . " FCFA. Votre inscription sera validée dès réception du solde complet.",
+                'titre'      => '⚠️ Paiement partiel — Solde reporté sur les mensualités',
+                'message'    => "Versement de " . number_format($request->montant, 0, ',', ' ') . " FCFA enregistré. Solde restant dû : " . number_format($soldeRestant, 0, ',', ' ') . " FCFA — ce montant sera déduit de vos mensualités suivantes.",
                 'type'       => 'warning',
             ]);
         }
@@ -362,13 +350,25 @@ class PaymentController extends Controller
         $moisFin      = intval($license?->mois_fin ?? 6);
         $now          = \Carbon\Carbon::now();
 
-        $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-        $startDate  = \Carbon\Carbon::create($anneeDebut, $moisDebut, 1)->startOfMonth();
+        $anneeDebut     = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
         $anneeFinOffset = ($moisFin < $moisDebut) ? 1 : 0;
+        // Si toute l'année scolaire calculée est déjà terminée, avancer d'un an
+        $tentativeEnd = \Carbon\Carbon::create($anneeDebut + $anneeFinOffset, $moisFin, 1)->endOfMonth();
+        if ($tentativeEnd->lt($now)) {
+            $anneeDebut++;
+        }
+        $startDate  = \Carbon\Carbon::create($anneeDebut, $moisDebut, 1)->startOfMonth();
         $endDate    = \Carbon\Carbon::create($anneeDebut + $anneeFinOffset, $moisFin, 1)->startOfMonth();
         $moisTotal  = (int) $startDate->diffInMonths($endDate) + 1;
 
+        // Dernier mois inclus dans inscription (même logique d'année)
+        $dernierMoisCleS = ($anneeDebut + $anneeFinOffset) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+
         $paiementsMensuels = $student->payments->where('type', 'mensualite')->pluck('mois')->toArray();
+        // Si inscription payée, le dernier mois est inclus — pas besoin de paiement séparé
+        if ($student->inscription_payee && $dernierMoisCleS && !in_array($dernierMoisCleS, $paiementsMensuels)) {
+            $paiementsMensuels[] = $dernierMoisCleS;
+        }
 
         $mois    = [];
         $current = $startDate->copy();
@@ -457,12 +457,16 @@ class PaymentController extends Controller
 
         $dernierMoisCle = null;
         if ($student->license) {
-            $moisFin    = intval($student->license->mois_fin    ?? 6);
-            $moisDebut  = intval($student->license->mois_debut  ?? 9);
-            $now        = \Carbon\Carbon::now();
-            $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-            $anneeFin   = $anneeDebut + ($moisFin < $moisDebut ? 1 : 0);
-            $dernierMoisCle = $anneeFin . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+            $moisFin      = intval($student->license->mois_fin    ?? 6);
+            $moisDebut    = intval($student->license->mois_debut  ?? 9);
+            $nowD         = \Carbon\Carbon::now();
+            $anneeDebutD  = ($nowD->month >= $moisDebut) ? $nowD->year : $nowD->year - 1;
+            $anneeFinOffD = ($moisFin < $moisDebut) ? 1 : 0;
+            $tentEndD     = \Carbon\Carbon::create($anneeDebutD + $anneeFinOffD, $moisFin, 1)->endOfMonth();
+            if ($tentEndD->lt($nowD)) {
+                $anneeDebutD++;
+            }
+            $dernierMoisCle = ($anneeDebutD + $anneeFinOffD) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
         }
 
         return response()->json([
