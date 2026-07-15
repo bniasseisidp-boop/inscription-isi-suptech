@@ -24,79 +24,125 @@ class StudentController extends Controller
     ) {}
 
     /**
-     * Submit pre-inscription (public)
+     * Etape 1: Création du compte (Public)
      */
-    public function preInscription(Request $request)
+    public function creerCompte(Request $request)
     {
-        $estTransfert = $request->boolean('est_transfert');
-
         $request->validate([
-            'nom'                  => 'required|string|max:100',
-            'prenom'               => 'required|string|max:100',
-            'email'                => 'required|email|unique:users,email',
-            'telephone'            => 'required|string|max:20',
-            'sexe'                 => 'required|in:M,F',
-            'date_naissance'       => 'required|date|before:-15 years',
-            'lieu_naissance'       => 'required|string|max:100',
-            'adresse'              => 'required|string|max:255',
-            'nationalite'          => 'required|string|max:100',
-            'pays_residence'       => 'required|string|max:100',
-            'filiere_id'           => 'required|exists:filieres,id',
-            'license_id'           => 'required|exists:licenses,id',
-            'mot_de_passe'         => 'required|string|min:8|confirmed',
-            'photo'                => 'nullable|image|max:2048',
-            // Documents obligatoires
-            'doc_bac'              => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'doc_releve_notes'     => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'doc_cin'              => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'doc_acte_naissance'   => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            // Bulletin de transfert requis seulement si est_transfert
-            'doc_bulletin_transfert' => $estTransfert
-                ? 'required|file|mimes:pdf,jpg,jpeg,png|max:5120'
-                : 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'nom'          => 'required|string|max:100',
+            'prenom'       => 'required|string|max:100',
+            'email'        => 'required|email|unique:users,email',
+            'mot_de_passe' => 'required|string|min:8|confirmed',
         ]);
 
-        // Stocker la photo de profil
-        $photoPath = null;
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+            $user = User::create([
+                'name'     => $request->prenom . ' ' . $request->nom,
+                'email'    => $request->email,
+                'password' => Hash::make($request->mot_de_passe),
+                'role'     => 'student',
+            ]);
+
+            $student = Student::create([
+                'user_id'            => $user->id,
+                'nom'                => $request->nom,
+                'prenom'             => $request->prenom,
+                'statut_inscription' => 'brouillon',
+                'statut_documents'   => 'en_attente',
+            ]);
+
+            $token = $user->createToken('auth-token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Compte créé avec succès !',
+                'token'   => $token,
+                'user'    => $user,
+                'student' => $student,
+            ], 201);
+        });
+    }
+
+    /**
+     * Etape 2: Sauvegarde partielle du dossier
+     */
+    public function sauvegarderEtape(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+
+        // Validation partielle
+        $rules = [
+            'telephone'            => 'nullable|string|max:20',
+            'sexe'                 => 'nullable|in:M,F',
+            'date_naissance'       => 'nullable|date',
+            'lieu_naissance'       => 'nullable|string|max:100',
+            'adresse'              => 'nullable|string|max:255',
+            'nationalite'          => 'nullable|string|max:100',
+            'pays_residence'       => 'nullable|string|max:100',
+            'filiere_id'           => 'nullable|exists:filieres,id',
+            'license_id'           => 'nullable|exists:licenses,id',
+            'est_transfert'        => 'nullable|boolean',
+            'photo'                => 'nullable|image|max:2048',
+            'doc_bac'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_releve_notes'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_cin'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_acte_naissance'   => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_bulletin_transfert' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ];
+
+        $validated = $request->validate($rules);
+
+        // Upload des fichiers
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('photos', 'public');
+            $validated['photo'] = $request->file('photo')->store('photos', 'public');
         }
 
-        // Stocker les documents dans un dossier sécurisé
-        $docs = [];
         $docFields = ['doc_bac', 'doc_releve_notes', 'doc_cin', 'doc_acte_naissance', 'doc_bulletin_transfert'];
         foreach ($docFields as $field) {
             if ($request->hasFile($field)) {
-                $docs[$field] = $request->file($field)->store('documents/inscriptions', 'public');
+                $validated[$field] = $request->file($field)->store('documents/inscriptions', 'public');
             }
         }
 
-        $user = User::create([
-            'name'     => $request->prenom . ' ' . $request->nom,
-            'email'    => $request->email,
-            'password' => Hash::make($request->mot_de_passe),
-            'role'     => 'student',
-        ]);
+        if (isset($validated['est_transfert']) && $validated['est_transfert']) {
+            $validated['annee_scolaire'] = date('Y') . '-' . (date('Y') + 1);
+        }
 
-        $student = Student::create(array_merge([
-            'user_id'            => $user->id,
-            'nom'                => $request->nom,
-            'prenom'             => $request->prenom,
-            'telephone'          => $request->telephone,
-            'sexe'               => $request->sexe,
-            'date_naissance'     => $request->date_naissance,
-            'lieu_naissance'     => $request->lieu_naissance,
-            'adresse'            => $request->adresse,
-            'nationalite'        => $request->nationalite,
-            'pays_residence'     => $request->pays_residence,
-            'filiere_id'         => $request->filiere_id,
-            'license_id'         => $request->license_id,
-            'annee_scolaire'     => date('Y') . '-' . (date('Y') + 1),
-            'photo'              => $photoPath,
+        $student->update($validated);
+
+        return response()->json([
+            'message' => 'Progression sauvegardée !',
+            'student' => $student->fresh(['filiere', 'license']),
+        ]);
+    }
+
+    /**
+     * Etape 3: Soumission finale
+     */
+    public function soumettreDossier(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+
+        // Check required fields
+        $required = [
+            'telephone', 'sexe', 'date_naissance', 'lieu_naissance', 'adresse',
+            'nationalite', 'pays_residence', 'filiere_id', 'license_id',
+            'doc_bac', 'doc_releve_notes', 'doc_cin', 'doc_acte_naissance'
+        ];
+
+        foreach ($required as $field) {
+            if (empty($student->$field)) {
+                return response()->json(['message' => "Le champ {$field} est manquant pour finaliser l'inscription."], 422);
+            }
+        }
+
+        if ($student->est_transfert && empty($student->doc_bulletin_transfert)) {
+            return response()->json(['message' => "Le bulletin de transfert est manquant."], 422);
+        }
+
+        $student->update([
             'statut_inscription' => 'en_attente',
-            'est_transfert'      => $estTransfert,
-            'statut_documents'   => 'en_attente',
-        ], $docs));
+            'annee_scolaire'     => date('Y') . '-' . (date('Y') + 1), // ensure year
+        ]);
 
         StudentNotification::create([
             'student_id' => $student->id,
@@ -107,7 +153,7 @@ class StudentController extends Controller
 
         // Email de confirmation au candidat
         try {
-            Mail::to($user->email)->send(new InscriptionReceived($student->load(['filiere', 'license'])));
+            Mail::to($request->user()->email)->send(new InscriptionReceived($student->load(['filiere', 'license'])));
         } catch (\Exception $e) {
             \Log::error('Email candidat: ' . $e->getMessage());
         }
@@ -122,14 +168,10 @@ class StudentController extends Controller
             \Log::error('Email admin/accueil: ' . $e->getMessage());
         }
 
-        $token = $user->createToken('auth-token')->plainTextToken;
-
         return response()->json([
-            'message' => 'Pré-inscription soumise avec succès !',
-            'token'   => $token,
-            'user'    => $user,
-            'student' => $student->load(['filiere', 'license']),
-        ], 201);
+            'message' => 'Dossier soumis avec succès !',
+            'student' => $student->fresh(['filiere', 'license']),
+        ]);
     }
 
     /**

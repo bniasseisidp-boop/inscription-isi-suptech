@@ -1,8 +1,8 @@
-﻿import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Landing from './pages/Landing'
 import Formations from './pages/Formations'
-import PreInscription from './pages/PreInscription'
+import MultiStepInscription from './pages/MultiStepInscription'
 import Login from './pages/Login'
 import StudentPortal from './pages/StudentPortal'
 import AdminDashboard from './pages/AdminDashboard'
@@ -23,7 +23,7 @@ export default function App() {
     <Routes>
       <Route path="/"              element={<Landing />} />
       <Route path="/formations"    element={<Formations />} />
-      <Route path="/pre-inscription" element={<PreInscription />} />
+      <Route path="/pre-inscription" element={<MultiStepInscription />} />
       <Route path="/connexion"     element={<Login />} />
 
       <Route path="/student/*" element={

@@ -11,7 +11,7 @@ use App\Http\Controllers\AccueilPedagogiqueController;
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/inscription', [StudentController::class, 'preInscription']);
+Route::post('/inscription/compte', [StudentController::class, 'creerCompte']);
 Route::get('/etudiants/publics', [StudentController::class, 'publicList']);
 Route::post('/qr/verify', [StudentController::class, 'verifyQR']);
 Route::get('/filieres', [AdminController::class, 'filieres']);
@@ -39,6 +39,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Student routes ──────────────────────────────────────────────────────
     Route::middleware('role:student')->prefix('etudiant')->group(function () {
+        Route::post('/inscription/etape', [StudentController::class, 'sauvegarderEtape']);
+        Route::post('/inscription/soumission', [StudentController::class, 'soumettreDossier']);
+        
         Route::get('/dashboard', [StudentController::class, 'dashboard']);
         Route::get('/paiements', [StudentController::class, 'payments']);
         Route::post('/paiement/initier', [StudentController::class, 'initiatePayment']);

@@ -29,7 +29,11 @@ export const logout = () => api.post('/logout')
 export const getMe = () => api.get('/me')
 
 // Pre-inscription
-export const submitPreInscription = (data) => api.post('/inscription', data, {
+export const creerCompte = (data) => api.post('/inscription/compte', data)
+export const sauvegarderEtape = (data) => api.post('/etudiant/inscription/etape', data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
+export const soumettreDossier = (data) => api.post('/etudiant/inscription/soumission', data, {
   headers: { 'Content-Type': 'multipart/form-data' },
 })
 

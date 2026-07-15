@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
   Clock, CheckCircle, XCircle, AlertTriangle, LogOut, User, Bell, CreditCard,
@@ -596,6 +596,11 @@ export default function StudentPortal() {
   const estRejete = statut === 'rejete'
   const estAttentePaiement = statut === 'en_attente_paiement'
   const inscriptionPayee = student?.inscription_payee
+
+  // ── STATE 0: Brouillon ─────────────────────────────────────────────────────
+  if (statut === 'brouillon') {
+    return <Navigate to="/pre-inscription" replace />
+  }
 
   // Shared mini-nav for waiting screens
   const WaitNav = () => (
