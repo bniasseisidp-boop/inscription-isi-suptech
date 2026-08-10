@@ -16,7 +16,8 @@ class Student extends Model
         // Identity
         'user_id', 'matricule', 'nom', 'prenom', 'telephone', 'sexe',
         'date_naissance', 'lieu_naissance', 'adresse', 'nationalite', 'pays_residence',
-        'photo', 'filiere_id', 'license_id', 'annee_scolaire',
+        'photo', 'filiere_id', 'license_id', 'niveau_entree', 'annee_scolaire',
+        'type_inscription', 'nature_bourse',
         // Status
         'statut_inscription', 'date_acceptation', 'accepte_par',
         'inscription_payee', 'qr_code_path', 'notes_admin',
@@ -103,7 +104,29 @@ class Student extends Model
         return $this->hasMany(StudentNotification::class);
     }
 
-    /** Months with unpaid mensualité up to current month */
+    /**
+     * Clé Y-m du dernier mois de l'année scolaire en cours pour ce licence — ce mois est
+     * déjà réglé via les frais d'inscription (cf. PDFService::generateReceipt) et ne doit
+     * jamais faire l'objet d'un paiement de mensualité séparé.
+     */
+    public function getDernierMoisCleAttribute(): ?string
+    {
+        $license = $this->license;
+        if (!$license) return null;
+
+        $moisFin     = intval($license->mois_fin   ?? 6);
+        $moisDebut   = intval($license->mois_debut ?? 9);
+        $now         = \Carbon\Carbon::now();
+        $anneeDebut  = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+        $anneeFinOff = ($moisFin < $moisDebut) ? 1 : 0;
+        $tentativeEnd = \Carbon\Carbon::create($anneeDebut + $anneeFinOff, $moisFin, 1)->endOfMonth();
+        if ($tentativeEnd->lt($now)) {
+            $anneeDebut++;
+        }
+        return ($anneeDebut + $anneeFinOff) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+    }
+
+    /** Months with unpaid mensualité up to current month (dernier mois exclu — déjà réglé via l'inscription) */
     public function getMoisNonPayesAttribute(): array
     {
         if (!$this->inscription_payee || $this->statut_inscription !== 'accepte') {
@@ -113,21 +136,32 @@ class Student extends Model
         $moisDebut  = intval($license?->mois_debut ?? 9);
         $moisFin    = intval($license?->mois_fin   ?? 6);
         $now        = \Carbon\Carbon::now();
-        $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-        $anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
+        // Priorité à l'année scolaire réelle de l'étudiant (ex. "2026-2027") : sinon, avant
+        // le mois de rentrée, le calcul par défaut retombe sur le cycle précédent et AUCUN
+        // mois du cycle en cours ne correspond plus — tout apparaît comme impayé alors que
+        // l'étudiant est à jour (cf. receipt.blade.php, même bug corrigé là-bas).
+        if ($this->annee_scolaire && preg_match('/^(\d{4})-(\d{4})$/', $this->annee_scolaire, $m)) {
+            $anneeDebut = (int) $m[1];
+            $anneeFin   = (int) $m[2];
+        } else {
+            $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+            $anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
+        }
         $startDate  = \Carbon\Carbon::create($anneeDebut, $moisDebut, 1);
-        $endDate    = \Carbon\Carbon::create($anneeFin, $moisFin, 1);
+        $endDate    = \Carbon\Carbon::create($anneeFin, $moisFin, 1)->subMonth();
+        $dernierMoisCle = $this->dernier_mois_cle;
 
+        // Toute mensualité déjà saisie (complète ou partielle) verrouille son mois —
+        // un déficit se reporte sur le mois suivant, pas sur un 2e paiement du même mois.
         $paidMonths = $this->payments
             ->where('type', 'mensualite')
-            ->where('statut', 'complete')
             ->pluck('mois')->toArray();
 
         $nonPayes = [];
         $cur = $startDate->copy();
         while ($cur->lte($endDate) && $cur->lte($now)) {
             $cle = $cur->format('Y-m');
-            if (!in_array($cle, $paidMonths)) {
+            if ($cle !== $dernierMoisCle && !in_array($cle, $paidMonths)) {
                 $nonPayes[] = $cle;
             }
             $cur->addMonth();
@@ -135,10 +169,80 @@ class Student extends Model
         return $nonPayes;
     }
 
+    /**
+     * Vérifie qu'un mois donné peut faire l'objet d'un nouveau paiement de mensualité.
+     * Retourne null si c'est payable, sinon un message d'erreur explicite.
+     */
+    public function moisEstPayable(string $moisCle): ?string
+    {
+        if (!$this->inscription_payee || $this->statut_inscription !== 'accepte') {
+            return "L'inscription doit être réglée avant de payer une mensualité.";
+        }
+        $license = $this->license;
+        if (!$license) {
+            return "Aucune formation associée à cet étudiant.";
+        }
+
+        $moisDebut  = intval($license->mois_debut ?? 9);
+        $moisFin    = intval($license->mois_fin   ?? 6);
+        $now        = \Carbon\Carbon::now();
+        if ($this->annee_scolaire && preg_match('/^(\d{4})-\d{4}$/', $this->annee_scolaire, $m)) {
+            $anneeDebut = (int) $m[1];
+        } else {
+            $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+        }
+        $startCle   = sprintf('%04d-%02d', $anneeDebut, $moisDebut);
+        $dernierMoisCle = $this->dernier_mois_cle;
+
+        if ($moisCle < $startCle || ($dernierMoisCle && $moisCle >= $dernierMoisCle)) {
+            if ($dernierMoisCle && $moisCle === $dernierMoisCle) {
+                return "Ce mois est déjà inclus dans les frais d'inscription.";
+            }
+            return "Ce mois ne fait pas partie de l'année scolaire en cours — impossible de le payer.";
+        }
+
+        $dejaPaye = $this->payments()->where('type', 'mensualite')->where('mois', $moisCle)->exists();
+        if ($dejaPaye) {
+            return "Ce mois a déjà été payé — impossible de payer deux fois le même mois.";
+        }
+
+        return null;
+    }
+
     public static function generateMatricule(): string
     {
         $year  = date('Y');
         $count = self::withTrashed()->whereYear('created_at', $year)->count() + 1;
         return 'ISI-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+
+    /** Champs "nom de personne / lieu" — normalisés en Title Case à chaque sauvegarde,
+     *  quelle que soit la casse saisie par le candidat (tout minuscule, tout majuscule...). */
+    private const CHAMPS_A_CAPITALISER = [
+        'nom', 'prenom', 'lieu_naissance', 'adresse', 'dernier_etablissement',
+        'tuteur_nom', 'tuteur2_nom', 'contact_urgence1', 'contact_urgence2', 'medecin_famille',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Student $student) {
+            foreach (self::CHAMPS_A_CAPITALISER as $champ) {
+                if (!empty($student->{$champ}) && is_string($student->{$champ})) {
+                    $student->{$champ} = self::capitaliserNomPropre($student->{$champ});
+                }
+            }
+        });
+    }
+
+    /** Majuscule en début de mot (et après espace / tiret / apostrophe, pour "N'Diaye",
+     *  "El-Hadji", etc.), reste en minuscule — indépendant de la casse saisie par l'utilisateur. */
+    public static function capitaliserNomPropre(string $valeur): string
+    {
+        $valeur = mb_strtolower(trim($valeur), 'UTF-8');
+        return preg_replace_callback(
+            "/(^|[\s\-'])(\p{L})/u",
+            fn ($m) => $m[1] . mb_strtoupper($m[2], 'UTF-8'),
+            $valeur
+        );
     }
 }

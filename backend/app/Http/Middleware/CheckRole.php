@@ -9,7 +9,18 @@ class CheckRole
 {
     public function handle(Request $request, Closure $next, string ...$roles): mixed
     {
-        if (!$request->user() || !in_array($request->user()->role, $roles)) {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Accès non autorisé'], 403);
+        }
+
+        // Le super admin a un accès total à toutes les routes protégées par rôle,
+        // quel que soit le rôle listé sur la route (contrôle total demandé).
+        if ($user->role === 'super_admin') {
+            return $next($request);
+        }
+
+        if (!in_array($user->role, $roles)) {
             return response()->json(['message' => 'Accès non autorisé'], 403);
         }
 

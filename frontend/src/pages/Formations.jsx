@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Cpu, Network, Brain, Shield, Code2, GitBranch, GraduationCap,
+  Network, Code2, GitBranch, Calculator, Globe, Megaphone, GraduationCap,
   CheckCircle2, Award, ArrowRight, ArrowLeft, ChevronRight,
   Moon, Sun, X, Lock, Star, BookOpen, Zap, Clock, Users,
   Database, Server, ExternalLink, MapPin, Play,
@@ -19,121 +19,121 @@ const CM = {
   amber:   { g:'from-amber-700 to-orange-600',  ov:'from-amber-950/97 to-orange-900/97', t:'text-amber-300',  b:'bg-amber-500/20 border-amber-400/30', ring:'ring-amber-500/50', glow:'shadow-amber-500/20' },
 }
 
-// ─── Static data ──────────────────────────────────────────────────────────────
+// ─── Static data (filières & tarifs réels ISI SUPTECH) ─────────────────────────
 const FORMATIONS = [
   {
-    id:1, code:'INFO', color:'blue', icon:Cpu,
-    nom:'Informatique & Systèmes d\'Information',
-    desc:'Maîtrisez les systèmes d\'information, les bases de données, la programmation orientée objet et l\'architecture logicielle moderne.',
-    skills:['Python','Java','SQL','Merise','UML','OS Linux'],
-    duree:'2 à 3 ans', certifs:['Oracle Certified','Microsoft MTA'],
-    formateur:'M. Kara — Directeur & Expert BDD',
-    frais:'150 000 FCFA / an',
-    curriculum:[
-      'Algorithmique & Programmation Python/Java',
-      'Bases de données relationnelles (SQL, Oracle)',
-      'Modélisation UML & Merise',
-      'Architecture des systèmes d\'information',
-      'Développement d\'applications métier',
-      'Gestion de projets informatiques',
-    ],
-    img:'/Etudiant_gestion.jpeg',
-    meta:'Fondamentaux IT · Très demandé',
-  },
-  {
-    id:2, code:'RT', color:'cyan', icon:Network,
-    nom:'Réseaux & Télécommunications',
-    desc:'Infrastructure réseau, protocoles TCP/IP, sécurité des communications, cloud computing et solutions de télécommunications 5G.',
-    skills:['Cisco CCNA','VLAN','TCP/IP','WiFi','5G','AWS Cloud'],
-    duree:'2 à 3 ans', certifs:['Cisco CCNA','Huawei HCIA','AWS Cloud'],
+    id:1, code:'INF-RI', color:'cyan', icon:Network,
+    nom:'Réseaux Informatiques',
+    desc:'Infrastructure réseau, protocoles TCP/IP, administration Cisco et déploiement de solutions réseau d\'entreprise.',
+    skills:['Cisco CCNA','TCP/IP','VLAN','WiFi','Administration réseau','Cloud'],
+    duree:'DTS-BTS-Licence 2 ans · Licence Pro 10 mois', certifs:['Cisco CCNA','Huawei HCIA'],
     formateur:'M. Cissé — Coach Cisco Certifié',
-    frais:'150 000 FCFA / an',
+    frais:'220 000 FCFA inscription + 70 000 FCFA/mois (DTS-BTS-Licence)',
     curriculum:[
       'Fondamentaux des réseaux TCP/IP',
       'Routage & Commutation Cisco (CCNA)',
-      'Infrastructure WiFi & Technologies 5G',
-      'VLANs, QoS & Architecture réseau',
-      'Cloud Networking (AWS, Azure)',
-      'Sécurité & Supervision réseau',
+      'Administration systèmes & serveurs',
+      'Infrastructure WiFi & VLAN',
+      'Sécurité & supervision réseau',
+      'Cloud Networking',
     ],
     img:'/caroursel_isi_suptech_soutenace.jpg',
-    meta:'Cisco Academy · Certification officielle',
+    meta:'DTS-BTS-Licence · Licence Pro (présentiel & en ligne)',
   },
   {
-    id:3, code:'IA', color:'violet', icon:Brain,
-    nom:'Intelligence Artificielle',
-    desc:'Machine learning, deep learning, traitement du langage naturel et vision par ordinateur. Préparez-vous aux métiers de demain.',
-    skills:['Python','TensorFlow','NLP','Keras','Scikit-learn','OpenCV'],
-    duree:'2 à 3 ans', certifs:['AWS ML Specialty','Google AI Certificate'],
-    formateur:'M. Kara — Expert Data Science',
-    frais:'175 000 FCFA / an',
+    id:2, code:'INF-GL', color:'amber', icon:GitBranch,
+    nom:'Génie Logiciel',
+    desc:'Programmation orientée objet, méthodes Agile, DevOps et architecture logicielle — du DTS au Master Professionnel.',
+    skills:['Java','Python','Git','Agile/Scrum','Docker','CI/CD'],
+    duree:'DTS-BTS-Licence 2 ans · Licence Pro & Master Pro 10 mois', certifs:['Scrum Master','Docker Certified'],
+    formateur:'M. Robert — Architecte Logiciel',
+    frais:'220 000 FCFA inscription + 70 000 FCFA/mois (DTS-BTS-Licence)',
     curriculum:[
-      'Mathématiques pour l\'IA (algèbre, stats)',
-      'Machine Learning classique (Scikit-learn)',
-      'Deep Learning & Réseaux de neurones (TF/Keras)',
-      'NLP & Traitement automatique du texte',
-      'Computer Vision & Détection d\'objets',
-      'Projets IA réels & Déploiement cloud',
+      'Algorithmique & programmation orientée objet',
+      'Bases de données relationnelles',
+      'Méthodes Agile & Scrum',
+      'Git, CI/CD & intégration continue',
+      'Architecture logicielle & microservices',
+      'Projet logiciel de fin de cycle',
     ],
     img:'/etudant_farda.jpeg',
-    meta:'Filière du futur · Très haute valeur',
+    meta:'DTS · Licence Pro · Master Pro (présentiel & en ligne)',
   },
   {
-    id:4, code:'CYBER', color:'red', icon:Shield,
-    nom:'Cybersécurité',
-    desc:'Sécurité offensive & défensive, tests de pénétration, forensique numérique, OSINT et gestion des risques cyber.',
-    skills:['Pentest','Kali Linux','CTF','Forensics','SIEM','OSINT'],
-    duree:'2 à 3 ans', certifs:['CEH','CompTIA Security+','OSCP'],
-    formateur:'M. Junior — Pentester & Expert Cyber',
-    frais:'180 000 FCFA / an',
+    id:3, code:'INF-WEB', color:'emerald', icon:Code2,
+    nom:'Web Master',
+    desc:'Conception de sites et applications web modernes, du design à la mise en production.',
+    skills:['HTML/CSS','JavaScript','PHP','React','Bases de données','SEO'],
+    duree:'DTS-BTS-Licence · 2 ans', certifs:['Meta Front-End'],
+    formateur:'M. Robert — Dev Full-Stack',
+    frais:'220 000 FCFA inscription + 70 000 FCFA/mois',
     curriculum:[
-      'Fondamentaux de la cybersécurité',
-      'Tests de pénétration (Kali, Metasploit)',
-      'Analyse forensique numérique',
-      'OSINT & Threat Intelligence',
-      'Gestion des incidents (SIEM)',
-      'Audit de sécurité & Conformité RGPD',
+      'HTML/CSS & JavaScript moderne',
+      'Développement front-end (React)',
+      'Développement back-end & bases de données',
+      'Intégration & responsive design',
+      'Hébergement, déploiement & SEO',
+      'Projet web professionnel',
     ],
     img:'/Etudiant_gestion.jpeg',
-    meta:'Filière en forte demande · Certifs reconnues',
+    meta:'DTS-BTS-Licence',
   },
   {
-    id:5, code:'DWM', color:'emerald', icon:Code2,
-    nom:'Développement Web & Mobile',
-    desc:'Applications web modernes, mobile natif & cross-platform avec React, Laravel, Flutter. Design UX/UI et APIs REST avancées.',
-    skills:['React','Laravel','Flutter','Node.js','TypeScript','REST API'],
-    duree:'2 à 3 ans', certifs:['Meta Front-End','AWS Developer','Flutter Dev'],
-    formateur:'M. Robert — Dev Full-Stack Senior',
-    frais:'165 000 FCFA / an',
+    id:4, code:'GES-CF', color:'violet', icon:Calculator,
+    nom:'Comptabilité Finance',
+    desc:'Comptabilité générale, gestion financière, fiscalité et analyse financière d\'entreprise.',
+    skills:['Comptabilité générale','Fiscalité','Excel avancé','Sage','Analyse financière','Audit'],
+    duree:'DTS 2 ans · Licence Pro & Master Pro 10 mois', certifs:['Sage Certified'],
+    formateur:'Équipe pédagogique Gestion',
+    frais:'220 000 FCFA inscription + 70 000 FCFA/mois (DTS)',
     curriculum:[
-      'HTML/CSS/JavaScript ES6+ & TypeScript',
-      'React.js & Vue.js (SPA modernes)',
-      'Laravel & Node.js (Backend & APIs REST)',
-      'Flutter (Mobile iOS & Android)',
-      'Bases de données & Intégration API',
-      'DevOps & Déploiement Cloud (CI/CD)',
+      'Comptabilité générale & analytique',
+      'Fiscalité d\'entreprise',
+      'Gestion financière & trésorerie',
+      'Logiciels comptables (Sage)',
+      'Analyse financière & audit',
+      'Projet de fin d\'études en gestion',
+    ],
+    img:'/Etudiant_gestion.jpeg',
+    meta:'DTS · Licence Pro · Master Pro (présentiel & en ligne)',
+  },
+  {
+    id:5, code:'GES-CI', color:'red', icon:Globe,
+    nom:'Commerce International',
+    desc:'Techniques du commerce international, logistique import-export et négociation commerciale.',
+    skills:['Import-Export','Douane','Négociation','Logistique','Anglais des affaires','Incoterms'],
+    duree:'DTS 2 ans · Licence Pro 10 mois', certifs:['Incoterms Certified'],
+    formateur:'Équipe pédagogique Gestion',
+    frais:'220 000 FCFA inscription + 70 000 FCFA/mois (DTS)',
+    curriculum:[
+      'Techniques du commerce international',
+      'Douane & Incoterms',
+      'Logistique import-export',
+      'Négociation commerciale',
+      'Anglais des affaires',
+      'Projet de fin d\'études',
     ],
     img:'/caroursel_isi_suptech_soutenace.jpg',
-    meta:'Le + polyvalent · Débouchés immédiats',
+    meta:'DTS · Licence Pro',
   },
   {
-    id:6, code:'GL', color:'amber', icon:GitBranch,
-    nom:'Génie Logiciel',
-    desc:'Méthodes Agile & Scrum, DevOps, architecture microservices, containerisation Docker/K8s et assurance qualité logicielle avancée.',
-    skills:['Agile/Scrum','Docker','Kubernetes','CI/CD','Git','TDD'],
-    duree:'2 à 3 ans', certifs:['Scrum Master','AWS DevOps','Docker Certified'],
-    formateur:'M. Robert — Architecte Logiciel',
-    frais:'165 000 FCFA / an',
+    id:6, code:'GES-MD', color:'blue', icon:Megaphone,
+    nom:'Marketing Digital',
+    desc:'Stratégies marketing digital, réseaux sociaux, communication de marque et growth.',
+    skills:['SEO/SEA','Réseaux sociaux','Content Marketing','Google Ads','Analytics','Branding'],
+    duree:'DTS 2 ans · Licence Pro 10 mois', certifs:['Google Ads Certified'],
+    formateur:'Équipe pédagogique Gestion',
+    frais:'220 000 FCFA inscription + 70 000 FCFA/mois (DTS)',
     curriculum:[
-      'Génie logiciel & Patterns de conception',
-      'Méthodes Agile, Scrum & Kanban',
-      'Git avancé & GitFlow',
-      'Docker, Kubernetes & Containerisation',
-      'CI/CD avec GitHub Actions & Jenkins',
-      'Tests automatisés (TDD, BDD) & Qualité',
+      'Fondamentaux du marketing digital',
+      'SEO & référencement payant (SEA)',
+      'Réseaux sociaux & content marketing',
+      'Google Ads & Analytics',
+      'Branding & communication de marque',
+      'Projet de fin d\'études',
     ],
     img:'/etudant_farda.jpeg',
-    meta:'DevOps & Qualité · Architecture moderne',
+    meta:'DTS · Licence Pro',
   },
 ]
 
@@ -288,7 +288,7 @@ function FormationCard({ f, onOpen }) {
 
           {/* Buttons */}
           <div className="flex gap-2">
-            <Link to="/pre-inscription" onClick={e=>e.stopPropagation()}
+            <Link to={`/pre-inscription?filiere=${encodeURIComponent(f.code)}`} onClick={e=>e.stopPropagation()}
               className="flex-1 bg-white text-slate-900 font-black text-sm py-3 rounded-xl text-center hover:bg-brand-50 transition-colors shadow-xl">
               S'inscrire <ArrowRight size={14} className="inline ml-1"/>
             </Link>
@@ -377,7 +377,7 @@ function DetailModal({ f, onClose, isDark }) {
                   <div><p className={`text-xs font-black uppercase tracking-widest ${isDark?'text-white/30':'text-slate-400'}`}>Frais annuels</p><p className={`text-xl font-black ${isDark?c.t:'text-brand-700'}`}>{f.frais}</p></div>
                   <div><p className={`text-xs font-black uppercase tracking-widest ${isDark?'text-white/30':'text-slate-400'}`}>Durée</p><p className={`text-base font-black ${isDark?'text-white':'text-slate-800'}`}>{f.duree}</p></div>
                 </div>
-                <Link to="/pre-inscription" onClick={onClose} className="btn-primary w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-base shadow-lg shadow-brand-500/30">
+                <Link to={`/pre-inscription?filiere=${encodeURIComponent(f.code)}`} onClick={onClose} className="btn-primary w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-base shadow-lg shadow-brand-500/30">
                   <GraduationCap size={18}/> S'inscrire dans cette filière <ArrowRight size={16}/>
                 </Link>
               </div>
@@ -395,11 +395,13 @@ function DetailModal({ f, onClose, isDark }) {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Formations() {
-  const [isDark, setDark] = useState(() => localStorage.getItem('isi_theme') === 'dark')
+  const [isDark, setDark] = useState(() => localStorage.getItem('isi_theme_v2') === 'dark')
   const [selected, setSelected] = useState(null)
   const [filter, setFilter] = useState('all')
+  const [siteStats, setSiteStats] = useState({ stat_etudiants: '2500', stat_insertion: '95' })
 
-  useEffect(() => { localStorage.setItem('isi_theme', isDark ? 'dark' : 'light') }, [isDark])
+  useEffect(() => { localStorage.setItem('isi_theme_v2', isDark ? 'dark' : 'light') }, [isDark])
+  useEffect(() => { fetch('/api/settings/stats').then(r=>r.json()).then(setSiteStats).catch(()=>{}) }, [])
 
   const D = isDark
   const tx  = D ? 'text-white'    : 'text-slate-900'
@@ -408,13 +410,13 @@ export default function Formations() {
   const filtered = filter === 'all' ? FORMATIONS : FORMATIONS.filter(f => f.color === filter)
 
   const FILTERS = [
-    { key:'all',     label:'Toutes les filières', count:6 },
-    { key:'blue',    label:'Informatique',         count:1 },
-    { key:'cyan',    label:'Réseaux',              count:1 },
-    { key:'violet',  label:'Intelligence Artificielle', count:1 },
-    { key:'red',     label:'Cybersécurité',        count:1 },
-    { key:'emerald', label:'Développement',        count:1 },
-    { key:'amber',   label:'Génie Logiciel',       count:1 },
+    { key:'all',     label:'Toutes les filières',     count:6 },
+    { key:'cyan',    label:'Réseaux Informatiques',   count:1 },
+    { key:'amber',   label:'Génie Logiciel',          count:1 },
+    { key:'emerald', label:'Web Master',              count:1 },
+    { key:'violet',  label:'Comptabilité Finance',    count:1 },
+    { key:'red',     label:'Commerce International',  count:1 },
+    { key:'blue',    label:'Marketing Digital',       count:1 },
   ]
 
   return (
@@ -460,8 +462,8 @@ export default function Formations() {
             {[
               { Icon:BookOpen,    v:'6',    l:'Filières' },
               { Icon:Award,       v:'15+',  l:'Certifications' },
-              { Icon:Users,       v:'2500+',l:'Diplômés' },
-              { Icon:Star,        v:'95%',  l:'Insertion pro' },
+              { Icon:Users,       v:`${siteStats.stat_etudiants}+`,l:'Diplômés' },
+              { Icon:Star,        v:`${siteStats.stat_insertion}%`,  l:'Insertion pro' },
             ].map(({ Icon,v,l },i) => (
               <div key={i} className={`flex items-center gap-3 px-5 py-3 rounded-2xl border ${D?'bg-white/4 border-white/8':'bg-white border-slate-200 shadow-sm'}`}>
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center flex-shrink-0">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
 import { useDropzone } from 'react-dropzone'
@@ -87,44 +87,93 @@ const NATIONALITES = [
   'Vénézuélienne', 'Vietnamienne', 'Yéménite', 'Zambienne', 'Zimbabwéenne',
 ]
 
-const PAYS = [
-  'Afghanistan', 'Albanie', 'Algérie', 'Allemagne', 'Andorre', 'Angola',
-  'Antigua-et-Barbuda', 'Arabie Saoudite', 'Argentine', 'Arménie', 'Australie',
-  'Autriche', 'Azerbaïdjan', 'Bahamas', 'Bahreïn', 'Bangladesh', 'Barbade',
-  'Bélarus', 'Belgique', 'Belize', 'Bénin', 'Bhoutan', 'Bolivie',
-  'Bosnie-Herzégovine', 'Botswana', 'Brésil', 'Brunéi', 'Bulgarie',
-  'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodge', 'Cameroun',
-  'Canada', 'Centrafrique', 'Chili', 'Chine', 'Chypre', 'Colombie',
-  'Comores', 'Congo (Brazzaville)', 'Congo (Kinshasa)', 'Corée du Nord',
-  'Corée du Sud', 'Costa Rica', 'Côte d\'Ivoire', 'Croatie', 'Cuba',
-  'Danemark', 'Djibouti', 'Dominique', 'Égypte', 'Émirats arabes unis',
-  'Équateur', 'Érythrée', 'Espagne', 'Estonie', 'Éthiopie',
-  'Fidji', 'Finlande', 'France', 'Gabon', 'Gambie', 'Géorgie',
-  'Ghana', 'Grèce', 'Grenade', 'Guatemala', 'Guinée', 'Guinée-Bissau',
-  'Guinée équatoriale', 'Guyana', 'Haïti', 'Honduras', 'Hongrie',
-  'Inde', 'Indonésie', 'Irak', 'Iran', 'Irlande', 'Islande',
-  'Israël', 'Italie', 'Jamaïque', 'Japon', 'Jordanie',
-  'Kazakhstan', 'Kenya', 'Kirghizistan', 'Kiribati', 'Kosovo',
-  'Koweït', 'Laos', 'Lesotho', 'Lettonie', 'Liban', 'Liberia',
-  'Libye', 'Liechtenstein', 'Lituanie', 'Luxembourg', 'Madagascar',
-  'Malaisie', 'Malawi', 'Maldives', 'Mali', 'Malte', 'Maroc',
-  'Mauritanie', 'Maurice', 'Mexique', 'Moldavie', 'Monaco',
-  'Mongolie', 'Monténégro', 'Mozambique', 'Namibie', 'Népal',
-  'Nicaragua', 'Niger', 'Nigeria', 'Norvège', 'Nouvelle-Zélande',
-  'Oman', 'Ouganda', 'Ouzbékistan', 'Pakistan', 'Palestine',
-  'Panama', 'Papouasie-Nouvelle-Guinée', 'Paraguay', 'Pays-Bas',
-  'Pérou', 'Philippines', 'Pologne', 'Portugal', 'Qatar',
-  'République dominicaine', 'République tchèque', 'Roumanie',
-  'Royaume-Uni', 'Russie', 'Rwanda', 'Saint-Kitts-et-Nevis',
-  'Saint-Lucia', 'Salvador', 'Samoa', 'São Tomé-et-Príncipe',
-  'Sénégal', 'Serbie', 'Seychelles', 'Sierra Leone', 'Singapour',
-  'Slovaquie', 'Slovénie', 'Somalie', 'Soudan', 'Soudan du Sud',
-  'Sri Lanka', 'Suède', 'Suisse', 'Suriname', 'Syrie',
-  'Tadjikistan', 'Tanzanie', 'Tchad', 'Thaïlande', 'Timor-Leste',
-  'Togo', 'Tonga', 'Trinité-et-Tobago', 'Tunisie', 'Turkménistan',
-  'Turquie', 'Ukraine', 'Uruguay', 'Vanuatu', 'Venezuela',
-  'Viêt Nam', 'Yémen', 'Zambie', 'Zimbabwe',
+// Les 54 pays d'Afrique, chacun avec ses principales villes (chef-lieu inclus).
+// La ville "Autre (préciser)…" est ajoutée automatiquement à l'affichage.
+const VILLES_PAR_PAYS = {
+  'Afrique du Sud': ['Pretoria', 'Le Cap', 'Johannesburg', 'Durban', 'Port Elizabeth'],
+  'Algérie': ['Alger', 'Oran', 'Constantine', 'Annaba', 'Blida'],
+  'Angola': ['Luanda', 'Huambo', 'Lobito', 'Benguela', 'Lubango'],
+  'Bénin': ['Porto-Novo', 'Cotonou', 'Parakou', 'Djougou', 'Abomey-Calavi'],
+  'Botswana': ['Gaborone', 'Francistown', 'Molepolole', 'Maun', 'Serowe'],
+  'Burkina Faso': ['Ouagadougou', 'Bobo-Dioulasso', 'Koudougou', 'Banfora', 'Ouahigouya'],
+  'Burundi': ['Gitega', 'Bujumbura', 'Ngozi', 'Ruyigi', 'Muyinga'],
+  'Cabo Verde': ['Praia', 'Mindelo', 'Santa Maria', 'Assomada', 'Espargos'],
+  'Cameroun': ['Yaoundé', 'Douala', 'Garoua', 'Bamenda', 'Bafoussam'],
+  'Centrafrique': ['Bangui', 'Bimbo', 'Berbérati', 'Carnot', 'Bambari'],
+  'Comores': ['Moroni', 'Mutsamudu', 'Fomboni', 'Domoni', 'Tsimbeo'],
+  'Congo (Brazzaville)': ['Brazzaville', 'Pointe-Noire', 'Dolisie', 'Nkayi', 'Ouesso'],
+  'Congo (Kinshasa)': ['Kinshasa', 'Lubumbashi', 'Mbuji-Mayi', 'Kisangani', 'Goma'],
+  'Côte d\'Ivoire': ['Abidjan', 'Yamoussoukro', 'Bouaké', 'Daloa', 'San-Pédro'],
+  'Djibouti': ['Djibouti-ville', 'Ali Sabieh', 'Tadjourah', 'Obock', 'Dikhil'],
+  'Égypte': ['Le Caire', 'Alexandrie', 'Gizeh', 'Louxor', 'Assouan'],
+  'Érythrée': ['Asmara', 'Massaoua', 'Keren', 'Mendefera', 'Assab'],
+  'Eswatini': ['Mbabane', 'Manzini', 'Lobamba', 'Siteki', 'Nhlangano'],
+  'Éthiopie': ['Addis-Abeba', 'Dire Dawa', 'Mekele', 'Gondar', 'Bahir Dar'],
+  'Gabon': ['Libreville', 'Port-Gentil', 'Franceville', 'Oyem', 'Lambaréné'],
+  'Gambie': ['Banjul', 'Serrekunda', 'Brikama', 'Bakau', 'Farafenni'],
+  'Ghana': ['Accra', 'Kumasi', 'Tamale', 'Sekondi-Takoradi', 'Cape Coast'],
+  'Guinée': ['Conakry', 'Kankan', 'Nzérékoré', 'Kindia', 'Labé'],
+  'Guinée-Bissau': ['Bissau', 'Bafatá', 'Gabú', 'Bissorã', 'Canchungo'],
+  'Guinée équatoriale': ['Malabo', 'Bata', 'Ebebiyín', 'Aconibe', 'Añisoc'],
+  'Kenya': ['Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret'],
+  'Lesotho': ['Maseru', 'Teyateyaneng', 'Mafeteng', 'Hlotse', 'Maputsoe'],
+  'Liberia': ['Monrovia', 'Gbarnga', 'Kakata', 'Buchanan', 'Zwedru'],
+  'Libye': ['Tripoli', 'Benghazi', 'Misrata', 'Zaouïa', 'Syrte'],
+  'Madagascar': ['Antananarivo', 'Toamasina', 'Antsirabe', 'Fianarantsoa', 'Mahajanga'],
+  'Malawi': ['Lilongwe', 'Blantyre', 'Mzuzu', 'Zomba', 'Kasungu'],
+  'Mali': ['Bamako', 'Sikasso', 'Mopti', 'Koutiala', 'Kayes'],
+  'Maroc': ['Rabat', 'Casablanca', 'Marrakech', 'Fès', 'Tanger'],
+  'Maurice': ['Port-Louis', 'Beau-Bassin-Rose-Hill', 'Vacoas-Phoenix', 'Curepipe', 'Quatre-Bornes'],
+  'Mauritanie': ['Nouakchott', 'Nouadhibou', 'Kaédi', 'Rosso', 'Kiffa'],
+  'Mozambique': ['Maputo', 'Matola', 'Beira', 'Nampula', 'Chimoio'],
+  'Namibie': ['Windhoek', 'Walvis Bay', 'Swakopmund', 'Rundu', 'Oshakati'],
+  'Niger': ['Niamey', 'Zinder', 'Maradi', 'Agadez', 'Tahoua'],
+  'Nigeria': ['Abuja', 'Lagos', 'Kano', 'Ibadan', 'Port Harcourt'],
+  'Ouganda': ['Kampala', 'Gulu', 'Lira', 'Mbarara', 'Jinja'],
+  'Rwanda': ['Kigali', 'Butare', 'Gitarama', 'Ruhengeri', 'Gisenyi'],
+  'São Tomé-et-Príncipe': ['São Tomé', 'Santo António', 'Neves', 'Trindade', 'Santana'],
+  'Sénégal': VILLES_SENEGAL,
+  'Seychelles': ['Victoria', 'Anse Boileau', 'Beau Vallon', 'Takamaka', 'Anse Royale'],
+  'Sierra Leone': ['Freetown', 'Bo', 'Kenema', 'Makeni', 'Koidu'],
+  'Somalie': ['Mogadiscio', 'Hargeisa', 'Kismayo', 'Baidoa', 'Berbera'],
+  'Soudan': ['Khartoum', 'Omdurman', 'Port-Soudan', 'Kassala', 'Nyala'],
+  'Soudan du Sud': ['Djouba', 'Wau', 'Malakal', 'Yei', 'Bor'],
+  'Tanzanie': ['Dodoma', 'Dar es Salaam', 'Mwanza', 'Arusha', 'Zanzibar'],
+  'Tchad': ['N\'Djamena', 'Moundou', 'Sarh', 'Abéché', 'Kelo'],
+  'Togo': ['Lomé', 'Sokodé', 'Kara', 'Kpalimé', 'Atakpamé'],
+  'Tunisie': ['Tunis', 'Sfax', 'Sousse', 'Kairouan', 'Bizerte'],
+  'Zambie': ['Lusaka', 'Kitwe', 'Ndola', 'Kabwe', 'Chingola'],
+  'Zimbabwe': ['Harare', 'Bulawayo', 'Chitungwiza', 'Mutare', 'Gweru'],
+}
+
+const PAYS_AFRIQUE = Object.keys(VILLES_PAR_PAYS).sort((a, b) => a.localeCompare(b, 'fr'))
+
+const PAYS_HORS_AFRIQUE = [
+  'Afghanistan', 'Albanie', 'Allemagne', 'Andorre', 'Antigua-et-Barbuda',
+  'Arabie Saoudite', 'Argentine', 'Arménie', 'Australie', 'Autriche',
+  'Azerbaïdjan', 'Bahamas', 'Bahreïn', 'Bangladesh', 'Barbade', 'Bélarus',
+  'Belgique', 'Belize', 'Bhoutan', 'Bolivie', 'Bosnie-Herzégovine', 'Brésil',
+  'Brunéi', 'Bulgarie', 'Cambodge', 'Canada', 'Chili', 'Chine', 'Chypre',
+  'Colombie', 'Corée du Nord', 'Corée du Sud', 'Costa Rica', 'Croatie', 'Cuba',
+  'Danemark', 'Dominique', 'Émirats arabes unis', 'Équateur', 'Espagne',
+  'Estonie', 'Fidji', 'Finlande', 'France', 'Géorgie', 'Grèce', 'Grenade',
+  'Guatemala', 'Guyana', 'Haïti', 'Honduras', 'Hongrie', 'Inde', 'Indonésie',
+  'Irak', 'Iran', 'Irlande', 'Islande', 'Israël', 'Italie', 'Jamaïque',
+  'Japon', 'Jordanie', 'Kazakhstan', 'Kirghizistan', 'Kiribati', 'Kosovo',
+  'Koweït', 'Laos', 'Lettonie', 'Liban', 'Liechtenstein', 'Lituanie',
+  'Luxembourg', 'Malaisie', 'Maldives', 'Malte', 'Mexique', 'Moldavie',
+  'Monaco', 'Mongolie', 'Monténégro', 'Népal', 'Nicaragua', 'Norvège',
+  'Nouvelle-Zélande', 'Oman', 'Ouzbékistan', 'Pakistan', 'Palestine', 'Panama',
+  'Papouasie-Nouvelle-Guinée', 'Paraguay', 'Pays-Bas', 'Pérou', 'Philippines',
+  'Pologne', 'Portugal', 'Qatar', 'République dominicaine', 'République tchèque',
+  'Roumanie', 'Royaume-Uni', 'Russie', 'Saint-Kitts-et-Nevis', 'Saint-Lucia',
+  'Salvador', 'Samoa', 'Serbie', 'Singapour', 'Slovaquie', 'Slovénie',
+  'Sri Lanka', 'Suède', 'Suisse', 'Suriname', 'Syrie', 'Tadjikistan',
+  'Thaïlande', 'Timor-Leste', 'Tonga', 'Trinité-et-Tobago', 'Turkménistan',
+  'Turquie', 'Ukraine', 'Uruguay', 'Vanuatu', 'Venezuela', 'Viêt Nam', 'Yémen',
 ]
+
+const VILLE_AUTRE = '__AUTRE__'
 
 // ─── Step indicator ───────────────────────────────────────────────────────────
 function StepIndicator({ current, total, isDark }) {
@@ -139,7 +188,7 @@ function StepIndicator({ current, total, isDark }) {
               i < current
                 ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
                 : i === current
-                  ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/40'
+                  ? 'bg-isiblue-500 text-white shadow-lg shadow-isiblue-500/40'
                   : D ? 'bg-white/10 text-white/40' : 'bg-slate-100 text-slate-400'
             }`}>
             {i < current ? <CheckCircle size={17} /> : i + 1}
@@ -167,18 +216,18 @@ function PhotoDropzone({ onFile, preview, isDark }) {
   return (
     <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all duration-300 ${
       isDragActive
-        ? 'border-brand-400 bg-brand-500/10'
-        : D ? 'border-white/20 hover:border-brand-400/50 hover:bg-white/5' : 'border-slate-200 hover:border-brand-300 hover:bg-brand-50/40'
+        ? 'border-isiblue-400 bg-isiblue-500/10'
+        : D ? 'border-white/20 hover:border-isiblue-400/50 hover:bg-white/5' : 'border-slate-200 hover:border-isiblue-300 hover:bg-isiblue-50/40'
     }`}>
       <input {...getInputProps()} />
       {preview ? (
         <div className="flex flex-col items-center gap-2">
-          <img src={preview} alt="Photo" className="w-20 h-20 rounded-full object-cover border-2 border-brand-500 shadow-lg" />
-          <p className={`text-xs font-medium ${D ? 'text-brand-400' : 'text-brand-600'}`}>Cliquer pour changer</p>
+          <img src={preview} alt="Photo" className="w-20 h-20 rounded-full object-cover border-2 border-isiblue-500 shadow-lg" />
+          <p className={`text-xs font-medium ${D ? 'text-isiblue-400' : 'text-isiblue-600'}`}>Cliquer pour changer</p>
         </div>
       ) : (
         <div className={`flex flex-col items-center gap-2 ${D ? 'text-white/40' : 'text-slate-400'}`}>
-          <User size={28} className={D ? 'text-brand-400/60' : 'text-brand-300'} />
+          <User size={28} className={D ? 'text-isiblue-400/60' : 'text-isiblue-300'} />
           <div>
             <p className={`text-sm font-medium ${D ? 'text-white/60' : 'text-slate-500'}`}>Photo de profil (optionnelle)</p>
             <p className="text-xs mt-0.5">JPG, PNG — max 2 Mo</p>
@@ -223,10 +272,10 @@ function DocDropzone({ label, hint, file, onFile, isDark, required = true }) {
         file
           ? D ? 'border-green-500/50 bg-green-500/8' : 'border-green-400 bg-green-50'
           : isDragActive
-            ? 'border-brand-400 bg-brand-500/10'
+            ? 'border-isiblue-400 bg-isiblue-500/10'
             : err
               ? D ? 'border-red-500/50 bg-red-500/8' : 'border-red-300 bg-red-50'
-              : D ? 'border-white/15 hover:border-brand-400/50 hover:bg-white/4' : 'border-slate-200 hover:border-brand-300 hover:bg-blue-50/30'
+              : D ? 'border-white/15 hover:border-isiblue-400/50 hover:bg-white/4' : 'border-slate-200 hover:border-isiblue-300 hover:bg-blue-50/30'
       }`}>
         <input {...getInputProps()} />
         {file ? (
@@ -244,7 +293,7 @@ function DocDropzone({ label, hint, file, onFile, isDark, required = true }) {
           </div>
         ) : (
           <div className={`flex flex-col items-center gap-1.5 ${D ? 'text-white/35' : 'text-slate-400'}`}>
-            <Upload size={20} className={D ? 'text-brand-400/60' : 'text-brand-300'} />
+            <Upload size={20} className={D ? 'text-isiblue-400/60' : 'text-isiblue-300'} />
             <p className={`text-xs ${D ? 'text-white/45' : 'text-slate-500'}`}>
               {isDragActive ? 'Déposez le fichier ici' : 'Glisser-déposer ou cliquer'}
             </p>
@@ -258,24 +307,96 @@ function DocDropzone({ label, hint, file, onFile, isDark, required = true }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+// Fallback local si l'API /filieres est injoignable — doit rester synchronisé avec
+// backend/database/seeders/DatabaseSeeder.php (catalogue réel ISI SUPTECH).
 const DEMO_FILIERES = [
-  { id: 1, nom: 'Informatique & Systèmes', code: 'INFO', licenses: [{ id: 1, nom: 'Licence 1', frais_inscription: 150000 }, { id: 2, nom: 'Licence 2', frais_inscription: 150000 }, { id: 3, nom: 'Licence 3', frais_inscription: 150000 }] },
-  { id: 2, nom: 'Réseaux & Télécommunications', code: 'RT', licenses: [{ id: 4, nom: 'Licence 1', frais_inscription: 150000 }] },
-  { id: 3, nom: 'Intelligence Artificielle', code: 'IA', licenses: [{ id: 5, nom: 'Master 1', frais_inscription: 200000 }] },
+  // ── Département Informatique ──────────────────────────────────────────────
+  { id: 1, nom: 'Informatique', code: 'INF-GEN', licenses: [
+    { id: 101, nom: 'Brevet de Technicien (BT)', frais_inscription: 220000 },
+  ]},
+  { id: 2, nom: 'Informatique de Gestion', code: 'INF-IG', licenses: [
+    { id: 102, nom: 'DTS - BTS - Licence', frais_inscription: 220000 },
+  ]},
+  { id: 3, nom: 'Infographie', code: 'INF-INFO', licenses: [
+    { id: 103, nom: 'DTS - BTS - Licence', frais_inscription: 220000 },
+  ]},
+  { id: 4, nom: 'Web Master', code: 'INF-WEB', licenses: [
+    { id: 104, nom: 'DTS - BTS - Licence', frais_inscription: 220000 },
+  ]},
+  { id: 5, nom: 'Réseaux Informatiques', code: 'INF-RI', licenses: [
+    { id: 105, nom: 'DTS - BTS - Licence', frais_inscription: 220000 },
+    { id: 106, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+    { id: 107, nom: 'Licence Professionnelle (en ligne)', frais_inscription: 250000 },
+  ]},
+  { id: 6, nom: 'Génie Logiciel', code: 'INF-GL', licenses: [
+    { id: 108, nom: 'DTS - BTS - Licence', frais_inscription: 220000 },
+    { id: 109, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+    { id: 110, nom: 'Master Professionnel', frais_inscription: 250000 },
+    { id: 111, nom: 'Licence Professionnelle (en ligne)', frais_inscription: 250000 },
+    { id: 112, nom: 'Master Professionnel (en ligne)', frais_inscription: 235000 },
+  ]},
+  { id: 7, nom: 'Infographie Multimédia', code: 'INF-IM', licenses: [
+    { id: 113, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 8, nom: 'Informatique Appliquée à la Gestion des Entreprises', code: 'INF-IAGE', licenses: [
+    { id: 114, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 9, nom: 'Réseaux Télécommunications', code: 'INF-RT', licenses: [
+    { id: 115, nom: 'Master Professionnel', frais_inscription: 250000 },
+  ]},
+  { id: 10, nom: 'Réseaux et Systèmes Informatiques', code: 'INF-RSI', licenses: [
+    { id: 116, nom: 'Master Professionnel (en ligne)', frais_inscription: 235000 },
+  ]},
+  // ── Département Gestion ───────────────────────────────────────────────────
+  { id: 11, nom: 'Comptabilité', code: 'GES-COMPTA', licenses: [
+    { id: 117, nom: 'Brevet de Technicien (BT)', frais_inscription: 220000 },
+  ]},
+  { id: 12, nom: 'Commerce International', code: 'GES-CI', licenses: [
+    { id: 118, nom: 'DTS', frais_inscription: 220000 },
+    { id: 119, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 13, nom: 'Secrétariat Bureautique', code: 'GES-SB', licenses: [
+    { id: 120, nom: 'DTS', frais_inscription: 220000 },
+  ]},
+  { id: 14, nom: 'Comptabilité Finance', code: 'GES-CF', licenses: [
+    { id: 121, nom: 'DTS', frais_inscription: 220000 },
+    { id: 122, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+    { id: 123, nom: 'Licence Professionnelle (en ligne)', frais_inscription: 250000 },
+  ]},
+  { id: 15, nom: 'Marketing Digital', code: 'GES-MD', licenses: [
+    { id: 124, nom: 'DTS', frais_inscription: 220000 },
+    { id: 125, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 16, nom: 'Transport Logistique', code: 'GES-TL', licenses: [
+    { id: 126, nom: 'DTS', frais_inscription: 220000 },
+    { id: 127, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 17, nom: 'Secrétariat Juridique', code: 'GES-SJ', licenses: [
+    { id: 128, nom: 'DTS', frais_inscription: 220000 },
+    { id: 129, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 18, nom: 'Assistanat de Direction', code: 'GES-AD', licenses: [
+    { id: 130, nom: 'Licence Professionnelle', frais_inscription: 210000 },
+  ]},
+  { id: 19, nom: 'Finance', code: 'GES-FIN', licenses: [
+    { id: 131, nom: 'Master Professionnel', frais_inscription: 250000 },
+    { id: 132, nom: 'Master Professionnel (en ligne)', frais_inscription: 235000 },
+  ]},
 ]
 
 export default function PreInscription() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // ── Theme ──────────────────────────────────────────────────────────────────
-  const [isDark, setIsDark] = useState(() => localStorage.getItem('isi_theme') !== 'light')
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('isi_theme_v2') === 'dark')
   useEffect(() => {
-    const id = setInterval(() => setIsDark(localStorage.getItem('isi_theme') !== 'light'), 300)
+    const id = setInterval(() => setIsDark(localStorage.getItem('isi_theme_v2') === 'dark'), 300)
     return () => clearInterval(id)
   }, [])
   const toggleTheme = () => {
     const next = isDark ? 'light' : 'dark'
-    localStorage.setItem('isi_theme', next)
+    localStorage.setItem('isi_theme_v2', next)
     setIsDark(!isDark)
   }
   const D = isDark
@@ -299,10 +420,25 @@ export default function PreInscription() {
 
   const { register, handleSubmit, watch, trigger, setValue, formState: { errors } } = useForm({ mode: 'onBlur' })
   const selectedFiliere = watch('filiere_id')
+  const selectedLicenseId = watch('license_id')
+  const selectedLicense = licenses.find(l => String(l.id) === String(selectedLicenseId))
+  const selectedPays = watch('pays_residence')
+  const [villeAutre, setVilleAutre] = useState(false)
+  const villesDisponibles = VILLES_PAR_PAYS[selectedPays] || []
 
   useEffect(() => {
     getFilieres().then(({ data }) => setFilieres(data)).catch(() => setFilieres(DEMO_FILIERES))
   }, [])
+
+  // Filière déjà choisie sur la page "Formations" (bouton "S'inscrire") : on l'amène
+  // automatiquement ici au lieu de la redemander — l'utilisateur peut toujours la
+  // changer, le champ reste un select normal.
+  useEffect(() => {
+    const code = searchParams.get('filiere')
+    if (!code || filieres.length === 0) return
+    const match = filieres.find(f => f.code === code)
+    if (match) setValue('filiere_id', match.id)
+  }, [searchParams, filieres, setValue])
 
   useEffect(() => {
     if (!selectedFiliere) { setLicenses([]); return }
@@ -311,30 +447,38 @@ export default function PreInscription() {
     setValue('license_id', '')
   }, [selectedFiliere, filieres, setValue])
 
+  // La ville dépend du pays choisi — on réinitialise si le pays change.
+  // Tant qu'aucun pays n'est choisi, on reste en mode liste (désactivée) plutôt
+  // que de basculer directement en texte libre.
+  useEffect(() => {
+    setValue('adresse', '')
+    setVilleAutre(!!selectedPays && villesDisponibles.length === 0)
+  }, [selectedPays]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Theme-aware classes ────────────────────────────────────────────────────
-  const pageBg  = D ? 'bg-[#06050f]' : 'bg-gradient-to-br from-slate-50 via-indigo-50/40 to-white'
+  const pageBg  = D ? 'bg-[#06050f]' : 'bg-gradient-to-br from-slate-50 via-isiblue-50/40 to-white'
   const cardCls = D
     ? 'bg-white/[0.04] border border-white/[0.09] backdrop-blur-xl rounded-3xl'
     : 'bg-white border border-slate-200 rounded-3xl shadow-2xl shadow-slate-200/60'
   const inp = D
-    ? 'w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-brand-400/60 focus:bg-white/8 focus:outline-none transition-all'
-    : 'w-full rounded-xl px-4 py-3 border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100 focus:outline-none transition-all shadow-sm'
+    ? 'w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-isiblue-400/60 focus:bg-white/8 focus:outline-none transition-all'
+    : 'w-full rounded-xl px-4 py-3 border border-slate-200 bg-white text-slate-900 placeholder-slate-400 focus:border-isiblue-400 focus:ring-2 focus:ring-isiblue-100 focus:outline-none transition-all shadow-sm'
   const lbl = D
-    ? 'block text-sm font-semibold mb-1.5 text-brand-300/90'
+    ? 'block text-sm font-semibold mb-1.5 text-isiblue-300/90'
     : 'block text-sm font-semibold mb-1.5 text-slate-700'
   const tx  = D ? 'text-white'    : 'text-slate-900'
   const txs = D ? 'text-white/55' : 'text-slate-500'
   const errCls = 'text-red-400 text-xs mt-1 flex items-center gap-1'
   const infoBox = D
-    ? 'bg-brand-500/10 border border-brand-500/20 text-brand-300 rounded-xl p-4 text-sm'
+    ? 'bg-isiblue-500/10 border border-isiblue-500/20 text-isiblue-300 rounded-xl p-4 text-sm'
     : 'bg-blue-50 border border-blue-200 text-blue-700 rounded-xl p-4 text-sm'
   const selectCls = inp + ' appearance-none'
 
   // ── Step validation ────────────────────────────────────────────────────────
   const stepFields = [
     ['nom', 'prenom', 'email', 'telephone', 'sexe'],
-    ['date_naissance', 'lieu_naissance', 'adresse', 'nationalite', 'pays_residence'],
-    ['filiere_id', 'license_id'],
+    ['date_naissance', 'lieu_naissance', 'adresse', 'nationalite', 'pays_residence', 'tuteur_nom', 'tuteur_telephone'],
+    ['filiere_id', 'license_id', 'niveau_entree', 'type_inscription'],
     [],
     ['mot_de_passe', 'mot_de_passe_confirmation'],
   ]
@@ -443,7 +587,7 @@ export default function PreInscription() {
 
             {/* Step title */}
             <h2 className={`text-lg font-bold mb-6 flex items-center gap-2.5 ${tx}`}>
-              <span className="w-7 h-7 rounded-full bg-brand-600 text-white text-xs flex items-center justify-center font-black shadow-sm shadow-brand-600/40">
+              <span className="w-7 h-7 rounded-full bg-isiblue-600 text-white text-xs flex items-center justify-center font-black shadow-sm shadow-isiblue-600/40">
                 {step + 1}
               </span>
               {STEPS[step]}
@@ -530,19 +674,6 @@ export default function PreInscription() {
                         </div>
                       </div>
 
-                      <div>
-                        <label className={lbl}>Ville / Commune de résidence *</label>
-                        <div className="relative">
-                          <MapPin size={15} className={`absolute left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none ${D ? 'text-white/30' : 'text-slate-400'}`} />
-                          <select className={selectCls + ' pl-9'}
-                            {...register('adresse', { required: 'Adresse requise' })}>
-                            <option value="">-- Choisir une ville --</option>
-                            {VILLES_SENEGAL.map(v => <option key={v} value={v}>{v}</option>)}
-                          </select>
-                        </div>
-                        {errors.adresse && <p className={errCls}><AlertCircle size={11} />{errors.adresse.message}</p>}
-                      </div>
-
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className={lbl}>Nationalité *</label>
@@ -561,9 +692,71 @@ export default function PreInscription() {
                           <select className={selectCls}
                             {...register('pays_residence', { required: 'Pays requis' })}>
                             <option value="">-- Sélectionner --</option>
-                            {PAYS.map(p => <option key={p} value={p}>{p}</option>)}
+                            <optgroup label="🌍 Afrique">
+                              {PAYS_AFRIQUE.map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
+                            <optgroup label="🌐 Reste du monde">
+                              {PAYS_HORS_AFRIQUE.map(p => <option key={p} value={p}>{p}</option>)}
+                            </optgroup>
                           </select>
                           {errors.pays_residence && <p className={errCls}><AlertCircle size={11} />{errors.pays_residence.message}</p>}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={lbl}>Ville / Commune de résidence *</label>
+                        {!villeAutre ? (
+                          <div className="relative">
+                            <MapPin size={15} className={`absolute left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none ${D ? 'text-white/30' : 'text-slate-400'}`} />
+                            <select className={selectCls + ' pl-9'}
+                              disabled={!selectedPays}
+                              {...register('adresse', { required: 'Ville requise' })}
+                              onChange={e => {
+                                if (e.target.value === VILLE_AUTRE) { setVilleAutre(true); setValue('adresse', '') }
+                              }}>
+                              <option value="">{selectedPays ? '-- Choisir une ville --' : '-- Choisir un pays d\'abord --'}</option>
+                              {villesDisponibles.map(v => <option key={v} value={v}>{v}</option>)}
+                              {selectedPays && <option value={VILLE_AUTRE}>Autre (préciser)…</option>}
+                            </select>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <div className="relative">
+                              <MapPin size={15} className={`absolute left-3.5 top-1/2 -translate-y-1/2 z-10 pointer-events-none ${D ? 'text-white/30' : 'text-slate-400'}`} />
+                              <input className={inp + ' pl-9'} placeholder="Précisez votre ville"
+                                {...register('adresse', { required: 'Ville requise' })} />
+                            </div>
+                            {villesDisponibles.length > 0 && (
+                              <button type="button"
+                                onClick={() => { setVilleAutre(false); setValue('adresse', '') }}
+                                className={`text-xs font-semibold ${D ? 'text-isiblue-400 hover:text-isiblue-300' : 'text-isiblue-600 hover:text-isiblue-700'}`}>
+                                ‹ Choisir dans la liste
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {errors.adresse && <p className={errCls}><AlertCircle size={11} />{errors.adresse.message}</p>}
+                      </div>
+
+                      <div className={`pt-4 mt-2 border-t ${D ? 'border-white/10' : 'border-slate-200'}`}>
+                        <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${D ? 'text-white/40' : 'text-slate-400'}`}>Tuteur / Parent responsable</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className={lbl}>Nom complet du tuteur *</label>
+                            <input className={inp} placeholder="Ex : Moussa Diop"
+                              {...register('tuteur_nom', { required: 'Nom du tuteur requis' })} />
+                            {errors.tuteur_nom && <p className={errCls}><AlertCircle size={11} />{errors.tuteur_nom.message}</p>}
+                          </div>
+                          <div>
+                            <label className={lbl}>Téléphone du tuteur *</label>
+                            <input className={inp} placeholder="77 123 45 67"
+                              {...register('tuteur_telephone', { required: 'Téléphone du tuteur requis' })} />
+                            {errors.tuteur_telephone && <p className={errCls}><AlertCircle size={11} />{errors.tuteur_telephone.message}</p>}
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <label className={lbl}>Profession du tuteur</label>
+                          <input className={inp} placeholder="Facultatif" {...register('tuteur_profession')} />
                         </div>
                       </div>
                     </div>
@@ -583,11 +776,11 @@ export default function PreInscription() {
                             <button key={String(val)} type="button" onClick={() => setEstTransfert(val)}
                               className={`p-4 rounded-2xl border-2 text-left transition-all ${
                                 estTransfert === val
-                                  ? 'border-brand-500 bg-brand-500/10'
-                                  : D ? 'border-white/10 hover:border-brand-500/40 bg-white/3' : 'border-slate-200 hover:border-brand-300 bg-white'
+                                  ? 'border-isiblue-500 bg-isiblue-500/10'
+                                  : D ? 'border-white/10 hover:border-isiblue-500/40 bg-white/3' : 'border-slate-200 hover:border-isiblue-300 bg-white'
                               }`}>
-                              <Icon size={20} className={estTransfert === val ? 'text-brand-400 mb-2' : D ? 'text-white/40 mb-2' : 'text-slate-400 mb-2'} />
-                              <p className={`text-sm font-bold ${estTransfert === val ? 'text-brand-400' : tx}`}>{title}</p>
+                              <Icon size={20} className={estTransfert === val ? 'text-isiblue-400 mb-2' : D ? 'text-white/40 mb-2' : 'text-slate-400 mb-2'} />
+                              <p className={`text-sm font-bold ${estTransfert === val ? 'text-isiblue-400' : tx}`}>{title}</p>
                               <p className={`text-xs mt-0.5 ${txs}`}>{sub}</p>
                             </button>
                           ))}
@@ -615,6 +808,39 @@ export default function PreInscription() {
                             ))}
                           </select>
                           {errors.license_id && <p className={errCls}><AlertCircle size={11} />{errors.license_id.message}</p>}
+                        </div>
+                      )}
+
+                      {selectedLicense && Number(selectedLicense.duree_annees) > 1 && (
+                        <div>
+                          <label className={lbl}>Année d'entrée *</label>
+                          <select className={selectCls} {...register('niveau_entree', { required: "Année d'entrée requise" })}>
+                            <option value="">-- Choisir --</option>
+                            {(/master/i.test(selectedLicense.nom)
+                              ? ['M1', 'M2']
+                              : Array.from({ length: Number(selectedLicense.duree_annees) }, (_, i) => `${i + 1}${i === 0 ? 'ère' : 'ème'} année`)
+                            ).map(niv => <option key={niv} value={niv}>{niv}</option>)}
+                          </select>
+                          <p className={`text-xs mt-1 ${txs}`}>Si vous êtes en transfert, indiquez l'année à laquelle vous entrez dans ce programme.</p>
+                          {errors.niveau_entree && <p className={errCls}><AlertCircle size={11} />{errors.niveau_entree.message}</p>}
+                        </div>
+                      )}
+
+                      <div>
+                        <label className={lbl}>Prise en charge *</label>
+                        <select className={selectCls} {...register('type_inscription', { required: 'Type de prise en charge requis' })}>
+                          <option value="Privée">Privée (à ma charge)</option>
+                          <option value="Bourse">Bourse</option>
+                          <option value="Entreprise">Prise en charge entreprise</option>
+                        </select>
+                        {errors.type_inscription && <p className={errCls}><AlertCircle size={11} />{errors.type_inscription.message}</p>}
+                      </div>
+
+                      {watch('type_inscription') && watch('type_inscription') !== 'Privée' && (
+                        <div>
+                          <label className={lbl}>Précisez ({watch('type_inscription') === 'Bourse' ? 'organisme boursier' : "nom de l'entreprise"})</label>
+                          <input className={inp} placeholder={watch('type_inscription') === 'Bourse' ? 'Ex: Bourse ANAQ, Bourse ONFP…' : "Nom de l'entreprise"}
+                            {...register('nature_bourse')} />
                         </div>
                       )}
 

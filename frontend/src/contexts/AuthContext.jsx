@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { login as apiLogin, logout as apiLogout, getMe } from '../services/api'
+import { login as apiLogin, logout as apiLogout, getMe, verifyTwoFactor as apiVerifyTwoFactor } from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -26,13 +26,23 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  const login = async (credentials) => {
-    const { data } = await apiLogin(credentials)
+  const applySession = (data) => {
     localStorage.setItem('isi_token', data.token)
     localStorage.setItem('isi_user', JSON.stringify(data.user))
     setUser(data.user)
     setStudent(data.student)
     return data
+  }
+
+  const login = async (credentials) => {
+    const { data } = await apiLogin(credentials)
+    if (data.requires_2fa) return data
+    return applySession(data)
+  }
+
+  const verifyTwoFactor = async (challenge, code) => {
+    const { data } = await apiVerifyTwoFactor(challenge, code)
+    return applySession(data)
   }
 
   const logout = async () => {
@@ -45,6 +55,11 @@ export function AuthProvider({ children }) {
 
   const refreshStudent = (newData) => setStudent(newData)
 
+  const updateUser = (newUser) => {
+    localStorage.setItem('isi_user', JSON.stringify(newUser))
+    setUser(newUser)
+  }
+
   const isAdmin        = user?.role === 'admin'
   const isCashier      = user?.role === 'cashier'
   const isStudent      = user?.role === 'student'
@@ -54,7 +69,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, student, loading,
-      login, logout, refreshStudent,
+      login, logout, refreshStudent, verifyTwoFactor, updateUser,
       isAdmin, isCashier, isStudent, isAccueil, isPedagogique,
     }}>
       {children}

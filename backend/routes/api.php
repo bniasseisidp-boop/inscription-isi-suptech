@@ -11,6 +11,15 @@ use App\Http\Controllers\AccueilPedagogiqueController;
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/verify-2fa', [AuthController::class, 'verifyTwoFactor']);
+Route::post('/resend-2fa', [AuthController::class, 'resendTwoFactor']);
+Route::get('/maintenance-status', function () {
+    $actif = \Illuminate\Support\Facades\DB::table('site_settings')->where('cle', 'maintenance_mode')->value('valeur') === '1';
+    $msg   = \Illuminate\Support\Facades\DB::table('site_settings')->where('cle', 'maintenance_message')->value('valeur');
+    return response()->json(['maintenance' => $actif, 'message' => $msg]);
+});
 Route::post('/inscription', [StudentController::class, 'preInscription']);
 Route::get('/etudiants/publics', [StudentController::class, 'publicList']);
 Route::post('/qr/verify', [StudentController::class, 'verifyQR']);
@@ -26,6 +35,8 @@ Route::prefix('contenu')->group(function () {
 });
 Route::get('/filieres/{id}', [ContentController::class, 'filiereDetail']);
 Route::get('/settings/social', [ContentController::class, 'getSocialSettings']);
+Route::get('/settings/stats', [ContentController::class, 'getStats']);
+Route::get('/contenu/blocs', [ContentController::class, 'getContentBlocks']);
 Route::post('/newsletter/subscribe', [ContentController::class, 'subscribeNewsletter']);
 
 // Wave webhook (no auth, but signature verified internally)
@@ -36,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/me/photo', [AuthController::class, 'updatePhoto']);
+    Route::put('/me/password', [AuthController::class, 'updatePassword']);
 
     // ── Student routes ──────────────────────────────────────────────────────
     Route::middleware('role:student')->prefix('etudiant')->group(function () {
@@ -43,6 +56,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/paiements', [StudentController::class, 'payments']);
         Route::post('/paiement/initier', [StudentController::class, 'initiatePayment']);
         Route::post('/notifications/lire', [StudentController::class, 'markNotificationsRead']);
+        Route::post('/documents/completer', [StudentController::class, 'completerDocuments']);
         Route::get('/profil', [StudentProfileController::class, 'show']);
         Route::put('/profil', [StudentProfileController::class, 'update']);
         Route::get('/suivi-paiements', [StudentProfileController::class, 'suiviPaiements']);
@@ -62,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/rejeter', [AdminController::class, 'rejectStudent']);
         Route::post('/etudiants/{student}/verrouiller-profil', [AdminController::class, 'lockProfile']);
         Route::post('/etudiants/{student}/carte', [AdminController::class, 'generateCard']);
+        Route::post('/etudiants/{student}/document', [AdminController::class, 'uploadDocument']);
         Route::delete('/etudiants/{student}', [AdminController::class, 'deleteStudent']);
         // Corbeille
         Route::get('/etudiants/corbeille', [AdminController::class, 'trashedStudents']);
@@ -87,6 +102,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Mois désactivés
         Route::get('/mois-desactives', [AdminController::class, 'getMoisDesactives']);
         Route::post('/mois-desactives', [AdminController::class, 'toggleMoisDesactive']);
+        // Permissions de modification de paiement — admin ET super admin peuvent trancher
+        Route::get('/permissions-modification', [AdminController::class, 'permissionsModification']);
+        Route::post('/permissions-modification/{permission}/approuver', [AdminController::class, 'approuverPermission']);
+        Route::post('/permissions-modification/{permission}/refuser', [AdminController::class, 'refuserPermission']);
 
         // Content management
         Route::prefix('contenu')->group(function () {
@@ -109,16 +128,32 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/temoignages/{id}', [ContentController::class, 'deleteTemoignage']);
             // Newsletter
             Route::get('/newsletter', [ContentController::class, 'newsletterSubscribers']);
+            Route::post('/newsletter/annoncer', [ContentController::class, 'sendNewsletterAnnouncement']);
             // Social settings
             Route::get('/social', [ContentController::class, 'getSocialSettings']);
             Route::post('/social', [ContentController::class, 'updateSocialSettings']);
         });
     });
 
+    // ── Super Admin only — journal d'audit + mode maintenance ──────────────────
+    Route::middleware('role:super_admin')->prefix('admin')->group(function () {
+        Route::get('/audit', [AdminController::class, 'audit']);
+        Route::post('/maintenance', [AdminController::class, 'toggleMaintenance']);
+        Route::post('/force-2fa', [AdminController::class, 'forceTwoFactor']);
+        Route::get('/force-2fa', [AdminController::class, 'twoFactorStatus']);
+        Route::post('/contenu/stats', [ContentController::class, 'updateStats']);
+        Route::post('/contenu/blocs/texte', [ContentController::class, 'updateContentBlockText']);
+        Route::post('/contenu/blocs/photo', [ContentController::class, 'updateContentBlockImage']);
+    });
+
     // ── Cashier routes ──────────────────────────────────────────────────────
     Route::middleware('role:cashier,admin')->prefix('caisse')->group(function () {
         Route::get('/paiements', [PaymentController::class, 'index']);
         Route::post('/paiement', [PaymentController::class, 'manualPayment']);
+        Route::put('/paiement/{payment}', [PaymentController::class, 'updatePayment']);
+        Route::post('/paiement/{payment}/demander-modification', [PaymentController::class, 'demanderModificationPaiement']);
+        Route::get('/paiement/{payment}/demande-modification', [PaymentController::class, 'statutDemandeModification']);
+        Route::post('/paiement/multi-mois', [PaymentController::class, 'manualPaymentMultiMois']);
         Route::get('/stats', [PaymentController::class, 'stats']);
         Route::get('/paiement/{payment}/recu', [PaymentController::class, 'downloadReceipt']);
         Route::get('/etudiants-attente', [PaymentController::class, 'etudiantsAttentePaiement']);
@@ -128,10 +163,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/mois-desactives', [PaymentController::class, 'moisDesactives']);
         Route::get('/impayes-mois', [PaymentController::class, 'impayesMois']);
         Route::get('/impayes-mois/pdf', [PaymentController::class, 'impayesMoisPdf']);
+        Route::get('/brouillard', [PaymentController::class, 'downloadBrouillard']);
     });
 
-    // ── Admin — reset données test ──────────────────────────────────────────
-    Route::middleware('role:admin')->post('/admin/reset-donnees-test', [AdminController::class, 'resetDonneesTest']);
+    // ── Super Admin — reset données test ────────────────────────────────────
+    Route::middleware('role:super_admin')->post('/admin/reset-donnees-test', [AdminController::class, 'resetDonneesTest']);
 
     // ── Accueil routes ──────────────────────────────────────────────────────
     Route::middleware('role:accueil,admin')->prefix('accueil')->group(function () {
@@ -149,6 +185,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/etudiants/{student}',                    [AccueilPedagogiqueController::class, 'studentDetail']);
         Route::post('/etudiants/{student}/carte',             [AccueilPedagogiqueController::class, 'generateCard']);
         Route::get('/etudiants/{student}/carte/telecharger',  [AccueilPedagogiqueController::class, 'downloadCard']);
+        Route::get('/etudiants/{student}/attestation-scolarite',   [AccueilPedagogiqueController::class, 'downloadAttestationScolarite']);
+        Route::get('/etudiants/{student}/attestation-inscription', [AccueilPedagogiqueController::class, 'downloadAttestationInscription']);
+        Route::get('/etudiants/{student}/fiche-inscription',       [AccueilPedagogiqueController::class, 'downloadFicheInscription']);
         Route::post('/etudiants/{student}/verrouiller',       [AccueilPedagogiqueController::class, 'toggleLock']);
         Route::post('/etudiants/{student}/photo',             [AccueilPedagogiqueController::class, 'updatePhoto']);
         Route::get('/candidats',                              [AccueilPedagogiqueController::class, 'pendingStudents']);

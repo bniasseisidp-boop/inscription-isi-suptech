@@ -3,54 +3,94 @@
 $moisNoms = ['01'=>'Janvier','02'=>'Février','03'=>'Mars','04'=>'Avril','05'=>'Mai',
              '06'=>'Juin','07'=>'Juillet','08'=>'Août','09'=>'Septembre',
              '10'=>'Octobre','11'=>'Novembre','12'=>'Décembre'];
-$moisCourts = ['01'=>'Jan','02'=>'Fév','03'=>'Mar','04'=>'Avr','05'=>'Mai','06'=>'Jun',
-               '07'=>'Jul','08'=>'Aoû','09'=>'Sep','10'=>'Oct','11'=>'Nov','12'=>'Déc'];
+$moisCourts = ['01'=>'Janvier','02'=>'Février','03'=>'Mars','04'=>'Avril','05'=>'Mai','06'=>'Juin',
+               '07'=>'Juillet','08'=>'Août','09'=>'Septembre','10'=>'Octobre','11'=>'Novembre','12'=>'Décembre'];
 
 // Titre "À titre de"
 if ($payment->mois) {
     $numMoisPmt = substr($payment->mois, 5, 2);
-    $titreLabel  = ($moisNoms[$numMoisPmt] ?? $payment->mois) . ' ' . substr($payment->mois, 0, 4);
+    $titreLabel  = $moisNoms[$numMoisPmt] ?? $payment->mois;
 } elseif ($payment->type === 'inscription') {
     $titreLabel = "Frais d'inscription";
 } else {
     $titreLabel = '—';
 }
 
-// Année scolaire
+// Paiement anticipé multi-mois (même groupe_id) : le titre liste tous les mois
+// couverts par ce versement, avec la mention "(partiel, reste X)" sur celui qui
+// n'est pas entièrement soldé — sans changer la mise en page du reçu.
+$moisGroupeLabels = [];
+if ($groupePayments->count() > 1) {
+    foreach ($groupePayments->sortBy('mois') as $gp) {
+        if (!$gp->mois) continue;
+        $lbl = $moisNoms[substr($gp->mois, 5, 2)] ?? $gp->mois;
+        if ($gp->statut === 'partiel') {
+            $reste = max(0, floatval($fraisMensuel) - floatval($gp->montant));
+            $lbl  .= ' (' . number_format(floatval($gp->montant), 0, ',', ' ') . ' versé, reste ' . number_format($reste, 0, ',', ' ') . ')';
+        } else {
+            $lbl  .= ' (payé)';
+        }
+        $moisGroupeLabels[] = $lbl;
+    }
+    $titreLabel = implode(' + ', $moisGroupeLabels);
+}
+
+// Année scolaire — dérivée en priorité de l'année scolaire réelle de l'étudiant
+// (ex. "2026-2027"), PAS de la date du jour : sinon, avant le mois de rentrée
+// (septembre), le calcul retombe sur le cycle de l'année précédente et la grille
+// ne contient plus du tout les mois du cycle en cours (ils "disparaissent" et
+// s'affichent tous au plein tarif, sans aucun mois marqué payé).
 $moisDebut  = intval($student->license?->mois_debut ?? 9);
 $moisFin    = intval($student->license?->mois_fin   ?? 6);
-$now        = \Carbon\Carbon::now();
-$anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-$anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
-$nowStr     = $now->format('Y-m');
+if ($student->annee_scolaire && preg_match('/^(\d{4})-(\d{4})$/', $student->annee_scolaire, $m)) {
+    $anneeDebut = (int) $m[1];
+    $anneeFin   = (int) $m[2];
+} else {
+    $now        = \Carbon\Carbon::now();
+    $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+    $anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
+}
+$anneeScolaireLabel = $student->annee_scolaire ?? ($anneeDebut . '-' . $anneeFin);
 
-// Mois payés
+// Mois payés / restants
 $payesKeys = collect($moisPayesList)->pluck('cle')->toArray();
-
-// Construction des mois de l'année scolaire
 $calMois = [];
 $cur     = \Carbon\Carbon::create($anneeDebut, $moisDebut, 1);
 $endCal  = \Carbon\Carbon::create($anneeFin, $moisFin, 1);
 while ($cur->lte($endCal)) {
-    $calMois[] = ['cle' => $cur->format('Y-m'), 'num' => $cur->format('m')];
+    $calMois[] = ['cle' => $cur->format('Y-m'), 'label' => $moisCourts[$cur->format('m')] ?? $cur->format('m')];
     $cur->addMonth();
 }
+$deficitsParMois = collect($deficits)->keyBy('mois');
 
-// Paiement partiel sur ce mois ?
-$moisPmtKey = $payment->mois;
-$deficitCeMois = null;
-foreach ($deficits as $d) {
-    if ($d['mois'] === $moisPmtKey) {
-        $deficitCeMois = $d;
-        break;
+// Solde reporté (avance_paiement) : négatif = déficit à rattraper, positif = crédit
+// d'avance. Il se répercute sur le mois qui suit directement le dernier mois réglé
+// (payé ou partiel) — pas sur le premier mois non payé du calendrier, qui peut être un
+// mois antérieur resté en attente sans lien avec ce déficit (paiement anticipé "sauté").
+$soldeReporte     = round(floatval($avancePaiement ?? 0), 2);
+$premierMoisNonPaye = null;
+$dernierMoisPayeCle = collect($payesKeys)->sort()->last();
+if ($dernierMoisPayeCle) {
+    $idxDernierPaye = collect($calMois)->search(fn ($m) => $m['cle'] === $dernierMoisPayeCle);
+    if ($idxDernierPaye !== false && isset($calMois[$idxDernierPaye + 1])
+        && $calMois[$idxDernierPaye + 1]['cle'] !== $dernierMoisCle) {
+        $premierMoisNonPaye = $calMois[$idxDernierPaye + 1]['cle'];
+    }
+} else {
+    foreach ($calMois as $m) {
+        if (!in_array($m['cle'], $payesKeys) && $m['cle'] !== $dernierMoisCle) {
+            $premierMoisNonPaye = $m['cle'];
+            break;
+        }
     }
 }
 
-// Ref numéro doc
+// Codes de référence (dérivés, purement d'affichage)
+$anneeCourte  = substr((string) $anneeFin, -2);
+$licCode      = $student->license?->code ?? 'ISI';
+$numInscription = $licCode . '-' . $anneeCourte . '-' . str_pad($student->id, 4, '0', STR_PAD_LEFT);
+$refBordereau = 'ISI-' . str_pad($payment->id, 5, '0', STR_PAD_LEFT) . '/ISI SUPTECH';
 $refPiece = $student->numero_cni ?? $student->matricule ?? '—';
-
-// Annee scolaire label
-$anneeScolaireLabel = $student->annee_scolaire ?? ($anneeDebut . '-' . ($anneeDebut + 1));
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -58,330 +98,216 @@ $anneeScolaireLabel = $student->annee_scolaire ?? ($anneeDebut . '-' . ($anneeDe
 <meta charset="UTF-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8.5px; color:#1e293b; background:#fff; padding:10px 12px 8px; }
+body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9px; color:#1a1a2e; background:#fff; padding:16px 20px 10px; }
 
 /* HEADER */
-.hd-table { width:100%; border-collapse:collapse; border-bottom:2px solid #0d1f3c; padding-bottom:6px; margin-bottom:6px; }
-.hd-logo-cell { width:220px; vertical-align:top; }
-.hd-logo-inner { display:table; }
-.hd-logo-img  { display:table-cell; vertical-align:middle; width:54px; padding-right:8px; }
-.hd-logo-img img { width:50px; height:50px; }
-.hd-logo-text { display:table-cell; vertical-align:middle; }
-.hd-logo-text h1 { font-size:14px; font-weight:900; color:#0d1f3c; letter-spacing:2px; }
-.hd-logo-text .s1 { font-size:7px; color:#1d4ed8; font-weight:700; margin-top:2px; }
-.hd-logo-text .s2 { font-size:6.5px; color:#64748b; margin-top:1px; }
+.hd-table { width:100%; border-collapse:collapse; }
+.hd-logo-cell { width:70px; vertical-align:middle; }
+.hd-logo-cell img { width:58px; }
 .hd-center-cell { text-align:center; vertical-align:middle; }
-.hd-center-cell h2 { font-size:10px; font-weight:900; color:#0d1f3c; }
-.hd-center-cell p  { font-size:6.5px; color:#64748b; font-style:italic; margin-top:2px; }
-.hd-right-cell { text-align:right; vertical-align:top; width:130px; }
-.hd-right-cell .svc { font-size:8px; font-weight:900; color:#1d4ed8; font-style:italic; line-height:1.5; }
-.hd-ref { font-size:7.5px; font-weight:700; color:#0d1f3c; padding-top:4px; border-top:1px solid #e2e8f0; margin-top:5px; }
+.hd-center-cell h2 { font-size:13px; font-weight:900; color:#1a1a2e; font-family:'DejaVu Serif',serif; }
+.hd-center-cell p  { font-size:7.5px; color:#475569; font-style:italic; margin-top:2px; }
+.hd-right-cell { text-align:right; vertical-align:middle; width:150px; }
+.hd-right-cell .svc1 { font-size:8px; color:#334155; font-style:italic; }
+.hd-right-cell .svc2 { font-size:11px; font-weight:900; color:#1a1a2e; font-style:italic; }
+.hd-rule { border-bottom:1.5px solid #1a1a2e; margin:8px 0 6px; }
 
-/* TWO-COL INFO — table-based */
-.info-table { width:100%; border-collapse:collapse; margin-bottom:7px; margin-top:7px; }
+.ref-row { width:100%; border-collapse:collapse; margin-bottom:8px; }
+.ref-row td { font-size:8px; color:#1a1a2e; }
+.ref-row .fr { text-align:right; font-weight:700; }
+
+/* TWO-COL INFO BOXES */
+.info-table { width:100%; border-collapse:collapse; margin-bottom:8px; }
 .info-table td { vertical-align:top; }
-.info-table .col-left  { width:48%; padding-right:5px; }
-.info-table .col-right { width:52%; padding-left:0; }
-.box { border:1px solid #cbd5e1; border-radius:4px; overflow:hidden; }
-.box-title { font-size:7px; font-weight:900; color:#0d1f3c; text-transform:uppercase; letter-spacing:1px; background:#f1f5f9; padding:3px 8px; border-bottom:1px solid #e2e8f0; }
-.box-body  { padding:5px 8px; }
-.row { margin-bottom:2.5px; font-size:8px; line-height:1.35; }
-.row table { border-collapse:collapse; width:100%; }
-.row .lbl { color:#64748b; width:82px; vertical-align:top; font-size:7.5px; }
-.row .val { font-weight:700; color:#0d1f3c; font-size:8px; }
-.mat-chip { background:#dbeafe; color:#1d4ed8; font-family:monospace; font-size:8.5px; font-weight:900; padding:1px 7px; border-radius:3px; display:inline; }
-.s-name { font-size:12.5px; font-weight:900; color:#0d1f3c; margin:3px 0 2px; }
-.s-fil  { font-size:8px; color:#1d4ed8; font-weight:700; }
+.info-table .col-left  { width:48%; padding-right:8px; }
+.info-table .col-right { width:52%; }
+.box { border:1px solid #64748b; border-radius:10px; padding:8px 10px; min-height:118px; }
+.box .row { margin-bottom:3px; font-size:8px; }
+.box .row .lbl { color:#1a1a2e; }
+.box .row .val { font-weight:700; }
+.s-name { font-size:14px; font-weight:900; color:#1a1a2e; margin-bottom:6px; }
+.s-fil  { font-size:9px; font-weight:700; color:#1a1a2e; }
 
-/* DETAIL TABLE */
-.det { width:100%; border-collapse:collapse; margin-bottom:7px; }
-.det td { padding:4px 7px; border:1px solid #e2e8f0; font-size:8.5px; }
-.det .lbl { color:#64748b; background:#f8fafc; font-weight:600; width:110px; }
-.det .val { font-weight:700; color:#0d1f3c; }
+/* PLAIN FIELD ROWS */
+.plain-row { font-size:9px; margin-bottom:5px; }
+.plain-row .lbl { color:#1a1a2e; }
+.plain-row .val { font-weight:700; }
 
-/* MONTANT BLOCK */
-.mt-table { width:100%; border-collapse:collapse; background:#0d1f3c; border-radius:5px; margin-bottom:5px; }
-.mt-table td { padding:8px 12px; vertical-align:middle; }
-.mt-l .lbl-m  { color:rgba(255,255,255,.5); font-size:6.5px; text-transform:uppercase; letter-spacing:1px; }
-.mt-l .t-row  { margin-top:3px; font-size:7.5px; color:rgba(255,255,255,.6); }
-.mt-r { text-align:right; width:160px; }
-.mt-r .big    { font-size:22px; font-weight:900; color:#fff; line-height:1; }
-.mt-r .curr   { font-size:6.5px; color:rgba(255,255,255,.5); }
-.lettres { font-size:8px; font-style:italic; color:#0d1f3c; border:1px solid #e2e8f0; padding:3px 8px; border-radius:3px; margin-bottom:6px; background:#f8fafc; }
-.lettres .lbl { color:#64748b; font-size:7px; font-style:normal; }
-
-/* DEFICIT ALERT */
-.deficit-box { border-left:3px solid #f59e0b; background:#fffbeb; padding:4px 8px; margin-bottom:6px; border-radius:0 3px 3px 0; font-size:7.5px; color:#92400e; font-weight:700; }
-
-/* FRAIS GRID */
-.fg-table { width:100%; border-collapse:collapse; margin-bottom:6px; }
-.fg-table td { border:1px solid #e2e8f0; padding:4px 7px; width:25%; }
-.fg-table .fc-l { font-size:6.5px; color:#64748b; margin-bottom:1px; }
-.fg-table .fc-v { font-size:9.5px; font-weight:900; color:#0d1f3c; }
+/* MONTANT */
+.montant-table { width:100%; border-collapse:collapse; margin:8px 0 3px; }
+.montant-table td { font-size:9px; padding-right:14px; }
+.montant-table .val { font-weight:700; }
+.mots { font-size:9px; font-style:italic; font-weight:700; margin:4px 0 8px; }
 
 /* NB */
-.nb { font-size:7.5px; color:#dc2626; font-weight:700; margin-bottom:6px; border-left:2.5px solid #dc2626; padding-left:5px; }
+.nb { font-size:8px; color:#1a1a2e; margin-bottom:8px; }
+.nb b { font-weight:700; }
 
-/* RAPPEL MOIS */
-.rappel { border:1.5px solid #0d1f3c; border-radius:4px; margin-bottom:7px; overflow:hidden; }
-.rappel-title { background:#0d1f3c; color:#fff; font-size:7px; font-weight:900; text-transform:uppercase; letter-spacing:1px; padding:3px 8px; }
-.rappel-table { width:100%; border-collapse:collapse; padding:5px; }
-.rappel-table td { padding:3px 3px; text-align:center; }
-.mc { border:1px solid #cbd5e1; border-radius:3px; padding:3px 4px; }
-.mc .mn { font-size:7.5px; font-weight:700; color:#0d1f3c; }
-.mc .mv { font-size:6.5px; color:#64748b; margin-top:1px; }
-.mc.paye   { background:#dcfce7; border-color:#86efac; }
-.mc.paye   .mn { color:#15803d; }
-.mc.paye   .mv { color:#16a34a; font-weight:700; }
-.mc.actuel { background:#dbeafe; border-color:#93c5fd; }
-.mc.actuel .mn { color:#1d4ed8; }
-.mc.actuel .mv { color:#2563eb; font-weight:700; }
-.mc.impaye { background:#fff7ed; border-color:#fed7aa; }
-.mc.impaye .mn { color:#c2410c; }
-.mc.impaye .mv { color:#ea580c; }
+/* RAPPEL */
+.rappel-title { font-size:9px; font-weight:700; margin-bottom:3px; text-decoration:underline; }
+.rappel { border:1px solid #64748b; border-radius:6px; padding:6px 10px 8px; margin-bottom:10px; }
+.rappel-table { width:100%; border-collapse:collapse; }
+.rappel-table td { font-size:8px; padding:2px 6px; vertical-align:top; width:16.66%; }
+.rappel-table .mn { color:#1a1a2e; }
+.rappel-table .mv { font-weight:700; }
+.rappel-table .paye .mv { color:#15803d; }
+.rappel-table .du .mv { color:#b91c1c; }
+.rappel-table .report { font-size:6.5px; font-weight:700; margin-top:1px; }
+.rappel-table .report.neg { color:#b91c1c; }
+.rappel-table .report.pos { color:#15803d; }
+
+/* DETAIL FRAIS (bonus, garde la richesse des données) */
+.det-title { font-size:8px; font-weight:900; text-transform:uppercase; letter-spacing:0.5px; background:#f1f5f9; padding:3px 8px; border:1px solid #cbd5e1; border-bottom:none; }
+.det { width:100%; border-collapse:collapse; margin-bottom:8px; }
+.det td { padding:3px 8px; font-size:8px; border:1px solid #e2e8f0; }
+.det .l { color:#475569; width:60%; }
+.det .v { font-weight:700; text-align:right; }
+.det .tot td { font-weight:900; background:#f8fafc; }
+.deficit-box { border-left:3px solid #b91c1c; background:#fef2f2; padding:4px 8px; margin-bottom:8px; font-size:8px; color:#7f1d1d; font-weight:700; }
 
 /* BOTTOM */
-.bot-table { width:100%; border-collapse:collapse; margin-top:7px; }
+.bot-table { width:100%; border-collapse:collapse; margin-top:10px; }
 .bot-table td { vertical-align:bottom; }
-.qr-cell  { width:82px; text-align:center; vertical-align:middle; }
-.qr-cell img { width:68px; height:68px; }
-.qr-cell .ql { font-size:6px; color:#64748b; margin-top:2px; }
-.qr-cell .qd { font-size:5.5px; color:#94a3b8; }
-.sig-table { width:100%; border-collapse:collapse; }
-.sig-table td { text-align:center; padding:0 5px; vertical-align:bottom; }
-.sig-line  { border-top:1.5px dashed #cbd5e1; padding-top:4px; margin-top:38px; }
-.sig-lbl   { font-size:6.5px; color:#94a3b8; text-transform:uppercase; letter-spacing:.5px; }
-.stamp-cell { width:38%; }
-.stamp-box  { border:2px dashed #94a3b8; border-radius:5px; min-height:48px; text-align:center; padding-top:18px; }
-.stamp-lbl  { font-size:6.5px; color:#cbd5e1; text-transform:uppercase; letter-spacing:1px; }
+.qr-cell { width:80px; }
+.qr-cell img { width:64px; height:64px; }
+.sig-cell { text-align:right; }
+.sig-cell .exige { font-size:8px; text-decoration:underline; margin-bottom:14px; }
+.sig-cell .dt { font-size:7.5px; color:#475569; }
+.sig-cell .caisse { font-weight:700; font-size:9px; margin-top:4px; }
 
 /* FOOTER */
-.footer-table { width:100%; border-collapse:collapse; border-top:1.5px solid #0d1f3c; margin-top:7px; padding-top:4px; }
-.footer-table td { font-size:6.5px; color:#94a3b8; padding-top:4px; vertical-align:top; }
-.footer-table .fr { text-align:right; }
-.footer-table strong { color:#1d4ed8; }
+.footer-table { width:100%; border-collapse:collapse; border-top:1px solid #94a3b8; margin-top:10px; padding-top:5px; }
+.footer-table td { font-size:6.5px; color:#475569; vertical-align:middle; }
+.footer-table .fr { text-align:right; font-family:'DejaVu Sans Mono',monospace; letter-spacing:1px; }
 </style>
 </head>
 <body>
 
 {{-- ══ HEADER ══════════════════════════════════════════════════════════════ --}}
 <table class="hd-table"><tr>
-  <td class="hd-logo-cell">
-    <div class="hd-logo-inner">
-      <div class="hd-logo-img"><img src="{{ public_path('isi-logo.png') }}" alt="ISI" /></div>
-      <div class="hd-logo-text">
-        <h1>ISI SUPTECH</h1>
-        <div class="s1">Institut Supérieur d'Informatique</div>
-        <div class="s2">Un institut tourné vers les métiers de l'avenir</div>
-      </div>
-    </div>
-  </td>
+  <td class="hd-logo-cell"><img src="{{ public_path('isi-logo.png') }}" alt="ISI"/></td>
   <td class="hd-center-cell">
     <h2>Institut Supérieur d'Informatique</h2>
-    <p>Un institut tourné vers les métiers de l'avenir</p>
+    <p>Un institut tourné vers les métiers d'avenir</p>
   </td>
   <td class="hd-right-cell">
-    <div class="svc">Service facturation<br/>ISI SUPTECH</div>
+    <div class="svc1">Service facturation</div>
+    <div class="svc2">ISI SUPTECH</div>
   </td>
 </tr></table>
-<div class="hd-ref">
-  {{ str_pad($payment->id, 2, '0', STR_PAD_LEFT) }}-{{ now()->format('y') }}-{{ str_pad($payment->id * 7 + 1200, 4, '0', STR_PAD_LEFT) }}/ISI SUPTECH
-</div>
+<div class="hd-rule"></div>
+
+<table class="ref-row"><tr>
+  <td>{{ $refBordereau }}</td>
+  <td class="fr">{{ $numInscription }}</td>
+</tr></table>
 
 {{-- ══ TWO-COLUMN INFO ═════════════════════════════════════════════════════ --}}
 <table class="info-table"><tr>
   <td class="col-left">
     <div class="box">
-      <div class="box-title">Infos reçu</div>
-      <div class="box-body">
-        <div class="row"><table><tr><td class="lbl">N° reçu :</td><td class="val">{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Date :</td><td class="val">{{ $payment->date_paiement?->format('d/m/Y') ?? now()->format('d/m/Y') }}</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Encaissé par :</td><td class="val">ISI SUPTECH</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Filière :</td><td class="val">{{ $student->filiere?->nom ?? '—' }}</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Niveau :</td><td class="val">{{ $student->license?->nom ?? '—' }}</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Mode paiement :</td><td class="val">{{ strtoupper($payment->methode ?? '—') }}</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Réf. pièce :</td><td class="val">{{ $refPiece }}</td></tr></table></div>
-        <div class="row"><table><tr><td class="lbl">Versé par :</td><td class="val">{{ $student->prenom }} {{ $student->nom }}</td></tr></table></div>
-      </div>
+      <div style="font-size:8.5px;font-weight:900;text-decoration:underline;margin-bottom:5px;">Infos reçu</div>
+      <div class="row"><span class="lbl">N° reçu : </span><span class="val">{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</span></div>
+      <div class="row"><span class="lbl">Date : </span><span class="val">{{ $payment->date_paiement?->format('d/m/Y') ?? now()->format('d/m/Y') }}</span></div>
+      <div class="row"><span class="lbl">Encaissé par : </span><span class="val">{{ $payment->saiseur?->name ?? 'ISI SUPTECH' }}</span></div>
+      <div class="row"><span class="lbl">N° bordereau : </span><span class="val">—</span></div>
+      <div class="row"><span class="lbl">Niveau : </span><span class="val">{{ $student->license?->nom ?? '—' }}</span></div>
+      <div class="row"><span class="lbl">Mode paiement : </span><span class="val">{{ ucfirst($payment->methode ?? '—') }}</span></div>
+      <div class="row"><span class="lbl">Réf pièce : </span><span class="val">{{ $refPiece }}</span></div>
+      <div class="row"><span class="lbl">Banque : </span><span class="val">{{ in_array($payment->methode, ['cheque','virement']) ? '—' : '—' }}</span></div>
+      <div class="row"><span class="lbl">Versé par : </span><span class="val">{{ $student->prenom }} {{ $student->nom }}</span></div>
     </div>
   </td>
   <td class="col-right">
     <div class="box">
-      <div class="box-title">Informations étudiant</div>
-      <div class="box-body">
-        <span class="mat-chip">{{ $student->matricule ?? 'ISI-' . date('Y') . '-?????' }}</span>
-        <div class="s-name">{{ strtoupper($student->nom) }} {{ $student->prenom }}</div>
-        <div class="s-fil">{{ $student->filiere?->nom ?? '—' }}</div>
-        <div style="margin-top:5px;">
-          <div class="row"><table><tr><td class="lbl">Email :</td><td class="val" style="font-size:7.5px;">{{ $student->email ?? $student->user?->email ?? '—' }}</td></tr></table></div>
-          <div class="row"><table><tr><td class="lbl">Tél. :</td><td class="val">{{ $student->telephone ?? '—' }}</td></tr></table></div>
-          <div class="row"><table><tr><td class="lbl">Année scolaire :</td><td class="val">{{ $anneeScolaireLabel }}</td></tr></table></div>
-        </div>
-      </div>
+      <div class="s-name">{{ $student->prenom }} {{ strtoupper($student->nom) }}</div>
+      <div class="s-fil">{{ $student->filiere?->nom ?? '—' }}</div>
     </div>
   </td>
 </tr></table>
 
-{{-- ══ PAYMENT DETAILS ═════════════════════════════════════════════════════ --}}
-<table class="det">
-  <tr>
-    <td class="lbl">Nature</td>
-    <td class="val">{{ $payment->type === 'inscription' ? "Frais d'inscription" : ($payment->type === 'mensualite' ? 'Mensualité' : 'Paiement divers') }}</td>
-    <td class="lbl">Année scolaire</td>
-    <td class="val">{{ $anneeScolaireLabel }}</td>
-  </tr>
-  <tr>
-    <td class="lbl">À titre de</td>
-    <td class="val">{{ $titreLabel }}</td>
-    <td class="lbl">Date paiement</td>
-    <td class="val">{{ $payment->date_paiement?->format('d/m/Y H:i') ?? now()->format('d/m/Y H:i') }}</td>
-  </tr>
-</table>
+{{-- ══ NATURE / TITRE / ANNEE ═══════════════════════════════════════════════ --}}
+<div class="plain-row"><span class="lbl">Nature : </span><span class="val">{{ $payment->type === 'inscription' ? "Frais d'inscription" : ($payment->type === 'mensualite' ? ($groupePayments->count() > 1 ? 'Mensualités (paiement anticipé)' : 'Mensualité') : 'Paiement divers') }}</span></div>
+<div class="plain-row"><span class="lbl">A titre de : </span><span class="val">{{ $titreLabel }}</span></div>
+<div class="plain-row"><span class="lbl">Année : </span><span class="val">{{ $anneeScolaireLabel }}</span></div>
 
 {{-- ══ MONTANT ═════════════════════════════════════════════════════════════ --}}
-<table class="mt-table"><tr>
-  <td class="mt-l">
-    <div class="lbl-m">Montant reçu</div>
-    <div class="t-row">Timbre : 0,00 &nbsp;&nbsp; Total reçu : {{ number_format($payment->montant, 0, ',', ' ') }} FCFA</div>
-  </td>
-  <td class="mt-r">
-    <div class="big">{{ number_format($payment->montant, 0, ',', ' ') }}</div>
-    <div class="curr">Francs CFA (XOF)</div>
-  </td>
+<table class="montant-table"><tr>
+  <td>Montant reçu : <span class="val">{{ number_format($montantGroupe, 2, ',', ' ') }}</span></td>
+  <td>Timbre : <span class="val">0,00</span></td>
+  <td>Total reçu : <span class="val">{{ number_format($montantGroupe, 2, ',', ' ') }}</span></td>
+</tr></table>
+<div class="mots">{{ ucfirst($montantLettres) }}</div>
+
+<table class="montant-table"><tr>
+  <td>Restauration : <span class="val">0</span></td>
+  <td>Transport : <span class="val">0</span></td>
+  <td>Frais scolarité : <span class="val">{{ number_format($fraisMensuel, 0, ',', ' ') }}</span></td>
 </tr></table>
 
-<div class="lettres"><span class="lbl">En toutes lettres : </span>{{ $montantLettres }}</div>
+<div class="nb">NB: Paiement le 5 de chaque mois au plus tard</div>
 
-{{-- ══ DÉTAIL FRAIS INSCRIPTION ════════════════════════════════════════════ --}}
-@if($payment->type === 'inscription')
-<table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
-  <tr>
-    <td style="background:#f1f5f9;font-size:7px;font-weight:900;color:#0d1f3c;text-transform:uppercase;letter-spacing:1px;padding:3px 8px;border:1px solid #cbd5e1;border-bottom:none;" colspan="2">
-      Détail des frais d'inscription
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;width:55%;">Frais de scolarité</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisScolarite ?? ($fraisInscription - ($fraisAmea ?? 0) - ($fraisTenue ?? 0) - ($fraisAssurance ?? 0) - $fraisMensuel), 0, ',', ' ') }} FCFA</td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Participation AMEA</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisAmea, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Tenue scolaire</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisTenue, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Assurance scolaire</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisAssurance, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Dernier mois (avance){{ $dernierMoisCle ? ' — ' . ($moisNoms[substr($dernierMoisCle,5,2)] ?? '') . ' ' . substr($dernierMoisCle,0,4) : '' }}</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#0d1f3c;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($fraisMensuel, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  <tr>
-    <td style="padding:4px 8px;font-size:8px;font-weight:900;color:#0d1f3c;background:#dbeafe;border:1.5px solid #93c5fd;border-top:none;">TOTAL DÛ</td>
-    <td style="padding:4px 8px;font-size:8px;font-weight:900;color:#1d4ed8;background:#dbeafe;border:1.5px solid #93c5fd;border-top:none;border-left:none;text-align:right;">{{ number_format($inscriptionTotal, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#64748b;border:1px solid #e2e8f0;border-top:none;">Déjà versé</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:700;color:#15803d;border:1px solid #e2e8f0;border-top:none;border-left:none;text-align:right;">{{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  @if($inscriptionRestant > 0)
-  <tr>
-    <td style="padding:3px 8px;font-size:7.5px;color:#dc2626;font-weight:700;border:1px solid #fecaca;border-top:none;background:#fff5f5;">Solde restant dû</td>
-    <td style="padding:3px 8px;font-size:7.5px;font-weight:900;color:#dc2626;border:1px solid #fecaca;border-top:none;border-left:none;text-align:right;background:#fff5f5;">{{ number_format($inscriptionRestant, 0, ',', ' ') }} FCFA</td>
-  </tr>
-  @endif
-</table>
-@endif
-
-{{-- ══ ALERTE PAIEMENT PARTIEL ════════════════════════════════════════════ --}}
-@if($payment->type === 'inscription' && $inscriptionRestant > 0)
-<div class="deficit-box">
-  ⚠️ Paiement partiel — {{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA versés
-  sur {{ number_format($inscriptionTotal, 0, ',', ' ') }} FCFA attendus — <strong>Solde restant dû :
-  <span style="color:#dc2626;">{{ number_format($inscriptionRestant, 0, ',', ' ') }} FCFA</span></strong>
-</div>
-@elseif($payment->type === 'mensualite' && isset($avancePaiement) && $avancePaiement != 0)
-<div class="deficit-box" style="{{ $avancePaiement > 0 ? 'border-color:#22c55e;background:#f0fdf4;color:#166534;' : '' }}">
-  @if($avancePaiement < 0)
-    ⚠️ Paiement partiel pour {{ $titreLabel }} — Déficit de <span style="color:#dc2626;">{{ number_format(abs($avancePaiement), 0, ',', ' ') }} FCFA</span> reporté sur le mois suivant.
-  @else
-    ✅ Mensualité réglée — Avance de <span style="color:#15803d;">{{ number_format($avancePaiement, 0, ',', ' ') }} FCFA</span> reportée sur le mois suivant.
-  @endif
-</div>
-@elseif($deficitCeMois && $payment->type !== 'inscription')
-<div class="deficit-box">
-  ⚠️ Paiement partiel pour {{ $titreLabel }} : {{ number_format($deficitCeMois['paye'], 0, ',', ' ') }} FCFA versés
-  sur {{ number_format($deficitCeMois['attendu'], 0, ',', ' ') }} FCFA — Solde restant dû :
-  <span style="color:#dc2626;">{{ number_format($deficitCeMois['manque'], 0, ',', ' ') }} FCFA</span>
-</div>
-@endif
-
-{{-- ══ FRAIS GRID ══════════════════════════════════════════════════════════ --}}
-<table class="fg-table"><tr>
-  <td><div class="fc-l">Inscription (total)</div><div class="fc-v">{{ number_format($inscriptionTotal, 0, ',', ' ') }}</div></td>
-  <td><div class="fc-l">Mensualité/mois</div><div class="fc-v">{{ number_format($fraisMensuel, 0, ',', ' ') }}</div></td>
-  <td><div class="fc-l">Total payé</div><div class="fc-v">{{ number_format($totalPaid, 0, ',', ' ') }}</div></td>
-  <td><div class="fc-l">Reste à payer</div><div class="fc-v" style="color:#dc2626;">{{ number_format($totalRestant, 0, ',', ' ') }}</div></td>
-</tr></table>
-
-<div class="nb">NB : Les mensualités sont dues au plus tard le 5 de chaque mois. Tout retard peut entraîner des pénalités.</div>
-
-{{-- ══ RAPPEL FACTURES ════════════════════════════════════════════════════ --}}
+{{-- ══ RAPPEL FACTURES RESTANTES ═══════════════════════════════════════════ --}}
+<div class="rappel-title">Rappel factures restantes</div>
 <div class="rappel">
-  <div class="rappel-title">Rappel factures — Année scolaire {{ $anneeDebut }}-{{ $anneeDebut + 1 }}</div>
-  @php
-    $perRow = count($calMois);
-    $colW   = max(1, intval(100 / max($perRow, 1)));
-  @endphp
-  <table class="rappel-table" style="padding:5px;"><tr>
+  <table class="rappel-table"><tr>
     @foreach($calMois as $m)
       @php
-        $isPaye   = in_array($m['cle'], $payesKeys);
-        $isActuel = ($m['cle'] === $nowStr);
-        $css      = $isPaye ? 'paye' : ($isActuel ? 'actuel' : 'impaye');
-        $valLabel = $isPaye ? 'Payé' : number_format($fraisMensuel, 0, ',', ' ');
+        $isPaye = in_array($m['cle'], $payesKeys) || $m['cle'] === $dernierMoisCle;
+        $estCibleReport = !$isPaye && $m['cle'] === $premierMoisNonPaye && $soldeReporte != 0;
+        $restant = $isPaye ? 0 : max(0, $fraisMensuel - ($estCibleReport ? $soldeReporte : 0));
       @endphp
-      <td style="width:{{ $colW }}%;text-align:center;padding:3px 2px;">
-        <div class="mc {{ $css }}">
-          <div class="mn">{{ $moisCourts[$m['num']] ?? $m['num'] }}</div>
-          <div class="mv">{{ $valLabel }}</div>
-        </div>
+      <td class="{{ $restant > 0 ? 'du' : 'paye' }}">
+        <div class="mn">{{ $m['label'] }} :</div>
+        <div class="mv">{{ number_format($restant, 0, ',', ' ') }}</div>
+        @if($estCibleReport)
+          <div class="report neg">Reste à payer</div>
+        @endif
       </td>
+      @if($loop->iteration % 6 === 0 && !$loop->last)
+        </tr><tr>
+      @endif
     @endforeach
   </tr></table>
 </div>
 
-{{-- ══ BOTTOM : QR + SIGNATURES ═══════════════════════════════════════════ --}}
+{{-- ══ DÉTAIL FRAIS INSCRIPTION (complément d'information) ════════════════ --}}
+@if($payment->type === 'inscription')
+<div class="det-title">Détail des frais d'inscription</div>
+<table class="det">
+  <tr><td class="l">Frais de scolarité</td><td class="v">{{ number_format($fraisScolarite, 0, ',', ' ') }} FCFA</td></tr>
+  <tr><td class="l">Participation AMEA</td><td class="v">{{ number_format($fraisAmea, 0, ',', ' ') }} FCFA</td></tr>
+  <tr><td class="l">Tenue scolaire</td><td class="v">{{ number_format($fraisTenue, 0, ',', ' ') }} FCFA</td></tr>
+  <tr><td class="l">Assurance scolaire</td><td class="v">{{ number_format($fraisAssurance, 0, ',', ' ') }} FCFA</td></tr>
+  <tr><td class="l">Dernier mois (avance){{ $dernierMoisCle ? ' — ' . ($moisNoms[substr($dernierMoisCle,5,2)] ?? '') . ' ' . substr($dernierMoisCle,0,4) : '' }}</td><td class="v">{{ number_format($fraisMensuel, 0, ',', ' ') }} FCFA</td></tr>
+  <tr class="tot"><td class="l">TOTAL DÛ</td><td class="v">{{ number_format($inscriptionTotal, 0, ',', ' ') }} FCFA</td></tr>
+  <tr><td class="l">Déjà versé</td><td class="v">{{ number_format($inscriptionPaid, 0, ',', ' ') }} FCFA</td></tr>
+</table>
+@if($inscriptionRestant > 0)
+<div class="deficit-box">Solde restant dû sur l'inscription : {{ number_format($inscriptionRestant, 0, ',', ' ') }} FCFA</div>
+@endif
+@endif
+
+{{-- ══ BOTTOM : QR + SIGNATURE ═════════════════════════════════════════════ --}}
 <table class="bot-table"><tr>
   <td class="qr-cell">
     @if(!empty($qrBase64))
-      <img src="data:image/png;base64,{{ $qrBase64 }}" />
-    @else
-      <div style="width:68px;height:68px;border:1px dashed #cbd5e1;"></div>
+      <img src="data:image/png;base64,{{ $qrBase64 }}"/>
     @endif
-    <div class="ql">Vérification QR</div>
-    <div class="qd">{{ now()->format('d/m/Y à H:i') }}</div>
   </td>
-  <td>
-    <table class="sig-table"><tr>
-      <td style="width:31%;"><div class="sig-line"></div><div class="sig-lbl">Signature Caissier</div></td>
-      <td class="stamp-cell">
-        <div class="stamp-box"><div class="stamp-lbl">Cachet officiel</div></div>
-      </td>
-      <td style="width:31%;"><div class="sig-line"></div><div class="sig-lbl">Signature Étudiant</div></td>
-    </tr></table>
+  <td class="sig-cell">
+    <div class="exige">Cachet et signature exigés</div>
+    <div class="dt">{{ now()->format('d/m/Y à H:i:s') }}</div>
+    <div class="caisse">La Caisse</div>
   </td>
 </tr></table>
 
 {{-- ══ FOOTER ══════════════════════════════════════════════════════════════ --}}
 <table class="footer-table"><tr>
-  <td>ISI SUPTECH — Dakar, Sénégal &nbsp;|&nbsp; Tél : <strong>77 978 26 18</strong> &nbsp;|&nbsp; <strong>www.isisuptech.com</strong></td>
-  <td class="fr">Document officiel — <strong>Conservez ce reçu précieusement</strong></td>
+  <td>ISI SUPTECH — Dakar, Sénégal Tél: 33 825 62 10 &nbsp;E-mail: contact@isisuptech.com&nbsp; Web site: www.isisuptech.com</td>
+  <td class="fr" style="width:120px;">{{ $refBordereau }}</td>
 </tr></table>
+<div style="text-align:center;font-size:6.5px;color:#94a3b8;margin-top:3px;">Développé par Multi Brain Tech</div>
 
 </body>
 </html>

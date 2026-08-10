@@ -76,7 +76,18 @@ class ContentController extends Controller
             'note'          => 'required|integer|min:1|max:5',
         ]);
 
-        $id = DB::table('temoignages')->insertGetId([...$data, 'approuve' => false, 'created_at' => now(), 'updated_at' => now()]);
+        // Si l'auteur est connecté en tant qu'étudiant (jeton Sanctum envoyé mais
+        // route publique, pas de middleware auth requis), on relie sa vraie photo
+        // de profil déjà uploadée dans son espace étudiant — sans rien demander
+        // de plus dans le formulaire public.
+        $photo = null;
+        $user = \Illuminate\Support\Facades\Auth::guard('sanctum')->user();
+        if ($user && $user->role === 'student') {
+            $student = \App\Models\Student::where('user_id', $user->id)->first();
+            $photo = $student?->photo;
+        }
+
+        $id = DB::table('temoignages')->insertGetId([...$data, 'photo' => $photo, 'approuve' => false, 'created_at' => now(), 'updated_at' => now()]);
 
         return response()->json(['message' => 'Témoignage soumis, en attente de modération.', 'id' => $id], 201);
     }
@@ -237,7 +248,11 @@ class ContentController extends Controller
     // --- Témoignages ---
     public function adminTemoignages()
     {
-        return response()->json(DB::table('temoignages')->latest()->get());
+        $rows = DB::table('temoignages')->latest()->get();
+        return response()->json($rows->map(function ($r) {
+            $r->photo = $r->photo ? Storage::url($r->photo) : null;
+            return $r;
+        }));
     }
 
     public function approuverTemoignage($id)
@@ -256,6 +271,37 @@ class ContentController extends Controller
     public function newsletterSubscribers()
     {
         return response()->json(DB::table('newsletter_subscribers')->latest()->get());
+    }
+
+    /** Diffuse une annonce par email à tous les abonnés actifs de la newsletter. */
+    public function sendNewsletterAnnouncement(Request $request)
+    {
+        $data = $request->validate([
+            'sujet' => 'required|string|max:200',
+            'corps' => 'required|string|max:5000',
+        ]);
+
+        $abonnes = DB::table('newsletter_subscribers')->where('actif', true)->get();
+
+        $envoyes = 0;
+        $echecs  = 0;
+        foreach ($abonnes as $abonne) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($abonne->email)
+                    ->send(new \App\Mail\NewsletterAnnouncement($data['sujet'], $data['corps'], $abonne->nom));
+                $envoyes++;
+            } catch (\Exception $e) {
+                $echecs++;
+                \Log::warning('Envoi newsletter à ' . $abonne->email . ': ' . $e->getMessage());
+            }
+        }
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'newsletter.broadcast',
+            "Annonce newsletter envoyée : « {$data['sujet']} » — {$envoyes} envoyé(s), {$echecs} échec(s)."
+        );
+
+        return response()->json(['message' => "Annonce envoyée à {$envoyes} abonné(s).", 'envoyes' => $envoyes, 'echecs' => $echecs]);
     }
 
     // --- Social / Settings ---
@@ -286,6 +332,102 @@ class ContentController extends Controller
         }
 
         return response()->json(['message' => 'Réseaux sociaux mis à jour.']);
+    }
+
+    // --- Blocs de contenu éditables (textes + photos des sections existantes) ──
+    // Le super admin modifie le texte/la photo d'une section existante (hero,
+    // carrousel "Soutenances & Diplômes"…) sans jamais toucher au code : chaque
+    // bloc est une simple clé whitelistée, stockée dans site_settings (texte)
+    // ou comme chemin de fichier (photo). Pas d'ajout/suppression de sections —
+    // uniquement modifier ce qui existe déjà.
+    private const CONTENT_BLOCK_TEXT_KEYS = [
+        'hero_badge', 'hero_titre_1', 'hero_titre_accent', 'hero_titre_2', 'hero_sous_titre',
+        'slide_1_titre', 'slide_1_sous', 'slide_2_titre', 'slide_2_sous',
+        'slide_3_titre', 'slide_3_sous', 'slide_4_titre', 'slide_4_sous', 'slide_5_titre', 'slide_5_sous',
+    ];
+    private const CONTENT_BLOCK_IMAGE_KEYS = [
+        'slide_1_image', 'slide_2_image', 'slide_3_image', 'slide_4_image', 'slide_5_image',
+    ];
+
+    public function getContentBlocks()
+    {
+        $cles = array_merge(self::CONTENT_BLOCK_TEXT_KEYS, self::CONTENT_BLOCK_IMAGE_KEYS);
+        $rows = DB::table('site_settings')->whereIn('cle', $cles)->pluck('valeur', 'cle');
+
+        $result = [];
+        foreach (self::CONTENT_BLOCK_TEXT_KEYS as $cle) {
+            $result[$cle] = $rows[$cle] ?? null;
+        }
+        foreach (self::CONTENT_BLOCK_IMAGE_KEYS as $cle) {
+            $result[$cle] = isset($rows[$cle]) ? '/storage/' . $rows[$cle] : null;
+        }
+
+        return response()->json($result);
+    }
+
+    public function updateContentBlockText(Request $request)
+    {
+        $data = $request->validate([
+            'cle'    => 'required|string|in:' . implode(',', self::CONTENT_BLOCK_TEXT_KEYS),
+            'valeur' => 'required|string|max:2000',
+        ]);
+
+        DB::table('site_settings')->updateOrInsert(
+            ['cle' => $data['cle']],
+            ['valeur' => $data['valeur'], 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        return response()->json(['message' => 'Bloc mis à jour.']);
+    }
+
+    public function updateContentBlockImage(Request $request)
+    {
+        $data = $request->validate([
+            'cle'   => 'required|string|in:' . implode(',', self::CONTENT_BLOCK_IMAGE_KEYS),
+            'photo' => 'required|image|max:4096',
+        ]);
+
+        $ancien = DB::table('site_settings')->where('cle', $data['cle'])->value('valeur');
+        if ($ancien && Storage::disk('public')->exists($ancien)) {
+            Storage::disk('public')->delete($ancien);
+        }
+
+        $path = $request->file('photo')->store('contenu', 'public');
+        DB::table('site_settings')->updateOrInsert(
+            ['cle' => $data['cle']],
+            ['valeur' => $path, 'updated_at' => now(), 'created_at' => now()]
+        );
+
+        return response()->json(['message' => 'Photo mise à jour.', 'url' => '/storage/' . $path]);
+    }
+
+    // --- Chiffres clés du site (page d'accueil, page témoignages…) ─────────────
+    // Source unique : modifiable uniquement par le super admin, affichée partout
+    // sur le site public sans jamais toucher au code.
+    public function getStats()
+    {
+        $defaults = ['stat_etudiants' => '2500', 'stat_experience' => '15', 'stat_insertion' => '95', 'stat_filieres' => '20'];
+        $rows = DB::table('site_settings')->whereIn('cle', array_keys($defaults))->pluck('valeur', 'cle');
+        return response()->json(array_merge($defaults, $rows->toArray()));
+    }
+
+    public function updateStats(Request $request)
+    {
+        $data = $request->validate([
+            'stat_etudiants'  => 'required|string|max:20',
+            'stat_experience' => 'required|string|max:20',
+            'stat_insertion'  => 'required|string|max:20',
+            'stat_filieres'   => 'required|string|max:20',
+        ]);
+
+        foreach ($data as $cle => $valeur) {
+            DB::table('site_settings')->updateOrInsert(
+                ['cle' => $cle],
+                ['valeur' => $valeur, 'updated_at' => now(), 'created_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'Chiffres du site mis à jour.']);
     }
 
     // --- Filière detail (public, with licenses) ---

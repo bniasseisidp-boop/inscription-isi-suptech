@@ -5,26 +5,28 @@ import toast from 'react-hot-toast'
 import {
   Wallet, Search, Plus, Download, LogOut, LayoutDashboard, TrendingUp,
   Clock, CheckCircle, RefreshCw, X, Users, AlertCircle, Filter,
-  AlertTriangle, CreditCard, ChevronDown, ChevronRight, Check, BookOpen, FileDown, UserSearch,
+  AlertTriangle, CreditCard, ChevronDown, ChevronRight, Check, BookOpen, FileDown, UserSearch, Pencil, Eye,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
-  getCashierPayments, recordManualPayment, getCashierStats,
+  getCashierPayments, recordManualPayment, updateManualPayment, recordManualPaymentMultiMois, getCashierStats,
   getAdminStudents, getEtudiantsAttentePaiement, getMoisDesactives,
-  downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob,
+  downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob, downloadBrouillardBlob,
   getCashierStudents, getCashierStudentSuivi, getInscriptionDetails,
+  demanderModificationPaiement, getStatutDemandeModification,
 } from '../services/api'
+import LightPremiumBackground from '../components/LightPremiumBackground'
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 function fmt(n) { return Number(n || 0).toLocaleString('fr-FR') }
 
 function StatBox({ label, value, sub, color = 'brand' }) {
-  const c = { brand: 'text-brand-400', green: 'text-green-400', yellow: 'text-yellow-400' }
+  const c = { brand: 'text-isiblue-500', green: 'text-emerald-600', yellow: 'text-isigold-600' }
   return (
-    <div className="glass-card p-5">
-      <div className={`text-xs uppercase tracking-wider mb-1 ${c[color]}`}>{label}</div>
-      <div className="text-3xl font-black text-white">{value}</div>
-      {sub && <div className="text-white/40 text-xs mt-0.5">{sub}</div>}
+    <div className="light-card p-5">
+      <div className={`text-xs uppercase tracking-wider mb-1 font-semibold ${c[color]}`}>{label}</div>
+      <div className="text-3xl font-black text-slate-900">{value}</div>
+      {sub && <div className="text-slate-500 text-xs mt-0.5">{sub}</div>}
     </div>
   )
 }
@@ -36,6 +38,8 @@ function QuickPayModal({ student, onClose, onSuccess }) {
   const [montant, setMontant]       = useState('')
   const [notes, setNotes]           = useState('')
   const [moisSelectionne, setMoisSelectionne] = useState(null)
+  const [multiMode, setMultiMode]   = useState(false)
+  const [moisMulti, setMoisMulti]   = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [suivi, setSuivi]           = useState(null)
   const [inscDetail, setInscDetail] = useState(null)
@@ -75,17 +79,28 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
   const submit = async () => {
     if (!montant) { toast.error('Montant requis'); return }
-    if (type === 'mensualite' && !moisSelectionne) { toast.error('Sélectionnez le mois à payer'); return }
+    if (type === 'mensualite' && multiMode && moisMulti.length === 0) { toast.error('Sélectionnez au moins un mois'); return }
+    if (type === 'mensualite' && !multiMode && !moisSelectionne) { toast.error('Sélectionnez le mois à payer'); return }
     setSubmitting(true)
     try {
-      await recordManualPayment({
-        student_id: student.id,
-        type,
-        montant,
-        mois: type === 'mensualite' ? moisSelectionne : null,
-        methode,
-        notes,
-      })
+      if (type === 'mensualite' && multiMode) {
+        await recordManualPaymentMultiMois({
+          student_id: student.id,
+          mois: moisMulti,
+          montant_total: montant,
+          methode,
+          notes,
+        })
+      } else {
+        await recordManualPayment({
+          student_id: student.id,
+          type,
+          montant,
+          mois: type === 'mensualite' ? moisSelectionne : null,
+          methode,
+          notes,
+        })
+      }
       toast.success('✅ Paiement enregistré — email + reçu PDF envoyés !')
       onSuccess()
     } catch (e) {
@@ -96,29 +111,29 @@ function QuickPayModal({ student, onClose, onSuccess }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
+        className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-white/10 flex-shrink-0">
+        <div className="flex items-start justify-between p-5 border-b border-slate-200 flex-shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl overflow-hidden bg-white/10 flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl overflow-hidden bg-isiblue-50 flex-shrink-0">
               {student.photo
                 ? <img src={`/storage/${student.photo}`} alt={student.nom} className="w-full h-full object-cover"/>
-                : <div className="w-full h-full flex items-center justify-center text-white/40 font-black text-sm">
+                : <div className="w-full h-full flex items-center justify-center text-isiblue-400 font-black text-sm">
                     {(student.prenom?.[0] || '') + (student.nom?.[0] || '')}
                   </div>
               }
             </div>
             <div>
-              <h3 className="text-white font-bold">{student.prenom} {student.nom}</h3>
-              <div className="text-brand-400 text-xs font-mono">{student.matricule}</div>
-              <p className="text-white/40 text-xs">{student.filiere?.nom} — {student.license?.nom}</p>
+              <h3 className="text-slate-900 font-bold">{student.prenom} {student.nom}</h3>
+              <div className="text-isiblue-500 text-xs font-mono">{student.matricule}</div>
+              <p className="text-slate-500 text-xs">{student.filiere?.nom} — {student.license?.nom}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/40 hover:text-white p-1"><X size={18}/></button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1"><X size={18}/></button>
         </div>
 
         {/* Body — scrollable */}
@@ -126,20 +141,20 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
           {/* Financial quick summary */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/4 rounded-xl p-3">
-              <p className="text-white/40 text-xs mb-1">Inscription</p>
-              <p className="text-white font-bold text-sm">{fmt(inscDetail?.total_du ?? student.license?.frais_inscription)} FCFA</p>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <p className="text-slate-500 text-xs mb-1">Inscription</p>
+              <p className="text-slate-900 font-bold text-sm">{fmt(inscDetail?.total_du ?? student.license?.frais_inscription)} FCFA</p>
               {student.inscription_payee
-                ? <p className="text-green-400 text-xs">✓ Payée</p>
-                : <p className="text-amber-400 text-xs">⚠ Non réglée</p>}
+                ? <p className="text-emerald-600 text-xs">✓ Payée</p>
+                : <p className="text-amber-600 text-xs">⚠ Non réglée</p>}
             </div>
-            <div className="bg-white/4 rounded-xl p-3">
-              <p className="text-white/40 text-xs mb-1">Mensualité</p>
-              <p className="text-white font-bold text-sm">{fmt(student.license?.frais_mensuel)} FCFA/mois</p>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+              <p className="text-slate-500 text-xs mb-1">Mensualité</p>
+              <p className="text-slate-900 font-bold text-sm">{fmt(student.license?.frais_mensuel)} FCFA/mois</p>
               {suivi
-                ? <p className="text-xs text-white/40">{suivi.mois_payes}/{suivi.mois_total} mois payés</p>
+                ? <p className="text-xs text-slate-500">{suivi.mois_payes}/{suivi.mois_total} mois payés</p>
                 : avancePaiement !== 0 && (
-                  <p className={`text-xs font-semibold ${avancePaiement > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  <p className={`text-xs font-semibold ${avancePaiement > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {avancePaiement > 0 ? `Avance : +${fmt(avancePaiement)}` : `Déficit : ${fmt(avancePaiement)}`} FCFA
                   </p>
                 )
@@ -149,14 +164,14 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
           {/* Inscription fee breakdown — shown when type = inscription */}
           {type === 'inscription' && (
-            <div className="bg-white/4 rounded-xl overflow-hidden">
-              <div className="px-3 py-2 bg-brand-500/10 border-b border-white/8">
-                <p className="text-brand-300 text-xs font-bold uppercase tracking-wider">Détail des frais d'inscription</p>
+            <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
+              <div className="px-3 py-2 bg-isiblue-50 border-b border-slate-100">
+                <p className="text-isiblue-600 text-xs font-bold uppercase tracking-wider">Détail des frais d'inscription</p>
               </div>
               {loadingSuivi && !inscDetail
-                ? <div className="p-3 text-white/40 text-xs">Chargement…</div>
+                ? <div className="p-3 text-slate-400 text-xs">Chargement…</div>
                 : (
-                  <div className="divide-y divide-white/5">
+                  <div className="divide-y divide-slate-100">
                     {[
                       { label: 'Frais de scolarité',    val: inscDetail?.frais_scolarite },
                       { label: 'Participation AMEA',    val: inscDetail?.frais_amea },
@@ -166,24 +181,24 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                         val: inscDetail?.frais_dernier_mois },
                     ].map(({ label, val }) => (
                       <div key={label} className="flex justify-between items-center px-3 py-1.5">
-                        <span className="text-white/50 text-xs">{label}</span>
-                        <span className="text-white text-xs font-semibold">{fmt(val)} FCFA</span>
+                        <span className="text-slate-500 text-xs">{label}</span>
+                        <span className="text-slate-900 text-xs font-semibold">{fmt(val)} FCFA</span>
                       </div>
                     ))}
-                    <div className="flex justify-between items-center px-3 py-2 bg-brand-500/10">
-                      <span className="text-brand-300 text-xs font-bold uppercase">Total dû</span>
-                      <span className="text-brand-300 text-sm font-black">{fmt(inscDetail?.total_du)} FCFA</span>
+                    <div className="flex justify-between items-center px-3 py-2 bg-isiblue-50">
+                      <span className="text-isiblue-600 text-xs font-bold uppercase">Total dû</span>
+                      <span className="text-isiblue-600 text-sm font-black">{fmt(inscDetail?.total_du)} FCFA</span>
                     </div>
                     {(inscDetail?.deja_paye ?? 0) > 0 && (
                       <div className="flex justify-between items-center px-3 py-1.5">
-                        <span className="text-green-400/70 text-xs">Déjà versé</span>
-                        <span className="text-green-400 text-xs font-semibold">{fmt(inscDetail.deja_paye)} FCFA</span>
+                        <span className="text-emerald-600/70 text-xs">Déjà versé</span>
+                        <span className="text-emerald-600 text-xs font-semibold">{fmt(inscDetail.deja_paye)} FCFA</span>
                       </div>
                     )}
                     {(inscDetail?.restant ?? 0) > 0 && (
-                      <div className="flex justify-between items-center px-3 py-2 bg-red-500/10">
-                        <span className="text-red-400 text-xs font-bold">Solde restant</span>
-                        <span className="text-red-400 text-sm font-black">{fmt(inscDetail.restant)} FCFA</span>
+                      <div className="flex justify-between items-center px-3 py-2 bg-red-50">
+                        <span className="text-red-600 text-xs font-bold">Solde restant</span>
+                        <span className="text-red-600 text-sm font-black">{fmt(inscDetail.restant)} FCFA</span>
                       </div>
                     )}
                   </div>
@@ -194,8 +209,8 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
           {/* Months in arrears alert */}
           {moisImpayesDus.length > 0 && type !== 'inscription' && (
-            <div className="bg-red-500/10 border border-red-500/25 rounded-xl p-3">
-              <p className="text-red-400 text-xs font-bold mb-2 flex items-center gap-1.5">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+              <p className="text-red-600 text-xs font-bold mb-2 flex items-center gap-1.5">
                 <AlertTriangle size={12}/> {moisImpayesDus.length} mois impayé{moisImpayesDus.length > 1 ? 's' : ''} — arriéré dû
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -211,7 +226,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                     className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${
                       moisSelectionne === m.cle
                         ? 'bg-red-500 border-red-400 text-white'
-                        : 'bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20'
+                        : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
                     }`}>
                     {m.label}
                   </button>
@@ -224,8 +239,8 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           {type === 'mensualite' && avancePaiement !== 0 && (
             <div className={`rounded-xl p-3 text-xs font-semibold border ${
               avancePaiement > 0
-                ? 'bg-green-500/10 border-green-500/25 text-green-300'
-                : 'bg-amber-500/10 border-amber-500/25 text-amber-300'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-amber-50 border-amber-200 text-amber-700'
             }`}>
               {avancePaiement > 0
                 ? <>Avance disponible : <strong>+{fmt(Math.round(avancePaiement))} FCFA</strong> — Montant à payer ce mois : <strong>{fmt(Math.round(Math.max(0, (Number(student.license?.frais_mensuel) || 0) - avancePaiement)))} FCFA</strong></>
@@ -236,8 +251,8 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
           {/* Type */}
           <div>
-            <label className="form-label text-xs">Type de paiement *</label>
-            <select className="form-input text-sm" value={type} onChange={(e) => setType(e.target.value)}>
+            <label className="form-label-light text-xs">Type de paiement *</label>
+            <select className="form-input-light text-sm" value={type} onChange={(e) => setType(e.target.value)}>
               {!student.inscription_payee && <option value="inscription">Frais d'inscription</option>}
               <option value="mensualite">Mensualité</option>
               <option value="autre">Autre</option>
@@ -247,9 +262,17 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           {/* Month selection for mensualite */}
           {type === 'mensualite' && (
             <div>
-              <label className="form-label text-xs">Mois concerné *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="form-label-light text-xs mb-0">{multiMode ? 'Mois concernés (paiement anticipé) *' : 'Mois concerné *'}</label>
+                <button type="button" onClick={() => { setMultiMode(v => !v); setMoisMulti([]); setMoisSelectionne(null); setMontant('') }}
+                  className={`text-[10px] px-2 py-1 rounded-lg border font-semibold transition-all ${
+                    multiMode ? 'bg-isiblue-50 border-isiblue-200 text-isiblue-600' : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-800'
+                  }`}>
+                  {multiMode ? '✓ Paiement anticipé' : 'Payer plusieurs mois'}
+                </button>
+              </div>
               {loadingSuivi ? (
-                <div className="form-input text-sm text-white/40">Chargement des mois…</div>
+                <div className="form-input-light text-sm text-slate-400">Chargement des mois…</div>
               ) : suivi?.mois ? (
                 <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                   {suivi.mois.map(m => {
@@ -258,24 +281,32 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                     const isRetard   = m.en_retard
                     const isActuel   = m.actuel
                     const isFutur    = m.futur
-                    const isSelected = moisSelectionne === m.cle
+                    const isSelected = multiMode ? moisMulti.includes(m.cle) : moisSelectionne === m.cle
                     return (
                       <button key={m.cle}
                         disabled={isPaid}
                         onClick={() => {
-                          setMoisSelectionne(m.cle)
-                          const avance = Math.round(suivi?.avance_paiement ?? 0)
                           const frais = Math.round(Number(student.license?.frais_mensuel || 0))
-                          setMontant(Math.round(Math.max(0, frais - avance)) || frais)
+                          if (multiMode) {
+                            setMoisMulti(prev => {
+                              const next = prev.includes(m.cle) ? prev.filter(c => c !== m.cle) : [...prev, m.cle].sort()
+                              setMontant(next.length * frais || '')
+                              return next
+                            })
+                          } else {
+                            setMoisSelectionne(m.cle)
+                            const avance = Math.round(suivi?.avance_paiement ?? 0)
+                            setMontant(Math.round(Math.max(0, frais - avance)) || frais)
+                          }
                         }}
                         className={`text-xs px-2 py-2 rounded-lg border text-center transition-all font-medium ${
-                          isPaid && !isPartiel ? 'bg-green-500/10 border-green-500/20 text-green-500/40 cursor-not-allowed'
-                          : isPartiel ? 'bg-amber-500/10 border-amber-500/25 text-amber-400/50 cursor-not-allowed'
-                          : isSelected ? 'bg-brand-500 border-brand-400 text-white'
-                          : isRetard ? 'bg-red-500/15 border-red-500/30 text-red-300 hover:bg-red-500/25'
-                          : isActuel ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
-                          : isFutur  ? 'bg-blue-500/8 border-blue-500/20 text-blue-300/70 hover:bg-blue-500/15 hover:text-blue-200'
-                          : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                          isPaid && !isPartiel ? 'bg-emerald-50 border-emerald-200 text-emerald-400 cursor-not-allowed'
+                          : isPartiel ? 'bg-amber-50 border-amber-200 text-amber-400 cursor-not-allowed'
+                          : isSelected ? 'bg-isiblue-500 border-isiblue-500 text-white'
+                          : isRetard ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                          : isActuel ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                          : isFutur  ? 'bg-isiblue-50/70 border-isiblue-100 text-isiblue-400 hover:bg-isiblue-50 hover:text-isiblue-500'
+                          : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
                         }`}>
                         {isPaid && !isPartiel ? '✓ ' : isPartiel ? '½ ' : isRetard ? '⚠ ' : isFutur ? '◷ ' : ''}{m.label.split(' ')[0]}
                         <div className="text-[9px] opacity-60">{isPartiel ? 'partiel' : m.label.split(' ')[1]}</div>
@@ -284,42 +315,47 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                   })}
                 </div>
               ) : (
-                <select className="form-input text-sm" value={moisSelectionne || ''} onChange={e => setMoisSelectionne(e.target.value)}>
+                <select className="form-input-light text-sm" value={moisSelectionne || ''} onChange={e => setMoisSelectionne(e.target.value)}>
                   <option value="">-- Sélectionner un mois --</option>
                 </select>
               )}
-              {moisSelectionne && (() => {
+              {!multiMode && moisSelectionne && (() => {
                 const selectedMoisInfo = suivi?.mois?.find(m => m.cle === moisSelectionne)
                 return (
                   <div className="mt-1 flex items-center gap-2">
-                    <p className="text-brand-300 text-xs font-semibold">
+                    <p className="text-isiblue-600 text-xs font-semibold">
                       Mois sélectionné : {selectedMoisInfo?.label || moisSelectionne}
                     </p>
                     {selectedMoisInfo?.futur && (
-                      <span className="text-[9px] bg-blue-500/15 border border-blue-500/25 text-blue-300 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
+                      <span className="text-[9px] bg-isiblue-50 border border-isiblue-200 text-isiblue-600 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
                         Anticipé
                       </span>
                     )}
                   </div>
                 )
               })()}
+              {multiMode && moisMulti.length > 0 && (
+                <p className="mt-1 text-isiblue-600 text-xs font-semibold">
+                  {moisMulti.length} mois sélectionné{moisMulti.length > 1 ? 's' : ''} — le montant versé sera réparti dans l'ordre ; un solde partiel sera reporté sur le mois suivant.
+                </p>
+              )}
             </div>
           )}
 
           {/* Amount */}
           <div>
-            <label className="form-label text-xs">Montant versé (FCFA) *</label>
-            <input className="form-input text-sm" type="number" value={montant}
+            <label className="form-label-light text-xs">Montant versé (FCFA) *</label>
+            <input className="form-input-light text-sm" type="number" value={montant}
               onChange={(e) => setMontant(e.target.value)} placeholder="150000" />
             {type === 'inscription' && inscDetail?.total_du && (
-              <p className="text-white/40 text-xs mt-1">Total inscription : {fmt(inscDetail.total_du)} FCFA</p>
+              <p className="text-slate-500 text-xs mt-1">Total inscription : {fmt(inscDetail.total_du)} FCFA</p>
             )}
           </div>
 
           {/* Method */}
           <div>
-            <label className="form-label text-xs">Méthode de paiement *</label>
-            <select className="form-input text-sm" value={methode} onChange={(e) => setMethode(e.target.value)}>
+            <label className="form-label-light text-xs">Méthode de paiement *</label>
+            <select className="form-input-light text-sm" value={methode} onChange={(e) => setMethode(e.target.value)}>
               <option value="especes">💵 Espèces</option>
               <option value="wave">📱 Wave</option>
               <option value="virement">🏦 Virement bancaire</option>
@@ -329,15 +365,15 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
           {/* Notes */}
           <div>
-            <label className="form-label text-xs">Notes (optionnel)</label>
-            <textarea className="form-input text-sm resize-none" rows={2}
+            <label className="form-label-light text-xs">Notes (optionnel)</label>
+            <textarea className="form-input-light text-sm resize-none" rows={2}
               value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex gap-3 p-5 pt-0 flex-shrink-0">
-          <button onClick={onClose} className="btn-secondary flex-1 text-sm py-2.5">Annuler</button>
+          <button onClick={onClose} className="btn-secondary-light flex-1 text-sm py-2.5">Annuler</button>
           <button onClick={submit} disabled={submitting}
             className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm py-2.5">
             {submitting
@@ -346,6 +382,160 @@ function QuickPayModal({ student, onClose, onSuccess }) {
             Valider &amp; Reçu PDF
           </button>
         </div>
+      </motion.div>
+    </div>
+  )
+}
+
+/* ── Edit payment modal (correction erreur de caisse) ────────────────────── */
+function EditPaymentModal({ payment, onClose, onSuccess }) {
+  const [montant, setMontant] = useState(payment.montant)
+  const [methode, setMethode] = useState(payment.methode || 'especes')
+  const [notes, setNotes]     = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [motif, setMotif]     = useState('')
+  const [requesting, setRequesting] = useState(false)
+  const [demande, setDemande] = useState(undefined) // undefined = chargement, null = aucune
+
+  const refreshDemande = () => {
+    getStatutDemandeModification(payment.id)
+      .then(({ data }) => setDemande(data.demande))
+      .catch(() => setDemande(null))
+  }
+  useEffect(() => { refreshDemande() }, [payment.id])
+
+  const demanderPermission = async () => {
+    setRequesting(true)
+    try {
+      await demanderModificationPaiement(payment.id, { motif })
+      toast.success("Demande envoyée à l'administrateur")
+      refreshDemande()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de la demande')
+    } finally {
+      setRequesting(false)
+    }
+  }
+
+  const submit = async () => {
+    if (!montant || Number(montant) <= 0) { toast.error('Montant invalide'); return }
+    setSubmitting(true)
+    try {
+      await updateManualPayment(payment.id, { montant: Number(montant), methode, notes })
+      toast.success('Paiement corrigé — reçu régénéré')
+      onSuccess()
+      onClose()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de la correction')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const peutCorriger = demande?.statut === 'approuve'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose}/>
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="relative light-card p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-slate-900 font-bold text-lg flex items-center gap-2"><Pencil size={17} className="text-isiblue-500"/> Corriger le paiement</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
+        </div>
+        <p className="text-slate-500 text-sm mb-4">
+          {payment.student?.prenom} {payment.student?.nom} — {payment.type === 'inscription' ? "Frais d'inscription" : payment.type === 'mensualite' ? `Mensualité ${payment.mois || ''}` : 'Autre'}
+        </p>
+
+        {demande === undefined ? (
+          <div className="py-6 text-center text-slate-400 text-sm">Vérification des droits…</div>
+        ) : !peutCorriger ? (
+          <div className="space-y-3">
+            {demande?.statut === 'en_attente' ? (
+              <div className="p-3 rounded-xl bg-isigold-100/60 border border-isigold-300 text-sm text-isigold-700">
+                ⏳ Demande envoyée — en attente de validation par l'administrateur.
+              </div>
+            ) : (
+              <>
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+                  🔒 Modification verrouillée — une autorisation de l'administrateur est requise pour corriger ce paiement.
+                </div>
+                <div>
+                  <label className="form-label-light">Motif de la demande (optionnel)</label>
+                  <textarea className="form-input-light resize-none" rows={2} value={motif} onChange={(e) => setMotif(e.target.value)}
+                    placeholder="Ex: erreur de saisie du montant"/>
+                </div>
+              </>
+            )}
+            <div className="flex gap-3 mt-2">
+              <button onClick={onClose} className="btn-secondary-light flex-1 text-sm py-2.5">Fermer</button>
+              {demande?.statut !== 'en_attente' && (
+                <button onClick={demanderPermission} disabled={requesting} className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm py-2.5">
+                  {requesting ? <div className="spinner w-4 h-4"/> : 'Demander la permission'}
+                </button>
+              )}
+              {demande?.statut === 'en_attente' && (
+                <button onClick={refreshDemande} className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm py-2.5">
+                  Rafraîchir
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-2.5 mb-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700">
+              ✓ Autorisation accordée par l'administrateur — modification à usage unique.
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="form-label-light">Montant correct (FCFA) *</label>
+                <input type="number" className="form-input-light" value={montant} onChange={(e) => setMontant(e.target.value)}/>
+                <p className="text-slate-400 text-xs mt-1">Ancien montant : {fmt(payment.montant)} FCFA</p>
+              </div>
+              <div>
+                <label className="form-label-light">Mode de paiement *</label>
+                <select className="form-input-light" value={methode} onChange={(e) => setMethode(e.target.value)}>
+                  <option value="especes">Espèces</option>
+                  <option value="virement">Virement</option>
+                  <option value="cheque">Chèque</option>
+                  <option value="wave">Wave</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label-light">Raison de la correction (optionnel)</label>
+                <textarea className="form-input-light resize-none" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: erreur de saisie du montant"/>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={onClose} className="btn-secondary-light flex-1 text-sm py-2.5">Annuler</button>
+              <button onClick={submit} disabled={submitting} className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm py-2.5">
+                {submitting ? <div className="spinner w-4 h-4"/> : <Check size={15}/>}
+                Corriger
+              </button>
+            </div>
+          </>
+        )}
+      </motion.div>
+    </div>
+  )
+}
+
+/* ── Aperçu PDF inline (reçu) sans téléchargement ────────────────────────── */
+function PdfPreviewModal({ url, label, onClose }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}/>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        className="relative bg-white rounded-2xl overflow-hidden w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+          <span className="font-semibold text-sm text-slate-700">{label}</span>
+          <div className="flex items-center gap-1">
+            <a href={url} download className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-all" title="Télécharger"><Download size={16}/></a>
+            <button onClick={onClose} className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-all"><X size={18}/></button>
+          </div>
+        </div>
+        <iframe src={url} className="flex-1 w-full bg-slate-100" title={label}/>
       </motion.div>
     </div>
   )
@@ -378,6 +568,7 @@ export default function CashierDashboard() {
 
   // Quick-pay modal
   const [quickPay, setQuickPay] = useState(null)
+  const [editingPayment, setEditingPayment] = useState(null)
 
   // Manual form (full saisie tab)
   const [moisDesactives, setMoisDesactives] = useState([])
@@ -471,6 +662,25 @@ export default function CashierDashboard() {
     }
   }
 
+  const [brouillardDate, setBrouillardDate] = useState(new Date().toISOString().slice(0, 10))
+  const [loadingBrouillard, setLoadingBrouillard] = useState(false)
+  const handleDownloadBrouillard = async () => {
+    setLoadingBrouillard(true)
+    try {
+      const { data } = await downloadBrouillardBlob(brouillardDate)
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `brouillard_ISI_${brouillardDate}.pdf`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+    } catch {
+      toast.error('Impossible de générer le brouillard')
+    } finally {
+      setLoadingBrouillard(false)
+    }
+  }
+
   // Student search autocomplete
   useEffect(() => {
     const t = setTimeout(() => {
@@ -509,6 +719,7 @@ export default function CashierDashboard() {
       setForm({ student_id: '', type: 'inscription', montant: '', mois: '', methode: 'especes', notes: '' })
       loadStats()
       loadAttente()
+      loadInscrits()
       if (active === 'paiements') loadPayments()
     } catch (e) {
       toast.error(e.response?.data?.message || 'Erreur')
@@ -517,11 +728,25 @@ export default function CashierDashboard() {
     }
   }
 
+  const [previewPdf, setPreviewPdf] = useState(null)
+
+  const handleViewRecu = async (paymentId) => {
+    try {
+      const { data } = await downloadReceiptBlob(paymentId)
+      const url = URL.createObjectURL(data)
+      setPreviewPdf({ url, label: 'Reçu de paiement' })
+    } catch {
+      toast.error('Impossible d\'afficher le reçu')
+    }
+  }
+
   const handleDownloadRecu = async (paymentId) => {
     try {
       const { data } = await downloadReceiptBlob(paymentId)
       const url = URL.createObjectURL(data)
-      window.open(url, '_blank')
+      const a = document.createElement('a')
+      a.href = url; a.download = `recu_${paymentId}.pdf`
+      a.click()
       setTimeout(() => URL.revokeObjectURL(url), 60000)
     } catch {
       toast.error('Impossible de télécharger le reçu')
@@ -532,6 +757,7 @@ export default function CashierDashboard() {
     setQuickPay(null)
     loadStats()
     loadAttente()
+    loadInscrits()
     if (active === 'paiements') loadPayments()
     if (active === 'impayes') loadImpayesMois(filtreImpMois)
   }
@@ -553,7 +779,9 @@ export default function CashierDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-space-950 flex">
+    <div className="min-h-screen bg-white flex relative">
+      <LightPremiumBackground/>
+
       {quickPay && (
         <QuickPayModal
           student={quickPay}
@@ -562,16 +790,29 @@ export default function CashierDashboard() {
         />
       )}
 
+      {editingPayment && (
+        <EditPaymentModal
+          payment={editingPayment}
+          onClose={() => setEditingPayment(null)}
+          onSuccess={loadPayments}
+        />
+      )}
+
+      {previewPdf && (
+        <PdfPreviewModal url={previewPdf.url} label={previewPdf.label}
+          onClose={() => { URL.revokeObjectURL(previewPdf.url); setPreviewPdf(null) }}/>
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 flex-shrink-0 bg-space-800/70 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
-        <div className="p-5 border-b border-white/10">
+      <div className="w-64 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40">
+        <div className="p-5 border-b border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-600 to-emerald-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-isiblue-500 to-isiblue-400 flex items-center justify-center">
               <Wallet size={20} className="text-white"/>
             </div>
             <div>
-              <div className="text-white font-bold">ISI SUPTECH</div>
-              <div className="text-green-400 text-xs font-medium">Caisse</div>
+              <div className="text-isiblue-700 font-bold">ISI SUPTECH</div>
+              <div className="text-isigold-600 text-xs font-medium">Caisse</div>
             </div>
           </div>
         </div>
@@ -582,10 +823,10 @@ export default function CashierDashboard() {
               <button key={item.id} onClick={() => setActive(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   active === item.id
-                    ? 'bg-green-600/20 text-green-300 border border-green-500/30'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                    ? 'bg-isiblue-50 text-isiblue-700 border border-isiblue-200'
+                    : 'text-slate-500 hover:text-isiblue-600 hover:bg-slate-50'
                 }`}>
-                <Icon size={17}/>{item.label}
+                <Icon size={17} className={active === item.id ? 'text-isigold-500' : ''}/>{item.label}
                 {item.id === 'impayes' && impayesMois.length > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{impayesMois.length}</span>
                 )}
@@ -593,20 +834,20 @@ export default function CashierDashboard() {
             )
           })}
         </nav>
-        <div className="p-3 border-t border-white/10">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all">
+        <div className="p-3 border-t border-slate-200">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
             <LogOut size={17}/> Déconnexion
           </button>
         </div>
       </div>
 
       {/* Main */}
-      <div className="flex-1 ml-64">
-        <div className="sticky top-0 z-30 bg-space-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
-          <h1 className="text-white font-semibold">
+      <div className="flex-1 ml-64 relative z-10">
+        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-6 h-16 flex items-center justify-between">
+          <h1 className="text-isiblue-700 font-semibold">
             {NAV.find(n => n.id === active)?.label}
           </h1>
-          <div className="text-green-300 text-xs font-semibold uppercase tracking-wider">Caisse</div>
+          <div className="text-isigold-600 text-xs font-semibold uppercase tracking-wider">Caisse</div>
         </div>
 
         <div className="p-6">
@@ -629,33 +870,42 @@ export default function CashierDashboard() {
                       <Plus size={16}/> Saisir un paiement
                     </button>
                     <button onClick={() => { setActive('impayes'); loadImpayesMois(filtreImpMois) }}
-                      className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all">
+                      className="flex items-center gap-2 text-sm px-4 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-all">
                       <AlertTriangle size={16}/> Voir les impayés du mois
                     </button>
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-slate-200 ml-auto shadow-sm">
+                      <input type="date" value={brouillardDate} onChange={(e) => setBrouillardDate(e.target.value)}
+                        className="bg-transparent text-slate-800 text-sm focus:outline-none"/>
+                      <button onClick={handleDownloadBrouillard} disabled={loadingBrouillard}
+                        className="flex items-center gap-1.5 text-xs bg-isiblue-50 text-isiblue-600 hover:bg-isiblue-100 border border-isiblue-200 px-3 py-1.5 rounded-lg transition-all font-semibold disabled:opacity-50">
+                        {loadingBrouillard ? <RefreshCw size={13} className="animate-spin"/> : <FileDown size={13}/>}
+                        Brouillard du jour
+                      </button>
+                    </div>
                   </div>
 
                   {/* Pending students */}
-                  <div className="glass-card overflow-hidden">
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                      <h3 className="text-white font-semibold flex items-center gap-2">
-                        <Users size={17} className="text-amber-400"/>
+                  <div className="light-card overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                      <h3 className="text-isiblue-700 font-semibold flex items-center gap-2">
+                        <Users size={17} className="text-isigold-500"/>
                         Étudiants en attente de paiement d'inscription
                         {etudiantsAttente.length > 0 && (
-                          <span className="ml-1 bg-amber-500/20 text-amber-300 text-xs px-2 py-0.5 rounded-full font-bold">
+                          <span className="ml-1 bg-amber-50 text-amber-700 text-xs px-2 py-0.5 rounded-full font-bold">
                             {etudiantsAttente.length}
                           </span>
                         )}
                       </h3>
-                      <button onClick={loadAttente} className="text-white/40 hover:text-white">
+                      <button onClick={loadAttente} className="text-slate-400 hover:text-isiblue-600">
                         <RefreshCw size={14}/>
                       </button>
                     </div>
                     {loadingAttente ? (
                       <div className="py-10 flex justify-center"><div className="spinner"/></div>
                     ) : etudiantsAttente.length === 0 ? (
-                      <div className="py-10 text-center text-white/30 text-sm">Aucun étudiant en attente</div>
+                      <div className="py-10 text-center text-slate-400 text-sm">Aucun étudiant en attente</div>
                     ) : (
-                      <table className="data-table">
+                      <table className="data-table-light">
                         <thead>
                           <tr><th>Étudiant</th><th>Filière / Niveau</th><th>Matricule</th><th>Montant</th><th>Action rapide</th></tr>
                         </thead>
@@ -663,20 +913,20 @@ export default function CashierDashboard() {
                           {etudiantsAttente.map(s => (
                             <tr key={s.id}>
                               <td>
-                                <div className="text-white text-sm font-semibold">{s.prenom} {s.nom}</div>
-                                <div className="text-white/40 text-xs">{s.user?.email}</div>
+                                <div className="text-slate-900 text-sm font-semibold">{s.prenom} {s.nom}</div>
+                                <div className="text-slate-400 text-xs">{s.user?.email}</div>
                               </td>
                               <td>
-                                <div className="text-white/80 text-sm">{s.filiere?.nom}</div>
-                                <div className="text-white/40 text-xs">{s.license?.nom}</div>
+                                <div className="text-slate-700 text-sm">{s.filiere?.nom}</div>
+                                <div className="text-slate-400 text-xs">{s.license?.nom}</div>
                               </td>
-                              <td className="text-brand-400 font-mono text-sm">{s.matricule || '—'}</td>
-                              <td className="text-amber-300 font-bold text-sm">
+                              <td className="text-isiblue-500 font-mono text-sm">{s.matricule || '—'}</td>
+                              <td className="text-amber-700 font-bold text-sm">
                                 {s.license?.frais_inscription ? fmt(s.license.frais_inscription) + ' FCFA' : '—'}
                               </td>
                               <td>
                                 <button onClick={() => setQuickPay(s)}
-                                  className="flex items-center gap-1.5 text-xs bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20 px-3 py-2 rounded-lg transition-all font-semibold">
+                                  className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-lg transition-all font-semibold">
                                   <CreditCard size={13}/> Payer maintenant
                                 </button>
                               </td>
@@ -688,20 +938,20 @@ export default function CashierDashboard() {
                   </div>
 
                   {/* Accepted / paid students */}
-                  <div className="glass-card overflow-hidden">
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between">
-                      <h3 className="text-white font-semibold flex items-center gap-2">
-                        <Check size={17} className="text-green-400"/>
+                  <div className="light-card overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                      <h3 className="text-isiblue-700 font-semibold flex items-center gap-2">
+                        <Check size={17} className="text-emerald-600"/>
                         Étudiants inscrits
                         {etudiantsInscrits.length > 0 && (
-                          <span className="ml-1 bg-green-500/20 text-green-300 text-xs px-2 py-0.5 rounded-full font-bold">
+                          <span className="ml-1 bg-emerald-50 text-emerald-700 text-xs px-2 py-0.5 rounded-full font-bold">
                             {etudiantsInscrits.length}
                           </span>
                         )}
                       </h3>
                       <div className="flex items-center gap-2">
-                        <button onClick={loadInscrits} className="text-white/40 hover:text-white"><RefreshCw size={14}/></button>
-                        <button onClick={() => setActive('etudiants')} className="text-brand-400 hover:text-brand-300 text-xs flex items-center gap-1">
+                        <button onClick={loadInscrits} className="text-slate-400 hover:text-isiblue-600"><RefreshCw size={14}/></button>
+                        <button onClick={() => setActive('etudiants')} className="text-isiblue-500 hover:text-isiblue-600 text-xs flex items-center gap-1">
                           Voir tous <ChevronRight size={13}/>
                         </button>
                       </div>
@@ -709,9 +959,9 @@ export default function CashierDashboard() {
                     {loadingInscrits ? (
                       <div className="py-10 flex justify-center"><div className="spinner"/></div>
                     ) : etudiantsInscrits.length === 0 ? (
-                      <div className="py-8 text-center text-white/30 text-sm">Aucun étudiant inscrit pour le moment</div>
+                      <div className="py-8 text-center text-slate-400 text-sm">Aucun étudiant inscrit pour le moment</div>
                     ) : (
-                      <table className="data-table">
+                      <table className="data-table-light">
                         <thead>
                           <tr><th>Étudiant</th><th>Filière / Niveau</th><th>Matricule</th><th>Mensualité</th><th>Action</th></tr>
                         </thead>
@@ -719,20 +969,20 @@ export default function CashierDashboard() {
                           {etudiantsInscrits.slice(0, 10).map(s => (
                             <tr key={s.id}>
                               <td>
-                                <div className="text-white text-sm font-semibold">{s.prenom} {s.nom}</div>
-                                <div className="text-white/40 text-xs">{s.user?.email}</div>
+                                <div className="text-slate-900 text-sm font-semibold">{s.prenom} {s.nom}</div>
+                                <div className="text-slate-400 text-xs">{s.user?.email}</div>
                               </td>
                               <td>
-                                <div className="text-white/80 text-sm">{s.filiere?.nom}</div>
-                                <div className="text-white/40 text-xs">{s.license?.nom}</div>
+                                <div className="text-slate-700 text-sm">{s.filiere?.nom}</div>
+                                <div className="text-slate-400 text-xs">{s.license?.nom}</div>
                               </td>
-                              <td className="text-brand-400 font-mono text-sm">{s.matricule || '—'}</td>
-                              <td className="text-white/70 text-sm">
+                              <td className="text-isiblue-500 font-mono text-sm">{s.matricule || '—'}</td>
+                              <td className="text-slate-700 text-sm">
                                 {s.license?.frais_mensuel ? fmt(s.license.frais_mensuel) + ' FCFA/mois' : '—'}
                               </td>
                               <td>
                                 <button onClick={() => setQuickPay(s)}
-                                  className="flex items-center gap-1.5 text-xs bg-brand-500/15 text-brand-300 hover:bg-brand-500/25 border border-brand-500/20 px-3 py-2 rounded-lg transition-all font-semibold">
+                                  className="flex items-center gap-1.5 text-xs bg-isiblue-50 text-isiblue-600 hover:bg-isiblue-100 border border-isiblue-200 px-3 py-2 rounded-lg transition-all font-semibold">
                                   <CreditCard size={13}/> Encaisser
                                 </button>
                               </td>
@@ -750,15 +1000,15 @@ export default function CashierDashboard() {
                 <div className="space-y-4">
                   <div className="flex gap-3">
                     <div className="relative flex-1">
-                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"/>
-                      <input className="form-input pl-9 py-2 text-sm" placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loadPayments()} />
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                      <input className="form-input-light pl-9 py-2 text-sm" placeholder="Rechercher…" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loadPayments()} />
                     </div>
-                    <button onClick={loadPayments} className="btn-secondary text-sm py-2 px-4 flex items-center gap-2">
+                    <button onClick={loadPayments} className="btn-secondary-light text-sm py-2 px-4 flex items-center gap-2">
                       <RefreshCw size={14}/> Actualiser
                     </button>
                   </div>
-                  <div className="glass-card overflow-hidden">
-                    <table className="data-table">
+                  <div className="light-card overflow-hidden">
+                    <table className="data-table-light">
                       <thead>
                         <tr><th>Étudiant</th><th>Type</th><th>Montant</th><th>Méthode</th><th>Saisi par</th><th>Date</th><th>Statut</th><th>Reçu</th></tr>
                       </thead>
@@ -766,27 +1016,37 @@ export default function CashierDashboard() {
                         {loading
                           ? <tr><td colSpan={8} className="text-center py-10"><div className="spinner mx-auto"/></td></tr>
                           : payments.length === 0
-                          ? <tr><td colSpan={8} className="text-center py-8 text-white/30">Aucun paiement</td></tr>
+                          ? <tr><td colSpan={8} className="text-center py-8 text-slate-400">Aucun paiement</td></tr>
                           : payments.map((p) => (
                             <tr key={p.id}>
                               <td>
-                                <div className="text-white text-sm">{p.student?.prenom} {p.student?.nom}</div>
-                                <div className="text-white/40 text-xs font-mono">{p.student?.matricule}</div>
+                                <div className="text-slate-900 text-sm">{p.student?.prenom} {p.student?.nom}</div>
+                                <div className="text-slate-400 text-xs font-mono">{p.student?.matricule}</div>
                               </td>
-                              <td className="text-white/70 text-sm">{
+                              <td className="text-slate-700 text-sm">{
                                 p.type === 'inscription' ? "Frais d'inscription" :
                                 p.type === 'mensualite' ? `Mensualité ${p.mois || ''}` : 'Autre'
                               }</td>
-                              <td className="text-white font-bold">{fmt(p.montant)} FCFA</td>
-                              <td className="text-white/60 text-sm">{p.methode?.toUpperCase()}</td>
-                              <td className="text-white/50 text-xs">{p.saiseur?.name || 'Wave'}</td>
-                              <td className="text-white/40 text-xs">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
+                              <td className="text-slate-900 font-bold">{fmt(p.montant)} FCFA</td>
+                              <td className="text-slate-600 text-sm">{p.methode?.toUpperCase()}</td>
+                              <td className="text-slate-500 text-xs">{p.saiseur?.name || 'Wave'}</td>
+                              <td className="text-slate-400 text-xs">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
                               <td><span className={p.statut === 'complete' ? 'badge-accepted' : 'badge-pending'}>{p.statut}</span></td>
                               <td>
-                                <button onClick={() => handleDownloadRecu(p.id)}
-                                  className="text-brand-400 hover:text-brand-300 flex items-center gap-1 text-xs transition-colors">
-                                  <Download size={12}/> PDF
-                                </button>
+                                <div className="flex items-center gap-3">
+                                  <button onClick={() => handleViewRecu(p.id)}
+                                    className="text-isiblue-500 hover:text-isiblue-600 flex items-center gap-1 text-xs transition-colors">
+                                    <Eye size={12}/> Voir
+                                  </button>
+                                  <button onClick={() => handleDownloadRecu(p.id)}
+                                    className="text-slate-400 hover:text-slate-700 flex items-center gap-1 text-xs transition-colors">
+                                    <Download size={12}/> PDF
+                                  </button>
+                                  <button onClick={() => setEditingPayment(p)} title="Corriger ce paiement (autorisation admin requise)"
+                                    className="text-slate-400 hover:text-slate-600 flex items-center gap-1 text-xs transition-colors">
+                                    <Pencil size={12}/> Corriger
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))
@@ -800,12 +1060,12 @@ export default function CashierDashboard() {
               {/* ── SAISIE PAIEMENT ────────────────────────────────────────── */}
               {active === 'saisie' && (
                 <div className="max-w-xl space-y-5">
-                  <p className="text-white/50 text-sm">Enregistrez manuellement un paiement (espèces, virement, chèque).</p>
+                  <p className="text-slate-500 text-sm">Enregistrez manuellement un paiement (espèces, virement, chèque).</p>
 
                   {/* Pending shortcut */}
                   {etudiantsAttente.length > 0 && !selectedStudent && (
-                    <div className="glass-card p-4 border border-amber-500/20">
-                      <p className="text-amber-300 text-xs font-bold mb-3 flex items-center gap-1.5">
+                    <div className="light-card p-4 border border-amber-200">
+                      <p className="text-amber-700 text-xs font-bold mb-3 flex items-center gap-1.5">
                         <Clock size={13}/> {etudiantsAttente.length} étudiant{etudiantsAttente.length > 1 ? 's' : ''} en attente d'inscription — Sélection rapide
                       </p>
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -813,12 +1073,12 @@ export default function CashierDashboard() {
                           <button key={s.id} onClick={() => {
                             setSelectedStudent(s)
                             setForm(f => ({ ...f, student_id: s.id, type: 'inscription', montant: s.license?.frais_inscription || '' }))
-                          }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-white/4 hover:bg-white/8 border border-white/8 hover:border-amber-500/30 transition-all text-left">
+                          }} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-amber-50 border border-slate-100 hover:border-amber-200 transition-all text-left">
                             <div>
-                              <span className="text-white text-sm font-semibold">{s.prenom} {s.nom}</span>
-                              <span className="text-white/40 text-xs ml-2">{s.filiere?.nom}</span>
+                              <span className="text-slate-900 text-sm font-semibold">{s.prenom} {s.nom}</span>
+                              <span className="text-slate-400 text-xs ml-2">{s.filiere?.nom}</span>
                             </div>
-                            <span className="text-amber-300 text-xs font-bold">{fmt(s.license?.frais_inscription)} FCFA</span>
+                            <span className="text-amber-700 text-xs font-bold">{fmt(s.license?.frais_inscription)} FCFA</span>
                           </button>
                         ))}
                       </div>
@@ -827,31 +1087,31 @@ export default function CashierDashboard() {
 
                   {/* Student search */}
                   <div>
-                    <label className="form-label">Rechercher l'étudiant *</label>
+                    <label className="form-label-light">Rechercher l'étudiant *</label>
                     {selectedStudent ? (
-                      <div className="flex items-center justify-between glass-card p-4 border border-green-500/20">
+                      <div className="flex items-center justify-between light-card p-4 border border-emerald-200">
                         <div>
-                          <div className="text-white font-semibold">{selectedStudent.prenom} {selectedStudent.nom}</div>
-                          <div className="text-brand-400 text-sm font-mono">{selectedStudent.matricule}</div>
-                          <div className="text-white/40 text-xs">{selectedStudent.filiere?.nom} — {selectedStudent.license?.nom}</div>
+                          <div className="text-slate-900 font-semibold">{selectedStudent.prenom} {selectedStudent.nom}</div>
+                          <div className="text-isiblue-500 text-sm font-mono">{selectedStudent.matricule}</div>
+                          <div className="text-slate-400 text-xs">{selectedStudent.filiere?.nom} — {selectedStudent.license?.nom}</div>
                         </div>
                         <button onClick={() => { setSelectedStudent(null); setForm(f => ({ ...f, student_id: '' })) }}
-                          className="text-white/40 hover:text-white"><X size={16}/></button>
+                          className="text-slate-400 hover:text-slate-700"><X size={16}/></button>
                       </div>
                     ) : (
                       <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"/>
-                        <input className="form-input pl-9" placeholder="Nom, prénom ou matricule…" value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} />
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                        <input className="form-input-light pl-9" placeholder="Nom, prénom ou matricule…" value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} />
                         {students.length > 0 && (
-                          <div className="absolute top-full left-0 right-0 z-20 mt-1 glass-card border border-white/20 overflow-hidden">
+                          <div className="absolute top-full left-0 right-0 z-20 mt-1 light-card border border-slate-200 overflow-hidden">
                             {students.map((s) => (
                               <button key={s.id} onClick={() => handleSelectStudent(s)}
-                                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors text-left">
+                                className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors text-left">
                                 <div>
-                                  <div className="text-white text-sm">{s.prenom} {s.nom}</div>
-                                  <div className="text-white/40 text-xs">{s.matricule} — {s.filiere?.nom}</div>
+                                  <div className="text-slate-900 text-sm">{s.prenom} {s.nom}</div>
+                                  <div className="text-slate-400 text-xs">{s.matricule} — {s.filiere?.nom}</div>
                                 </div>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${s.statut_inscription === 'en_attente_paiement' ? 'bg-amber-500/20 text-amber-300' : 'badge-accepted'}`}>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${s.statut_inscription === 'en_attente_paiement' ? 'bg-amber-50 text-amber-700' : 'badge-accepted'}`}>
                                   {s.statut_inscription === 'en_attente_paiement' ? 'Attente paiement' : 'Actif'}
                                 </span>
                               </button>
@@ -863,8 +1123,8 @@ export default function CashierDashboard() {
                   </div>
 
                   <div>
-                    <label className="form-label">Type de paiement *</label>
-                    <select className="form-input" value={form.type} onChange={(e) => {
+                    <label className="form-label-light">Type de paiement *</label>
+                    <select className="form-input-light" value={form.type} onChange={(e) => {
                       const t = e.target.value
                       setForm(f => ({ ...f, type: t, montant: t === 'inscription' ? selectedStudent?.license?.frais_inscription : selectedStudent?.license?.frais_mensuel || '' }))
                     }}>
@@ -876,8 +1136,8 @@ export default function CashierDashboard() {
 
                   {form.type === 'mensualite' && (
                     <div>
-                      <label className="form-label">Mois concerné *</label>
-                      <select className="form-input" value={form.mois} onChange={(e) => setForm({ ...form, mois: e.target.value })}>
+                      <label className="form-label-light">Mois concerné *</label>
+                      <select className="form-input-light" value={form.mois} onChange={(e) => setForm({ ...form, mois: e.target.value })}>
                         <option value="">-- Sélectionner --</option>
                         {getCurrentMoisOptions().map((o) => {
                           const dis = moisDesactives.includes(o.value)
@@ -888,13 +1148,13 @@ export default function CashierDashboard() {
                   )}
 
                   <div>
-                    <label className="form-label">Montant (FCFA) *</label>
-                    <input className="form-input" type="number" value={form.montant} onChange={(e) => setForm({ ...form, montant: e.target.value })} placeholder="150000" />
+                    <label className="form-label-light">Montant (FCFA) *</label>
+                    <input className="form-input-light" type="number" value={form.montant} onChange={(e) => setForm({ ...form, montant: e.target.value })} placeholder="150000" />
                   </div>
 
                   <div>
-                    <label className="form-label">Méthode de paiement *</label>
-                    <select className="form-input" value={form.methode} onChange={(e) => setForm({ ...form, methode: e.target.value })}>
+                    <label className="form-label-light">Méthode de paiement *</label>
+                    <select className="form-input-light" value={form.methode} onChange={(e) => setForm({ ...form, methode: e.target.value })}>
                       <option value="especes">💵 Espèces</option>
                       <option value="wave">📱 Wave</option>
                       <option value="virement">🏦 Virement bancaire</option>
@@ -903,12 +1163,12 @@ export default function CashierDashboard() {
                   </div>
 
                   <div>
-                    <label className="form-label">Notes (optionnel)</label>
-                    <textarea className="form-input resize-none" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+                    <label className="form-label-light">Notes (optionnel)</label>
+                    <textarea className="form-input-light resize-none" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <button onClick={() => setActive('dashboard')} className="btn-secondary flex-1">Annuler</button>
+                    <button onClick={() => setActive('dashboard')} className="btn-secondary-light flex-1">Annuler</button>
                     <button onClick={handleSubmitPayment} disabled={submitting}
                       className="btn-primary flex-1 flex items-center justify-center gap-2">
                       {submitting ? <div className="spinner w-4 h-4"/> : <CheckCircle size={16}/>}
@@ -930,11 +1190,11 @@ export default function CashierDashboard() {
                   )}
 
                   {/* Filters */}
-                  <div className="glass-card p-4">
+                  <div className="light-card p-4">
                     <div className="flex flex-wrap gap-3 items-end">
                       <div className="flex-1 min-w-[180px]">
-                        <label className="form-label text-xs mb-1">Filière</label>
-                        <select className="form-input text-sm py-2"
+                        <label className="form-label-light text-xs mb-1">Filière</label>
+                        <select className="form-input-light text-sm py-2"
                           value={browserFiliereId}
                           onChange={(e) => setBrowserFiliereId(e.target.value)}>
                           <option value="">Toutes les filières</option>
@@ -944,10 +1204,10 @@ export default function CashierDashboard() {
                         </select>
                       </div>
                       <div className="flex-1 min-w-[200px]">
-                        <label className="form-label text-xs mb-1">Recherche</label>
+                        <label className="form-label-light text-xs mb-1">Recherche</label>
                         <div className="relative">
-                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30"/>
-                          <input className="form-input pl-8 text-sm py-2"
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                          <input className="form-input-light pl-8 text-sm py-2"
                             placeholder="Nom, prénom, matricule…"
                             value={browserSearch}
                             onChange={(e) => setBrowserSearch(e.target.value)}
@@ -966,62 +1226,62 @@ export default function CashierDashboard() {
                   {browserLoading ? (
                     <div className="py-16 flex justify-center"><div className="spinner"/></div>
                   ) : browserStudents.length === 0 ? (
-                    <div className="py-16 text-center text-white/30">
+                    <div className="py-16 text-center text-slate-400">
                       <Users size={40} className="mx-auto mb-3 opacity-30"/>
                       <p>Aucun étudiant trouvé — affinez les filtres et recherchez</p>
                     </div>
                   ) : (
                     <>
-                      <p className="text-white/40 text-xs">{browserStudents.length} étudiant{browserStudents.length > 1 ? 's' : ''} trouvé{browserStudents.length > 1 ? 's' : ''}</p>
+                      <p className="text-slate-400 text-xs">{browserStudents.length} étudiant{browserStudents.length > 1 ? 's' : ''} trouvé{browserStudents.length > 1 ? 's' : ''}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {browserStudents.map((s) => {
                           const photoUrl = s.photo
                             ? `/storage/${s.photo}`
                             : null
                           return (
-                            <div key={s.id} className="glass-card p-4 flex flex-col gap-3 hover:border-brand-500/30 transition-all border border-white/10">
+                            <div key={s.id} className="light-card p-4 flex flex-col gap-3 hover:border-isiblue-300 transition-all border border-slate-100">
                               {/* Photo + identity */}
                               <div className="flex items-center gap-3">
-                                <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/10 flex-shrink-0">
+                                <div className="w-14 h-14 rounded-xl overflow-hidden bg-isiblue-50 flex-shrink-0">
                                   {photoUrl ? (
                                     <img src={photoUrl} alt={s.nom} className="w-full h-full object-cover"/>
                                   ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-white/30 text-xl font-black">
+                                    <div className="w-full h-full flex items-center justify-center text-isiblue-400 text-xl font-black">
                                       {(s.prenom?.[0] || '') + (s.nom?.[0] || '')}
                                     </div>
                                   )}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-white font-bold text-sm truncate">{s.prenom} {s.nom}</div>
-                                  <div className="text-brand-400 font-mono text-xs">{s.matricule || '—'}</div>
-                                  <div className="text-white/40 text-xs truncate">{s.filiere?.nom}</div>
+                                  <div className="text-slate-900 font-bold text-sm truncate">{s.prenom} {s.nom}</div>
+                                  <div className="text-isiblue-500 font-mono text-xs">{s.matricule || '—'}</div>
+                                  <div className="text-slate-400 text-xs truncate">{s.filiere?.nom}</div>
                                 </div>
                               </div>
 
                               {/* Info row */}
                               <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="bg-white/4 rounded-lg p-2">
-                                  <div className="text-white/40">Niveau</div>
-                                  <div className="text-white font-semibold truncate">{s.license?.nom || '—'}</div>
+                                <div className="bg-slate-50 rounded-lg p-2">
+                                  <div className="text-slate-400">Niveau</div>
+                                  <div className="text-slate-900 font-semibold truncate">{s.license?.nom || '—'}</div>
                                 </div>
-                                <div className="bg-white/4 rounded-lg p-2">
-                                  <div className="text-white/40">Inscription</div>
-                                  <div className={`font-semibold ${s.inscription_payee ? 'text-green-400' : 'text-amber-400'}`}>
+                                <div className="bg-slate-50 rounded-lg p-2">
+                                  <div className="text-slate-400">Inscription</div>
+                                  <div className={`font-semibold ${s.inscription_payee ? 'text-emerald-600' : 'text-amber-600'}`}>
                                     {s.inscription_payee ? '✓ Payée' : '⚠ Non réglée'}
                                   </div>
                                 </div>
                               </div>
 
                               {/* Mensualité info */}
-                              <div className="flex items-center justify-between text-xs border-t border-white/8 pt-2">
-                                <span className="text-white/40">Mensualité</span>
-                                <span className="text-white font-bold">{fmt(s.license?.frais_mensuel)} FCFA/mois</span>
+                              <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-2">
+                                <span className="text-slate-400">Mensualité</span>
+                                <span className="text-slate-900 font-bold">{fmt(s.license?.frais_mensuel)} FCFA/mois</span>
                               </div>
 
                               {/* Action */}
                               <button
                                 onClick={() => setBrowserSelected(s)}
-                                className="w-full flex items-center justify-center gap-2 text-sm bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20 py-2.5 rounded-xl transition-all font-semibold">
+                                className="w-full flex items-center justify-center gap-2 text-sm bg-isiblue-50 text-isiblue-600 hover:bg-isiblue-100 border border-isiblue-200 py-2.5 rounded-xl transition-all font-semibold">
                                 <CreditCard size={14}/> Encaisser un paiement
                               </button>
                             </div>
@@ -1038,9 +1298,9 @@ export default function CashierDashboard() {
                 <div className="space-y-4">
                   {/* Month filter */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10">
-                      <Filter size={14} className="text-white/40"/>
-                      <select className="bg-transparent text-white text-sm focus:outline-none"
+                    <div className="flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-slate-200 shadow-sm">
+                      <Filter size={14} className="text-slate-400"/>
+                      <select className="bg-transparent text-slate-800 text-sm focus:outline-none"
                         value={filtreImpMois}
                         onChange={(e) => { setFiltreImpMois(e.target.value); loadImpayesMois(e.target.value) }}>
                         {getCurrentMoisOptions().map(o => (
@@ -1049,29 +1309,29 @@ export default function CashierDashboard() {
                       </select>
                     </div>
                     <button onClick={() => loadImpayesMois(filtreImpMois)}
-                      className="text-white/40 hover:text-white flex items-center gap-1.5 text-sm">
+                      className="text-slate-400 hover:text-isiblue-600 flex items-center gap-1.5 text-sm">
                       <RefreshCw size={14}/> Actualiser
                     </button>
                     {impayesMois.length > 0 && (
                       <>
-                        <span className="text-red-400 text-sm font-bold flex items-center gap-1.5">
+                        <span className="text-red-600 text-sm font-bold flex items-center gap-1.5">
                           <AlertTriangle size={14}/> {impayesMois.length} étudiant{impayesMois.length > 1 ? 's' : ''} n'ont pas payé
                         </span>
                         <button onClick={handleDownloadImpayesPdf}
-                          className="flex items-center gap-1.5 text-xs bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30 px-3 py-2 rounded-lg transition-all font-semibold ml-auto">
+                          className="flex items-center gap-1.5 text-xs bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-3 py-2 rounded-lg transition-all font-semibold ml-auto">
                           <FileDown size={13}/> Télécharger liste PDF
                         </button>
                       </>
                     )}
                   </div>
 
-                  <div className="glass-card overflow-hidden">
-                    <div className="p-4 border-b border-white/10">
-                      <h3 className="text-white font-semibold flex items-center gap-2">
-                        <AlertTriangle size={16} className="text-red-400"/>
+                  <div className="light-card overflow-hidden">
+                    <div className="p-4 border-b border-slate-100">
+                      <h3 className="text-isiblue-700 font-semibold flex items-center gap-2">
+                        <AlertTriangle size={16} className="text-red-500"/>
                         Mensualités impayées
                       </h3>
-                      <p className="text-white/40 text-xs mt-1">
+                      <p className="text-slate-400 text-xs mt-1">
                         Liste des étudiants actifs n'ayant pas réglé leur mensualité pour le mois sélectionné.
                         Accessible dès le 5 du mois pour retenir l'accès.
                       </p>
@@ -1080,34 +1340,34 @@ export default function CashierDashboard() {
                       <div className="py-10 flex justify-center"><div className="spinner"/></div>
                     ) : impayesMois.length === 0 ? (
                       <div className="py-10 text-center">
-                        <CheckCircle size={40} className="text-green-400 mx-auto mb-3"/>
-                        <p className="text-green-300 font-semibold">Tous les étudiants sont à jour !</p>
-                        <p className="text-white/30 text-sm mt-1">Aucun impayé pour ce mois.</p>
+                        <CheckCircle size={40} className="text-emerald-500 mx-auto mb-3"/>
+                        <p className="text-emerald-700 font-semibold">Tous les étudiants sont à jour !</p>
+                        <p className="text-slate-400 text-sm mt-1">Aucun impayé pour ce mois.</p>
                       </div>
                     ) : (
-                      <table className="data-table">
+                      <table className="data-table-light">
                         <thead>
                           <tr><th>#</th><th>Étudiant</th><th>Matricule</th><th>Filière / Niveau</th><th>Mensualité due</th><th>Action</th></tr>
                         </thead>
                         <tbody>
                           {impayesMois.map((s, i) => (
                             <tr key={s.id}>
-                              <td className="text-white/30 text-xs">{i + 1}</td>
+                              <td className="text-slate-400 text-xs">{i + 1}</td>
                               <td>
-                                <div className="text-white text-sm font-semibold">{s.prenom} {s.nom}</div>
-                                <div className="text-white/40 text-xs">{s.user?.email}</div>
+                                <div className="text-slate-900 text-sm font-semibold">{s.prenom} {s.nom}</div>
+                                <div className="text-slate-400 text-xs">{s.user?.email}</div>
                               </td>
-                              <td className="text-brand-400 font-mono text-sm">{s.matricule || '—'}</td>
+                              <td className="text-isiblue-500 font-mono text-sm">{s.matricule || '—'}</td>
                               <td>
-                                <div className="text-white/80 text-sm">{s.filiere?.nom}</div>
-                                <div className="text-white/40 text-xs">{s.license?.nom}</div>
+                                <div className="text-slate-700 text-sm">{s.filiere?.nom}</div>
+                                <div className="text-slate-400 text-xs">{s.license?.nom}</div>
                               </td>
                               <td>
-                                <span className="text-red-400 font-bold text-sm">{fmt(s.license?.frais_mensuel)} FCFA</span>
+                                <span className="text-red-600 font-bold text-sm">{fmt(s.license?.frais_mensuel)} FCFA</span>
                               </td>
                               <td>
                                 <button onClick={() => setQuickPay({ ...s, inscription_payee: true })}
-                                  className="flex items-center gap-1.5 text-xs bg-green-500/15 text-green-400 hover:bg-green-500/25 border border-green-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+                                  className="flex items-center gap-1.5 text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-all font-semibold">
                                   <CreditCard size={12}/> Encaisser
                                 </button>
                               </td>

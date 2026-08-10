@@ -3,8 +3,9 @@
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"></head>
 <body style="margin:0;padding:0;background:#f0f4ff;font-family:Inter,Arial,sans-serif;">
 <div style="max-width:560px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
-  <div style="background:linear-gradient(135deg,#0a1628,#1e3a5f);padding:30px;text-align:center;">
-    <div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:3px;">ISI SUPTECH</div>
+  <div style="background:linear-gradient(135deg,#0a1628,#1e3a5f);padding:26px 30px;text-align:center;">
+    <img src="{{ $message->embed(public_path('isi-logo.png')) }}" alt="ISI SUPTECH" style="height:40px;margin-bottom:8px;">
+    <div style="font-size:24px;font-weight:900;color:#fff;letter-spacing:3px;">ISI SUPTECH</div>
     <div style="color:rgba(255,255,255,0.6);font-size:12px;margin-top:4px;">Institut Supérieur d'Informatique</div>
   </div>
   <div style="padding:30px;">

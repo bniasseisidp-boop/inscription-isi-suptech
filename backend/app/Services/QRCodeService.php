@@ -16,7 +16,13 @@ class QRCodeService
     {
         $student->cards()->update(['actif' => false]);
 
-        $numeroCarte = 'ISI-' . date('Y') . '-' . str_pad($student->id, 6, '0', STR_PAD_LEFT);
+        // numero_carte est unique en base ; une régénération (bouton "Générer / Regénérer
+        // la carte") réutiliserait sinon le même numéro que la carte désactivée précédente
+        // et ferait échouer l'insertion. On ajoute un suffixe de version à partir de la 2e
+        // génération, en gardant le format simple pour la toute première carte.
+        $baseNumero  = 'ISI-' . date('Y') . '-' . str_pad((string) $student->id, 6, '0', STR_PAD_LEFT);
+        $version     = $student->cards()->count() + 1;
+        $numeroCarte = $version > 1 ? $baseNumero . '-v' . $version : $baseNumero;
 
         $qrData = json_encode([
             'matricule'   => $student->matricule,
@@ -54,6 +60,17 @@ class QRCodeService
                 $pdfPath = app(\App\Services\PDFService::class)->generateStudentCard($student);
                 if ($card) {
                     $card->update(['qr_pdf_path' => $pdfPath]);
+                }
+
+                // Envoie la carte par email dès qu'elle est (re)générée.
+                if ($student->user?->email) {
+                    try {
+                        $fullPath = Storage::disk('public')->path($pdfPath);
+                        \Illuminate\Support\Facades\Mail::to($student->user->email)
+                            ->send(new \App\Mail\CarteEtudiante($student, $fullPath));
+                    } catch (\Exception $e) {
+                        \Log::warning('Email carte étudiante: ' . $e->getMessage());
+                    }
                 }
             } catch (\Exception $e) {
                 \Log::warning('PDF generation failed: ' . $e->getMessage());

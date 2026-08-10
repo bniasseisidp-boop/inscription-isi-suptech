@@ -36,7 +36,7 @@
 
 <div class="header">
   <h1>ISI SUPTECH</h1>
-  <p>Institut Supérieur d'Informatique — Groupe ISI — Dakar, Sénégal</p>
+  <p>Institut Supérieur d'Informatique — ISI SUPTECH — Dakar, Sénégal</p>
 </div>
 
 <div class="body">

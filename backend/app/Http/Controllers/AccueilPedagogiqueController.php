@@ -74,7 +74,7 @@ class AccueilPedagogiqueController extends Controller
             : null;
 
         $user = User::create([
-            'name'     => $validated['prenom'] . ' ' . $validated['nom'],
+            'name'     => Student::capitaliserNomPropre($validated['prenom']) . ' ' . Student::capitaliserNomPropre($validated['nom']),
             'email'    => $validated['email'],
             'password' => Hash::make(\Str::random(12)),
             'role'     => 'student',
@@ -110,7 +110,7 @@ class AccueilPedagogiqueController extends Controller
     /** Détail complet d'un étudiant */
     public function studentDetail(Student $student)
     {
-        $student->load(['filiere', 'license', 'card',
+        $student->load(['user', 'filiere', 'license', 'card',
             'payments' => fn ($q) => $q->where('statut', 'complete')->latest(),
         ]);
 
@@ -121,12 +121,13 @@ class AccueilPedagogiqueController extends Controller
         ]);
     }
 
-    /** Télécharger la liste d'une classe en PDF */
+    /** Télécharger (ou visualiser) la liste d'une classe en PDF — présence ou notes */
     public function classListPdf(Request $request)
     {
         $request->validate([
             'filiere_id' => 'required|exists:filieres,id',
             'license_id' => 'nullable|exists:licenses,id',
+            'type'       => 'nullable|in:presence,notes',
         ]);
 
         $students = Student::with(['filiere', 'license'])
@@ -138,14 +139,19 @@ class AccueilPedagogiqueController extends Controller
 
         $filiere = Filiere::findOrFail($request->filiere_id);
         $license = $request->license_id ? License::find($request->license_id) : null;
+        $type    = $request->type === 'notes' ? 'notes' : 'presence';
 
-        $path     = $this->pdfService->generateClassList($students, $filiere, $license);
+        $path     = $this->pdfService->generateClassList($students, $filiere, $license, $type);
         $fullPath = Storage::disk('public')->path($path);
+        $filename = 'liste_' . $type . '_' . ($filiere->code ?? 'classe') . '_' . now()->format('Ymd') . '.pdf';
+
+        // Aperçu inline (avant téléchargement) si demandé, sinon téléchargement direct.
+        if ($request->boolean('preview')) {
+            return response()->file($fullPath, ['Content-Type' => 'application/pdf'])->deleteFileAfterSend(true);
+        }
 
         return response()->download(
-            $fullPath,
-            'liste_' . ($filiere->code ?? 'classe') . '_' . now()->format('Ymd') . '.pdf',
-            ['Content-Type' => 'application/pdf']
+            $fullPath, $filename, ['Content-Type' => 'application/pdf']
         )->deleteFileAfterSend(true);
     }
 
@@ -178,6 +184,54 @@ class AccueilPedagogiqueController extends Controller
         return response()->download(
             $fullPath,
             'carte_' . $student->matricule . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /** Télécharger l'attestation de scolarité d'un étudiant */
+    public function downloadAttestationScolarite(Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+
+        $path = $this->pdfService->generateAttestationScolarite($student);
+
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'attestation_scolarite_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /** Télécharger l'attestation d'inscription d'un étudiant */
+    public function downloadAttestationInscription(Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+
+        $path = $this->pdfService->generateAttestationInscription($student);
+
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'attestation_inscription_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /** Télécharger la fiche d'inscription (contrat) d'un étudiant */
+    public function downloadFicheInscription(Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+
+        $path = $this->pdfService->generateFicheInscription($student);
+
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'fiche_inscription_' . ($student->matricule ?? $student->id) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }

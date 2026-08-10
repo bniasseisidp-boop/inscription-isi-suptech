@@ -19,6 +19,9 @@ api.interceptors.response.use(
       localStorage.removeItem('isi_user')
       window.location.href = '/connexion'
     }
+    if (error.response?.status === 503 && error.response?.data?.maintenance) {
+      window.dispatchEvent(new CustomEvent('isi:maintenance', { detail: error.response.data }))
+    }
     return Promise.reject(error)
   }
 )
@@ -27,9 +30,26 @@ api.interceptors.response.use(
 export const login = (data) => api.post('/login', data)
 export const logout = () => api.post('/logout')
 export const getMe = () => api.get('/me')
+export const updateMyPhoto = (formData) => api.post('/me/photo', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
+export const updateMyPassword = (data) => api.put('/me/password', data)
+export const forgotPassword = (email) => api.post('/forgot-password', { email })
+export const resetPassword = (data) => api.post('/reset-password', data)
+export const verifyTwoFactor = (challenge, code) => api.post('/verify-2fa', { challenge, code })
+export const resendTwoFactor = (challenge) => api.post('/resend-2fa', { challenge })
 
 // Pre-inscription
 export const submitPreInscription = (data) => api.post('/inscription', data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
+
+// Dossier à compléter — étudiant renvoie ses pièces manquantes
+export const submitMissingDocuments = (data) => api.post('/etudiant/documents/completer', data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
+// Admin/pédagogique upload un document au nom de l'étudiant
+export const uploadStudentDocument = (studentId, data) => api.post(`/admin/etudiants/${studentId}/document`, data, {
   headers: { 'Content-Type': 'multipart/form-data' },
 })
 
@@ -77,6 +97,9 @@ export const restoreStudent = (id) => api.post(`/admin/etudiants/${id}/restaurer
 export const forceDeleteStudent = (id) => api.delete(`/admin/etudiants/${id}/forcer`)
 export const generateStudentCard = (id) => api.post(`/admin/etudiants/${id}/carte`)
 export const downloadAdminCard   = (id) => api.get(`/pedagogique/etudiants/${id}/carte/telecharger`, { responseType: 'blob' })
+export const downloadAttestationScolarite   = (id) => api.get(`/pedagogique/etudiants/${id}/attestation-scolarite`, { responseType: 'blob' })
+export const downloadAttestationInscription = (id) => api.get(`/pedagogique/etudiants/${id}/attestation-inscription`, { responseType: 'blob' })
+export const downloadFicheInscription       = (id) => api.get(`/pedagogique/etudiants/${id}/fiche-inscription`, { responseType: 'blob' })
 export const getAdminPayments = (params) => api.get('/admin/paiements', { params })
 export const createFiliere = (data) => api.post('/admin/filieres', data)
 export const updateAdminFiliere = (id, data) => api.put(`/admin/filieres/${id}`, data)
@@ -115,10 +138,22 @@ export const adminApprouverTemoignage = (id) => api.post(`/admin/contenu/temoign
 export const adminDeleteTemoignage = (id) => api.delete(`/admin/contenu/temoignages/${id}`)
 
 export const adminGetNewsletter = () => api.get('/admin/contenu/newsletter')
+export const adminSendNewsletterAnnouncement = (data) => api.post('/admin/contenu/newsletter/annoncer', data)
+export const getSiteStats = () => api.get('/settings/stats')
+export const updateSiteStats = (data) => api.post('/admin/contenu/stats', data)
+export const getContentBlocks = () => api.get('/contenu/blocs')
+export const updateContentBlockText = (cle, valeur) => api.post('/admin/contenu/blocs/texte', { cle, valeur })
+export const updateContentBlockImage = (cle, formData) => api.post('/admin/contenu/blocs/photo', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
 
 // Cashier
 export const getCashierPayments = (params) => api.get('/caisse/paiements', { params })
 export const recordManualPayment = (data) => api.post('/caisse/paiement', data)
+export const updateManualPayment = (id, data) => api.put(`/caisse/paiement/${id}`, data)
+export const demanderModificationPaiement = (id, data) => api.post(`/caisse/paiement/${id}/demander-modification`, data)
+export const getStatutDemandeModification = (id) => api.get(`/caisse/paiement/${id}/demande-modification`)
+export const recordManualPaymentMultiMois = (data) => api.post('/caisse/paiement/multi-mois', data)
 export const getCashierStats = () => api.get('/caisse/stats')
 export const downloadReceiptBlob = (id) => api.get(`/caisse/paiement/${id}/recu`, { responseType: 'blob' })
 export const getEtudiantsAttentePaiement = (params) => api.get('/caisse/etudiants-attente', { params })
@@ -130,6 +165,20 @@ export const adminGetMoisDesactives = () => api.get('/admin/mois-desactives')
 export const adminToggleMoisDesactive = (data) => api.post('/admin/mois-desactives', data)
 export const lockStudentProfile = (id) => api.post(`/admin/etudiants/${id}/verrouiller-profil`)
 
+// Admin — permissions de modification de paiement
+export const getPermissionsModification = (params) => api.get('/admin/permissions-modification', { params })
+export const approuverPermission = (id) => api.post(`/admin/permissions-modification/${id}/approuver`)
+export const refuserPermission = (id) => api.post(`/admin/permissions-modification/${id}/refuser`)
+
+// Admin — journal d'audit
+export const getAuditLog = (params) => api.get('/admin/audit', { params })
+
+// Admin — mode maintenance
+export const toggleMaintenance = (data) => api.post('/admin/maintenance', data)
+export const getMaintenanceStatus = () => api.get('/maintenance-status')
+export const forceTwoFactorForAll = () => api.post('/admin/force-2fa')
+export const getForceTwoFactorStatus = () => api.get('/admin/force-2fa')
+
 export const cancelStudentPayment = (id) => api.delete(`/etudiant/paiement/${id}`)
 
 // Student — receipt (auth-protected, uses student route)
@@ -137,6 +186,7 @@ export const downloadStudentReceiptBlob = (id) => api.get(`/etudiant/paiement/${
 
 // Cashier — impayés PDF
 export const downloadImpayesPdfBlob = (mois) => api.get(`/caisse/impayes-mois/pdf`, { params: { mois }, responseType: 'blob' })
+export const downloadBrouillardBlob = (date) => api.get(`/caisse/brouillard`, { params: { date }, responseType: 'blob' })
 
 // Cashier — student browser
 export const getCashierStudents = (params) => api.get('/caisse/etudiants', { params })

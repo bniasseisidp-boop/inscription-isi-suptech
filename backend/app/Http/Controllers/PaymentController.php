@@ -8,6 +8,7 @@ use App\Models\MoisDesactive;
 use App\Models\StudentNotification;
 use App\Services\WavePaymentService;
 use App\Services\PDFService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -65,6 +66,13 @@ class PaymentController extends Controller
 
         $student = Student::with('license')->findOrFail($request->student_id);
 
+        if ($request->type === 'mensualite') {
+            $erreurMois = $student->moisEstPayable($request->mois);
+            if ($erreurMois) {
+                return response()->json(['message' => $erreurMois], 422);
+            }
+        }
+
         // Frais annexes fixes (depuis site_settings)
         $settings       = DB::table('site_settings')->pluck('valeur', 'cle');
         $fraisAmea      = floatval($settings['frais_amea']      ?? 10000);
@@ -84,19 +92,7 @@ class PaymentController extends Controller
             );
             $totalApresVersement = $dejaPayeInscription + floatval($request->montant);
             $statut = $totalApresVersement >= $montantDu ? 'complete' : 'partiel';
-            // Calculer le dernier mois avec correction d'année (si année scolaire déjà terminée → avancer d'un an)
-            if ($student->license) {
-                $moisFin       = intval($student->license->mois_fin    ?? 6);
-                $moisDebut     = intval($student->license->mois_debut  ?? 9);
-                $now           = \Carbon\Carbon::now();
-                $anneeDebut    = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-                $anneeFinOff   = ($moisFin < $moisDebut) ? 1 : 0;
-                $tentativeEnd  = \Carbon\Carbon::create($anneeDebut + $anneeFinOff, $moisFin, 1)->endOfMonth();
-                if ($tentativeEnd->lt($now)) {
-                    $anneeDebut++;
-                }
-                $dernierMoisCle = ($anneeDebut + $anneeFinOff) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
-            }
+            $dernierMoisCle = $student->dernier_mois_cle;
         } elseif ($request->type === 'mensualite') {
             $montantDu   = $fraisMensuel;
             $avanceActuelle = floatval($student->avance_paiement ?? 0);
@@ -144,6 +140,20 @@ class PaymentController extends Controller
                 'message'    => "Votre paiement d'inscription a été enregistré (frais de scolarité + AMEA + tenue + assurance + dernier mois inclus : " . ($dernierMoisCle ?? '—') . "). Votre compte étudiant est maintenant actif. Bienvenue à ISI SUPTECH !",
                 'type'       => 'success',
             ]);
+
+            // Envoie l'attestation d'inscription (+ fiche d'inscription) par email —
+            // le dossier est désormais officiellement finalisé.
+            if ($student->user?->email) {
+                try {
+                    $freshStudent = $student->fresh(['filiere', 'license', 'user']);
+                    $attestationPath = Storage::disk('public')->path($this->pdfService->generateAttestationInscription($freshStudent));
+                    $fichePath        = Storage::disk('public')->path($this->pdfService->generateFicheInscription($freshStudent));
+                    \Illuminate\Support\Facades\Mail::to($student->user->email)
+                        ->send(new \App\Mail\InscriptionPayee($freshStudent, $attestationPath, $fichePath));
+                } catch (\Exception $e) {
+                    \Log::warning('Email inscription payée: ' . $e->getMessage());
+                }
+            }
         } elseif ($request->type === 'inscription' && $statut === 'partiel') {
             // Reporter le solde restant en déficit sur avance_paiement pour les mois suivants
             $soldeRestant   = $montantDu - ($dejaPayeInscription + floatval($request->montant));
@@ -186,6 +196,12 @@ class PaymentController extends Controller
 
         $payment->refresh();
 
+        ActivityLogger::log(
+            $request->user(), 'payment.create',
+            "Paiement de " . number_format($payment->montant, 0, ',', ' ') . " FCFA (" . $payment->type . ($payment->mois ? ' — ' . $payment->mois : '') . ") pour {$student->prenom} {$student->nom}",
+            $payment, ['statut' => $payment->statut, 'methode' => $payment->methode]
+        );
+
         $extraData = [];
         if ($request->type === 'inscription') {
             $totalInsc = $montantDu;
@@ -213,6 +229,243 @@ class PaymentController extends Controller
                 ? asset('storage/' . $payment->recu_pdf_path)
                 : null,
         ], $extraData));
+    }
+
+    /**
+     * Paiement anticipé réparti sur plusieurs mois en une seule saisie.
+     * Ex: 100 000 FCFA versés pour Janvier+Février (mensualité 70 000) → Janvier reçoit
+     * 70 000 (complet), Février reçoit les 30 000 restants (partiel) ; le solde de Février
+     * (40 000) est reporté en déficit via avance_paiement et se rattrapera au paiement
+     * suivant (Mars) — jamais un 2e paiement n'est créé pour un même mois.
+     */
+    public function manualPaymentMultiMois(Request $request)
+    {
+        $request->validate([
+            'student_id'    => 'required|exists:students,id',
+            'mois'          => 'required|array|min:1',
+            'mois.*'        => 'string',
+            'montant_total' => 'required|numeric|min:1',
+            'methode'       => 'required|in:especes,virement,cheque,wave',
+            'notes'         => 'nullable|string',
+        ]);
+
+        $student = Student::with('license')->findOrFail($request->student_id);
+        $moisTries = collect($request->mois)->unique()->sort()->values();
+
+        foreach ($moisTries as $mois) {
+            $erreur = $student->moisEstPayable($mois);
+            if ($erreur) {
+                return response()->json(['message' => "$mois : $erreur"], 422);
+            }
+        }
+
+        $fraisMensuel = floatval($student->license?->frais_mensuel ?? 0);
+        $poolRestant  = floatval($request->montant_total);
+        $paiements    = [];
+        $avanceFinale = 0; // 0 = tout tombe juste ; négatif = déficit sur le dernier mois traité ; positif = surplus reporté
+        $groupeId     = (string) \Illuminate\Support\Str::uuid();
+
+        foreach ($moisTries as $mois) {
+            if ($poolRestant <= 0) break;
+
+            $verse  = min($poolRestant, $fraisMensuel);
+            $statut = $verse >= $fraisMensuel ? 'complete' : 'partiel';
+
+            $paiements[] = Payment::create([
+                'student_id'    => $student->id,
+                'groupe_id'     => $groupeId,
+                'type'          => 'mensualite',
+                'libelle'       => 'Mensualité ' . $mois . ' (paiement anticipé)',
+                'montant'       => $verse,
+                'mois'          => $mois,
+                'annee'         => date('Y'),
+                'statut'        => $statut,
+                'methode'       => $request->methode,
+                'date_paiement' => now(),
+                'saisi_par'     => $request->user()->id,
+                'notes'         => $request->notes,
+            ]);
+
+            $poolRestant  = round($poolRestant - $verse, 2);
+            $avanceFinale = round($verse - $fraisMensuel, 2); // 0 si complet, négatif si partiel
+        }
+
+        // S'il reste de l'argent après avoir couvert tous les mois sélectionnés (déjà tous
+        // complets), ce surplus devient un crédit reporté sur le mois suivant.
+        if ($poolRestant > 0) {
+            $avanceFinale = $poolRestant;
+        }
+
+        $student->update(['avance_paiement' => $avanceFinale]);
+
+        // Un seul reçu consolidé pour tout le groupe (pas un reçu par mois).
+        if (!empty($paiements)) {
+            try {
+                $this->pdfService->generateReceipt($paiements[0]->load('student.license.filiere'), true);
+            } catch (\Exception $e) {
+                \Log::warning('PDF reçu (multi-mois): ' . $e->getMessage());
+            }
+        }
+
+        $moisComplets = collect($paiements)->where('statut', 'complete')->pluck('mois')->values();
+        $moisPartiel  = collect($paiements)->firstWhere('statut', 'partiel');
+
+        StudentNotification::create([
+            'student_id' => $student->id,
+            'titre'      => '✅ Paiement anticipé enregistré',
+            'message'    => 'Versement de ' . number_format($request->montant_total, 0, ',', ' ') . ' FCFA réparti sur ' . $moisTries->count() . ' mois.'
+                . ($moisPartiel ? ' Le mois ' . $moisPartiel->mois . ' est partiellement payé — le solde sera reporté sur le mois suivant.' : ''),
+            'type' => 'success',
+        ]);
+
+        collect($paiements)->each(fn ($p) => $p->load(['student.user', 'student.filiere', 'student.license']));
+
+        ActivityLogger::log(
+            $request->user(), 'payment.create.multi',
+            "Paiement anticipé de " . number_format($request->montant_total, 0, ',', ' ') . " FCFA réparti sur " . $moisTries->count() . " mois pour {$student->prenom} {$student->nom}",
+            $paiements[0] ?? null, ['mois' => $moisTries->values(), 'avance_paiement' => $avanceFinale]
+        );
+
+        return response()->json([
+            'message'   => count($paiements) . ' mensualité(s) enregistrée(s)',
+            'paiements' => $paiements,
+            'avance_paiement' => $avanceFinale,
+        ]);
+    }
+
+    /**
+     * Corriger un paiement déjà saisi (erreur de caisse) — montant et/ou mode de paiement.
+     * Le mois et le type ne sont pas modifiables ici (cf. moisEstPayable) ; pour une
+     * mensualité, seul le dernier paiement du type du client peut être corrigé, car
+     * avance_paiement est un solde cumulé qui dépend de l'ordre des versements.
+     */
+    public function updatePayment(Request $request, Payment $payment)
+    {
+        // La caisse doit avoir une permission admin approuvée (et non encore utilisée)
+        // pour CE paiement précis avant de pouvoir le corriger — l'admin, lui, peut
+        // toujours corriger directement. La permission est consommée après usage.
+        $editRequest = null;
+        if ($request->user()->role === 'cashier') {
+            $editRequest = \App\Models\PaymentEditRequest::where('payment_id', $payment->id)
+                ->where('requested_by', $request->user()->id)
+                ->where('statut', 'approuve')
+                ->latest('decided_at')
+                ->first();
+
+            if (!$editRequest) {
+                return response()->json([
+                    'message' => "Vous n'avez pas la permission de modifier ce paiement — demandez l'autorisation à l'administrateur.",
+                ], 403);
+            }
+        }
+
+        $request->validate([
+            'montant' => 'required|numeric|min:1',
+            'methode' => 'required|in:especes,virement,cheque,wave',
+            'notes'   => 'nullable|string',
+        ]);
+
+        $student = $payment->student()->with('license')->first();
+        $ancienMontant = floatval($payment->montant);
+        $nouveauMontant = floatval($request->montant);
+
+        if ($payment->type === 'mensualite') {
+            $dernierPaiementId = $student->payments()
+                ->where('type', 'mensualite')->latest('id')->value('id');
+            if ($dernierPaiementId !== $payment->id) {
+                return response()->json([
+                    'message' => "Seul le dernier paiement de mensualité peut être corrigé ici — contactez l'administrateur pour un paiement plus ancien.",
+                ], 422);
+            }
+            $fraisMensuel   = floatval($student->license?->frais_mensuel ?? 0);
+            $ancienDelta    = $ancienMontant - $fraisMensuel;
+            $avanceAvant    = floatval($student->avance_paiement ?? 0) - $ancienDelta;
+            $montantEffectif = $nouveauMontant + $avanceAvant;
+            $payment->statut = $montantEffectif >= $fraisMensuel ? 'complete' : 'partiel';
+            $student->update(['avance_paiement' => round($montantEffectif - $fraisMensuel, 2)]);
+        } elseif ($payment->type === 'inscription') {
+            $montantDu = floatval($student->license?->frais_inscription ?? 0);
+            $autresPaiements = $student->payments()
+                ->where('type', 'inscription')->where('id', '!=', $payment->id)->sum('montant');
+            $totalApres = floatval($autresPaiements) + $nouveauMontant;
+            $payment->statut = $totalApres >= $montantDu ? 'complete' : 'partiel';
+            $student->update([
+                'inscription_payee'  => $payment->statut === 'complete',
+                'statut_inscription' => $payment->statut === 'complete' ? 'accepte' : 'en_attente_paiement',
+            ]);
+        }
+
+        $payment->montant = $nouveauMontant;
+        $payment->methode = $request->methode;
+        $payment->notes   = trim(
+            ($payment->notes ? $payment->notes . "\n" : '')
+            . '[Corrigé le ' . now()->format('d/m/Y H:i') . ' par ' . $request->user()->name
+            . '] Montant : ' . number_format($ancienMontant, 0, ',', ' ') . ' → ' . number_format($nouveauMontant, 0, ',', ' ') . ' FCFA'
+            . ($request->notes ? ' — ' . $request->notes : '')
+        );
+        $payment->save();
+
+        if ($editRequest) {
+            $editRequest->update(['statut' => 'utilise']);
+        }
+
+        ActivityLogger::log(
+            $request->user(), 'payment.update',
+            "Correction paiement #{$payment->id} : " . number_format($ancienMontant, 0, ',', ' ') . " → " . number_format($nouveauMontant, 0, ',', ' ') . " FCFA pour {$student->prenom} {$student->nom}",
+            $payment, ['ancien_montant' => $ancienMontant, 'nouveau_montant' => $nouveauMontant, 'via_permission' => (bool) $editRequest]
+        );
+
+        try {
+            $this->pdfService->generateReceipt($payment->load('student.license.filiere'), false);
+        } catch (\Exception $e) {
+            \Log::warning('PDF reçu (correction): ' . $e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'Paiement corrigé avec succès',
+            'payment' => $payment->fresh()->load(['student.user', 'student.filiere', 'student.license']),
+        ]);
+    }
+
+    /** La caisse demande à l'admin la permission de corriger un paiement précis. */
+    public function demanderModificationPaiement(Request $request, Payment $payment)
+    {
+        $request->validate(['motif' => 'nullable|string|max:500']);
+
+        // Une demande en attente existe déjà pour ce paiement par cette même caisse : pas de doublon.
+        $existante = \App\Models\PaymentEditRequest::where('payment_id', $payment->id)
+            ->where('requested_by', $request->user()->id)
+            ->where('statut', 'en_attente')
+            ->first();
+        if ($existante) {
+            return response()->json(['message' => 'Une demande est déjà en attente pour ce paiement.', 'demande' => $existante], 422);
+        }
+
+        $demande = \App\Models\PaymentEditRequest::create([
+            'payment_id'   => $payment->id,
+            'requested_by' => $request->user()->id,
+            'motif'        => $request->motif,
+            'statut'       => 'en_attente',
+        ]);
+
+        ActivityLogger::log(
+            $request->user(), 'payment.edit_request',
+            "Demande de modification pour le paiement #{$payment->id}" . ($request->motif ? ' — ' . $request->motif : ''),
+            $payment
+        );
+
+        return response()->json(['message' => 'Demande envoyée à l\'administrateur.', 'demande' => $demande], 201);
+    }
+
+    /** Statut de la demande de modification en cours pour un paiement (côté caisse). */
+    public function statutDemandeModification(Request $request, Payment $payment)
+    {
+        $demande = \App\Models\PaymentEditRequest::where('payment_id', $payment->id)
+            ->where('requested_by', $request->user()->id)
+            ->latest()
+            ->first();
+
+        return response()->json(['demande' => $demande]);
     }
 
     /** Students waiting for payment (statut en_attente_paiement) */
@@ -313,6 +566,24 @@ class PaymentController extends Controller
         ]);
     }
 
+    /** Brouillard d'encaissement du jour — récapitulatif des paiements encaissés à une date donnée */
+    public function downloadBrouillard(Request $request)
+    {
+        $date = $request->input('date') ? \Carbon\Carbon::parse($request->input('date')) : now();
+
+        $path     = $this->pdfService->generateBrouillardEncaissement($date, $request->user()->name);
+        $fullPath = Storage::disk('public')->path($path);
+
+        if (!file_exists($fullPath)) {
+            return response()->json(['message' => 'Erreur génération PDF'], 500);
+        }
+
+        return response()->file($fullPath, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="brouillard_ISI_' . $date->format('Ymd') . '.pdf"',
+        ]);
+    }
+
     /** List students for cashier browser — inclut en_attente pour que le caissier trouve tout étudiant pré-inscrit */
     public function etudiantsList(Request $request)
     {
@@ -341,7 +612,10 @@ class PaymentController extends Controller
     {
         $student = Student::with([
             'license',
-            'payments' => fn($q) => $q->where('statut', 'complete')->orderBy('created_at'),
+            // 'partiel' inclus : un mois payé en partie doit rester bloqué (le déficit se
+            // reporte sur le mois suivant) — sinon il réapparaît comme non payé et
+            // sélectionnable dans le sélecteur de mois de la caisse.
+            'payments' => fn($q) => $q->whereIn('statut', ['complete', 'partiel'])->orderBy('created_at'),
         ])->findOrFail($id);
 
         $license      = $student->license;
@@ -365,6 +639,7 @@ class PaymentController extends Controller
         $dernierMoisCleS = ($anneeDebut + $anneeFinOffset) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
 
         $paiementsMensuels = $student->payments->where('type', 'mensualite')->pluck('mois')->toArray();
+        $paiementsPartiels = $student->payments->where('type', 'mensualite')->where('statut', 'partiel')->pluck('mois')->toArray();
         // Si inscription payée, le dernier mois est inclus — pas besoin de paiement séparé
         if ($student->inscription_payee && $dernierMoisCleS && !in_array($dernierMoisCleS, $paiementsMensuels)) {
             $paiementsMensuels[] = $dernierMoisCleS;
@@ -384,6 +659,7 @@ class PaymentController extends Controller
                 'label'     => $current->isoFormat('MMMM YYYY'),
                 'montant'   => $fraisMensuel,
                 'paye'      => $estPaye,
+                'partiel'   => in_array($cle, $paiementsPartiels),
                 'en_retard' => $estPasse && !$estPaye && !$estActuel,
                 'actuel'    => $estActuel,
                 'futur'     => !$estPasse,

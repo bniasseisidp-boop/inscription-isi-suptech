@@ -6,15 +6,15 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10px; color:#1e293b; background:#fff; }
 
-.header { background:#0d1f3c; padding:18px 28px 14px; }
+.header { background:#ffffff; border-bottom:2px solid #1a3a8f; padding:18px 28px 14px; }
 .header-inner { display:flex; justify-content:space-between; align-items:center; }
 .brand { display:flex; align-items:center; gap:14px; }
 .brand img { width:52px; height:52px; object-fit:contain; }
-.brand-text h1 { color:#fff; font-size:20px; font-weight:900; letter-spacing:3px; }
-.brand-text p  { color:#93c5fd; font-size:8px; letter-spacing:1px; margin-top:3px; }
+.brand-text h1 { color:#0d1f3c; font-size:20px; font-weight:900; letter-spacing:3px; }
+.brand-text p  { color:#1a3a8f; font-size:8px; letter-spacing:1px; margin-top:3px; }
 .title-block { text-align:right; }
-.title-block .doc-title { color:#fff; font-size:14px; font-weight:900; letter-spacing:1px; }
-.title-block .doc-sub   { color:rgba(255,255,255,.45); font-size:8px; margin-top:3px; }
+.title-block .doc-title { color:#0d1f3c; font-size:14px; font-weight:900; letter-spacing:1px; }
+.title-block .doc-sub   { color:#64748b; font-size:8px; margin-top:3px; }
 .header-bar { background:#dc2626; padding:5px 28px; display:flex; justify-content:space-between; }
 .header-bar span { color:#fff; font-size:8px; font-weight:700; letter-spacing:.5px; }
 
@@ -51,7 +51,7 @@ tbody td { padding:7px 10px; border-bottom:1px solid #f1f5f9; font-size:9.5px; v
       <img src="{{ public_path('isi-logo.png') }}" alt="ISI" />
       <div class="brand-text">
         <h1>ISI SUPTECH</h1>
-        <p>Institut Supérieur d'Informatique — Groupe ISI</p>
+        <p>Institut Supérieur d'Informatique — ISI SUPTECH</p>
       </div>
     </div>
     <div class="title-block">

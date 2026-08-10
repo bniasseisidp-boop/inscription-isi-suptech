@@ -1,5 +1,30 @@
 # ISI SUPTECH — Guide d'Installation
 
+---
+
+## Démarrage rapide (chaque session)
+
+### Terminal 1 — Backend Laravel
+```bash
+cd C:\xampp\htdocs\isi-suptech-api
+C:\xampp\htdocs\php-8.3.30-Win32-vs16-x64\php.exe artisan serve --port=8000
+```
+> ⚠️ Utiliser ce chemin complet — la commande `php` du système pointe sur PHP 8.0 (incompatible)
+
+### Terminal 2 — Frontend React
+```bash
+cd "C:\Users\azoto\OneDrive\Desktop\Inscription-ISI-SUPTECH\frontend"
+npm run dev
+```
+
+| Interface | URL |
+|-----------|-----|
+| Application | http://localhost:3000 |
+| API Backend | http://localhost:8000 |
+| phpMyAdmin  | http://localhost/phpmyadmin |
+
+---
+
 ## Prérequis
 - XAMPP avec PHP 8.3 (C:\xampp\htdocs\)
 - Composer
@@ -43,14 +68,14 @@ FRONTEND_URL=http://localhost:3000
 
 ### Migrations et données
 ```bash
-php artisan migrate
-php artisan db:seed
-php artisan storage:link
+C:\xampp\htdocs\php-8.3.30-Win32-vs16-x64\php.exe artisan migrate
+C:\xampp\htdocs\php-8.3.30-Win32-vs16-x64\php.exe artisan db:seed
+C:\xampp\htdocs\php-8.3.30-Win32-vs16-x64\php.exe artisan storage:link
 ```
 
 ### Démarrer le serveur
 ```bash
-php artisan serve --port=8000
+C:\xampp\htdocs\php-8.3.30-Win32-vs16-x64\php.exe artisan serve --port=8000
 ```
 
 L'API sera disponible sur : http://localhost:8000
@@ -76,7 +101,7 @@ Le site sera disponible sur : http://localhost:3000
 |-------------|----------------------------|----------------|
 | Admin       | admin@isisuptech.com       | Admin@2025!    |
 | Caissier    | caisse@isisuptech.com      | Caisse@2025!   |
-| Accueil     | accueil@isisuptech.com     | Accueil@2025!  |
+| Accueil     | accueil@isisuptech.com     | Accueil@2025!  |assane@gmail.com
 
 ---
 

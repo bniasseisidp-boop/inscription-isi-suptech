@@ -106,7 +106,7 @@
   <!-- Footer -->
   <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 24px;text-align:center;">
     <p style="color:#94a3b8;font-size:11px;margin:0;">
-      ISI SUPTECH — Système de gestion des inscriptions<br>
+      ISI SUPTECH — Système de gestion des inscriptions &nbsp;|&nbsp; Multi Brain Tech<br>
       Cet email est envoyé automatiquement, ne pas répondre directement.
     </p>
   </div>

@@ -9,7 +9,7 @@
         "laravel/sanctum": "^4.0",
         "barryvdh/laravel-dompdf": "^3.0",
         "simplesoftwareio/simple-qrcode": "^4.2",
-        "carbon/carbon": "^2.72",
+        "nesbot/carbon": "^2.72",
         "guzzlehttp/guzzle": "^7.9"
     },
     "require-dev": {

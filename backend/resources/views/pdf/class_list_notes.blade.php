@@ -2,12 +2,15 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Liste de classe</title>
+<title>Liste de notes</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #1a1a2e; padding: 18px; }
 
-  .header { text-align: center; border-bottom: 3px solid #1a3a8f; padding-bottom: 12px; margin-bottom: 16px; }
+  .header { display: table; width: 100%; border-bottom: 3px solid #1a3a8f; padding-bottom: 12px; margin-bottom: 16px; }
+  .header .logo-cell { display: table-cell; width: 46px; vertical-align: middle; }
+  .header .logo-cell img { width: 40px; height: 40px; }
+  .header .txt-cell { display: table-cell; vertical-align: middle; text-align: center; }
   .header h1 { font-size: 18px; color: #1a3a8f; font-weight: bold; margin-bottom: 2px; }
   .header p { font-size: 10px; color: #666; margin-bottom: 1px; }
 
@@ -16,49 +19,59 @@
   .badge-green { background: #0e6e3a; }
   .nb { font-size: 10px; color: #555; }
 
-  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  table.liste { width: 100%; border-collapse: collapse; margin-top: 6px; }
   thead tr { background: #1a3a8f; color: white; }
   thead th { padding: 6px 5px; text-align: left; font-size: 10px; font-weight: bold; }
   tbody tr:nth-child(even) { background: #eef2ff; }
-  tbody tr:hover { background: #dde5ff; }
   tbody td { padding: 5px 5px; border-bottom: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
 
   .statut-inscrit   { color: #0e6e3a; font-weight: bold; }
   .statut-attente-p { color: #b45309; }
   .statut-attente   { color: #555; }
 
+  th.note, td.note { text-align: center; border-left: 1px solid #cbd5e1; }
+
   .footer { margin-top: 16px; border-top: 1px solid #ccc; padding-top: 8px; }
   .footer table { width: 100%; }
   .footer td { font-size: 9px; color: #888; }
   .footer .right { text-align: right; }
+
+  .legende { margin-top: 6px; font-size: 8.5px; color: #555; }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>ISI SUPTECH</h1>
-  <p>Institut Supérieur d'Informatique — Groupe ISI</p>
-  <p>Tél : 77 978 26 18 &nbsp;|&nbsp; www.isisuptech.com</p>
-  <p style="margin-top:6px; font-size:12px; font-weight:bold; color:#1a3a8f;">LISTE DE CLASSE — Année {{ $annee }}</p>
+  <div class="logo-cell"><img src="{{ public_path('isi-logo.png') }}" alt="ISI SUPTECH"></div>
+  <div class="txt-cell">
+    <h1>ISI SUPTECH</h1>
+    <p>Institut Supérieur d'Informatique — ISI SUPTECH</p>
+    <p>Tél : 77 978 26 18 &nbsp;|&nbsp; www.isisuptech.com</p>
+    <p style="margin-top:6px; font-size:12px; font-weight:bold; color:#1a3a8f;">LISTE DE NOTES — Année {{ $annee }}</p>
+  </div>
+  <div class="logo-cell"></div>
 </div>
 
 <div class="meta">
   <span class="badge">{{ $filiere->nom }}</span>
   @if($license)<span class="badge badge-green">{{ $license->nom }}</span>@endif
-  <span class="nb">— {{ count($students) }} étudiant(s) au total</span>
+  <span class="nb">
+    — {{ count($students) }} étudiant(s) au total
+    ({{ collect($students)->where('sexe', 'M')->count() }} garçons, {{ collect($students)->where('sexe', 'F')->count() }} filles)
+  </span>
 </div>
 
-<table>
+<table class="liste">
   <thead>
     <tr>
-      <th style="width:28px">#</th>
-      <th style="width:90px">Matricule</th>
+      <th style="width:24px">#</th>
+      <th style="width:78px">Matricule</th>
       <th>Nom & Prénom</th>
-      <th style="width:22px">S.</th>
-      <th style="width:80px">Téléphone</th>
-      <th style="width:80px">Filière / Niv.</th>
-      <th style="width:75px">Statut</th>
-      <th style="width:65px">Date inscr.</th>
+      <th style="width:18px">S.</th>
+      <th class="note" style="width:38px">Dev1</th>
+      <th class="note" style="width:38px">Dev2</th>
+      <th class="note" style="width:42px">M.Dev</th>
+      <th class="note" style="width:38px">Exam</th>
     </tr>
   </thead>
   <tbody>
@@ -68,24 +81,16 @@
       <td style="font-family:monospace; font-size:9px;">{{ $s->matricule ?? '—' }}</td>
       <td><strong>{{ strtoupper($s->nom) }}</strong> {{ $s->prenom }}</td>
       <td>{{ $s->sexe === 'M' ? 'H' : 'F' }}</td>
-      <td>{{ $s->telephone }}</td>
-      <td>{{ $s->filiere?->code }} / {{ $s->license?->code }}</td>
-      <td class="
-        @if($s->statut_inscription === 'accepte') statut-inscrit
-        @elseif($s->statut_inscription === 'en_attente_paiement') statut-attente-p
-        @else statut-attente
-        @endif
-      ">
-        @if($s->statut_inscription === 'accepte') ✓ Inscrit
-        @elseif($s->statut_inscription === 'en_attente_paiement') Att. paiement
-        @else En attente
-        @endif
-      </td>
-      <td>{{ $s->date_acceptation ? \Carbon\Carbon::parse($s->date_acceptation)->format('d/m/Y') : '—' }}</td>
+      <td class="note"></td>
+      <td class="note"></td>
+      <td class="note"></td>
+      <td class="note"></td>
     </tr>
     @endforeach
   </tbody>
 </table>
+
+<div class="legende">Dev1 : 1er devoir &nbsp;·&nbsp; Dev2 : 2ème devoir &nbsp;·&nbsp; M.Dev : Moyenne des devoirs &nbsp;·&nbsp; Exam : Composition</div>
 
 <div class="footer">
   <table>

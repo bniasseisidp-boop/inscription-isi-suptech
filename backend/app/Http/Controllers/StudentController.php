@@ -41,8 +41,14 @@ class StudentController extends Controller
             'adresse'              => 'required|string|max:255',
             'nationalite'          => 'required|string|max:100',
             'pays_residence'       => 'required|string|max:100',
+            'tuteur_nom'           => 'required|string|max:100',
+            'tuteur_telephone'     => 'required|string|max:20',
+            'tuteur_profession'    => 'nullable|string|max:100',
             'filiere_id'           => 'required|exists:filieres,id',
             'license_id'           => 'required|exists:licenses,id',
+            'niveau_entree'        => 'nullable|string|max:20',
+            'type_inscription'     => 'required|in:Privée,Bourse,Entreprise',
+            'nature_bourse'        => 'nullable|string|max:150',
             'mot_de_passe'         => 'required|string|min:8|confirmed',
             'photo'                => 'nullable|image|max:2048',
             // Documents obligatoires
@@ -72,8 +78,11 @@ class StudentController extends Controller
         }
 
         [$user, $student] = DB::transaction(function () use ($request, $photoPath, $docs, $estTransfert) {
+            $prenomCap = Student::capitaliserNomPropre($request->prenom);
+            $nomCap    = Student::capitaliserNomPropre($request->nom);
+
             $user = User::create([
-                'name'     => $request->prenom . ' ' . $request->nom,
+                'name'     => $prenomCap . ' ' . $nomCap,
                 'email'    => $request->email,
                 'password' => Hash::make($request->mot_de_passe),
                 'role'     => 'student',
@@ -90,8 +99,14 @@ class StudentController extends Controller
                 'adresse'            => $request->adresse,
                 'nationalite'        => $request->nationalite,
                 'pays_residence'     => $request->pays_residence,
+                'tuteur_nom'         => $request->tuteur_nom,
+                'tuteur_telephone'   => $request->tuteur_telephone,
+                'tuteur_profession'  => $request->tuteur_profession,
                 'filiere_id'         => $request->filiere_id,
                 'license_id'         => $request->license_id,
+                'niveau_entree'      => $request->niveau_entree,
+                'type_inscription'   => $request->type_inscription,
+                'nature_bourse'      => $request->nature_bourse,
                 'annee_scolaire'     => date('Y') . '-' . (date('Y') + 1),
                 'photo'              => $photoPath,
                 'statut_inscription' => 'en_attente',
@@ -170,8 +185,22 @@ class StudentController extends Controller
             ->with('license')
             ->firstOrFail();
 
-        if ($student->statut_inscription !== 'accepte') {
-            return response()->json(['message' => 'Votre inscription n\'est pas encore confirmée.'], 403);
+        if ($request->type === 'inscription') {
+            // 'en_attente_paiement' = parcours normal (accepté par l'admin, paiement à faire).
+            // 'accepte' + inscription_payee=false = étudiant inscrit directement par l'accueil pédagogique.
+            $peutPayerInscription = $student->statut_inscription === 'en_attente_paiement'
+                || ($student->statut_inscription === 'accepte' && !$student->inscription_payee);
+            if (!$peutPayerInscription) {
+                return response()->json(['message' => "Votre dossier n'est pas encore accepté, ou vos frais d'inscription ont déjà été réglés."], 403);
+            }
+        } else {
+            if ($student->statut_inscription !== 'accepte' || !$student->inscription_payee) {
+                return response()->json(['message' => "Vous devez d'abord régler vos frais d'inscription avant de payer une mensualité."], 403);
+            }
+            $erreurMois = $student->moisEstPayable($request->mois);
+            if ($erreurMois) {
+                return response()->json(['message' => $erreurMois], 403);
+            }
         }
 
         $montant = $request->type === 'inscription'
@@ -191,6 +220,55 @@ class StudentController extends Controller
         $checkoutData = $this->waveService->createCheckoutSession($student, $payment);
 
         return response()->json($checkoutData);
+    }
+
+    /**
+     * L'étudiant renvoie les pièces manquantes depuis son espace (dossier "à compléter" — statut rejete).
+     * Remplace uniquement les documents fournis dans la requête et remet le dossier en attente de réexamen.
+     */
+    public function completerDocuments(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+
+        if ($student->statut_inscription !== 'rejete') {
+            return response()->json(['message' => "Votre dossier n'est pas en attente de compléments."], 422);
+        }
+
+        $request->validate([
+            'doc_bac'                => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_releve_notes'       => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_cin'                => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_acte_naissance'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'doc_bulletin_transfert' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $docFields = ['doc_bac', 'doc_releve_notes', 'doc_cin', 'doc_acte_naissance', 'doc_bulletin_transfert'];
+        $updates = [];
+        foreach ($docFields as $field) {
+            if ($request->hasFile($field)) {
+                $updates[$field] = $request->file($field)->store('documents/inscriptions', 'public');
+            }
+        }
+
+        if (empty($updates)) {
+            return response()->json(['message' => 'Aucun document fourni.'], 422);
+        }
+
+        $updates['statut_inscription'] = 'en_attente';
+        $updates['statut_documents']   = 'en_attente';
+        $student->update($updates);
+
+        StudentNotification::create([
+            'student_id' => $student->id,
+            'titre'      => '📤 Documents envoyés',
+            'message'    => 'Vos documents ont bien été transmis à notre équipe pédagogique pour réexamen.',
+            'type'       => 'info',
+        ]);
+
+        return response()->json([
+            'message' => 'Documents envoyés — votre dossier est de nouveau en cours d\'examen.',
+            'student' => $student->fresh(),
+        ]);
     }
 
     /**
@@ -276,17 +354,21 @@ class StudentController extends Controller
     {
         $students = Student::where('statut_inscription', 'accepte')
             ->where('inscription_payee', true)
-            ->with(['filiere', 'license'])
-            ->select(['id', 'nom', 'prenom', 'photo', 'filiere_id', 'license_id', 'annee_scolaire', 'matricule'])
+            ->with(['filiere', 'license',
+                'payments' => fn ($q) => $q->whereIn('statut', ['complete', 'partiel']),
+            ])
+            ->select(['id', 'nom', 'prenom', 'photo', 'filiere_id', 'license_id', 'annee_scolaire', 'matricule', 'inscription_payee', 'statut_inscription'])
             ->get()
             ->map(fn($s) => [
-                'id'          => $s->id,
-                'nom'         => $s->full_name,
-                'photo'       => $s->photo ? asset('storage/' . $s->photo) : null,
-                'filiere'     => $s->filiere?->nom,
-                'license'     => $s->license?->nom,
-                'annee'       => $s->annee_scolaire,
-                'matricule'   => $s->matricule,
+                'id'             => $s->id,
+                'nom'            => $s->full_name,
+                'photo'          => $s->photo ? asset('storage/' . $s->photo) : null,
+                'filiere'        => $s->filiere?->nom,
+                'license'        => $s->license?->nom,
+                'annee'          => $s->annee_scolaire,
+                'matricule'      => $s->matricule,
+                'a_jour'         => empty($s->mois_non_payes),
+                'mois_non_payes' => $s->mois_non_payes,
             ]);
 
         return response()->json($students);

@@ -111,6 +111,37 @@ class StudentProfileController extends Controller
         ]);
     }
 
+    /** Update just the profile photo (bouton "Changer photo" de l'espace étudiant) */
+    public function updatePhoto(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+
+        $request->validate([
+            'photo' => 'required|image|max:2048',
+        ]);
+
+        if ($student->photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($student->photo)) {
+            \Illuminate\Support\Facades\Storage::disk('public')->delete($student->photo);
+        }
+
+        $photoPath = $request->file('photo')->store('photos', 'public');
+        $student->update(['photo' => $photoPath]);
+
+        // Répercute la nouvelle photo sur la carte étudiant déjà générée, s'il y en a une.
+        if ($student->card) {
+            try {
+                app(PDFService::class)->generateStudentCard($student->fresh());
+            } catch (\Exception $e) {
+                \Log::warning('Régénération carte après changement de photo: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message' => 'Photo mise à jour !',
+            'student' => $student->fresh(['filiere', 'license', 'card', 'user']),
+        ]);
+    }
+
     /** Get payment tracking (month by month) */
     public function suiviPaiements(Request $request)
     {
@@ -177,5 +208,53 @@ class StudentProfileController extends Controller
             'mois_payes'     => $moisTotal - $moisRestants,
             'est_a_jour'     => $moisEnRetard === 0,
         ];
+    }
+
+    /**
+     * Voir / télécharger le reçu d'un de ses propres paiements. Régénéré à la demande
+     * (pas juste le PDF figé au moment du paiement) pour toujours refléter la logique
+     * et les données actuelles — mois payés, déficit reporté, consolidation multi-mois.
+     */
+    public function downloadReceipt(Request $request, $id)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+        $payment = $student->payments()->findOrFail($id);
+
+        $path = app(PDFService::class)->generateReceipt($payment->load('student.license.filiere'));
+        $fullPath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+
+        return response()->file($fullPath, ['Content-Type' => 'application/pdf']);
+    }
+
+    /** Télécharger sa propre carte étudiante */
+    public function downloadCard(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)
+            ->with(['filiere', 'license', 'card'])
+            ->firstOrFail();
+
+        if (!$student->card) {
+            return response()->json(['message' => "Carte pas encore générée — contactez l'accueil pédagogique."], 404);
+        }
+
+        $path = app(PDFService::class)->generateStudentCard($student);
+        $fullPath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+
+        return response()->file($fullPath, ['Content-Type' => 'application/pdf']);
+    }
+
+    /** Annuler un paiement Wave resté bloqué en attente (pour pouvoir en relancer un). */
+    public function cancelPayment(Request $request, $id)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+        $payment = $student->payments()->findOrFail($id);
+
+        if (!in_array($payment->statut, ['en_attente', 'echoue'], true)) {
+            return response()->json(['message' => 'Seul un paiement en attente peut être annulé.'], 422);
+        }
+
+        $payment->delete();
+
+        return response()->json(['message' => 'Paiement annulé.']);
     }
 }

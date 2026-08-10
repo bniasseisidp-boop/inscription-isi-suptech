@@ -4,6 +4,7 @@ import Landing from './pages/Landing'
 import Formations from './pages/Formations'
 import PreInscription from './pages/PreInscription'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import StudentPortal from './pages/StudentPortal'
 import AdminDashboard from './pages/AdminDashboard'
 import CashierDashboard from './pages/CashierDashboard'
@@ -14,7 +15,9 @@ function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-space-900"><div className="spinner" /></div>
   if (!user) return <Navigate to="/connexion" replace />
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />
+  // Le super admin a accès à tout, quel que soit le rôle attendu par la route
+  // (miroir de CheckRole côté backend).
+  if (user.role !== 'super_admin' && roles && !roles.includes(user.role)) return <Navigate to="/" replace />
   return children
 }
 
@@ -25,6 +28,7 @@ export default function App() {
       <Route path="/formations"    element={<Formations />} />
       <Route path="/pre-inscription" element={<PreInscription />} />
       <Route path="/connexion"     element={<Login />} />
+      <Route path="/reinitialiser-mot-de-passe" element={<ResetPassword />} />
 
       <Route path="/student/*" element={
         <ProtectedRoute roles={['student']}>

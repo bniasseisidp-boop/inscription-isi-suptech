@@ -13,6 +13,7 @@ use App\Services\PDFService;
 use App\Services\QRCodeService;
 use Illuminate\Http\Request;
 use App\Mail\InscriptionAccepted;
+use App\Mail\DossierIncomplet;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -91,11 +92,19 @@ class AdminController extends Controller
             \Log::warning('PDF lettre acceptation: ' . $e->getMessage());
         }
 
-        try {
-            Mail::to($student->email)->send(new InscriptionAccepted($student, $pdfPath));
-        } catch (\Exception $e) {
-            \Log::error('Email acceptation non envoyé à ' . $student->email . ': ' . $e->getMessage());
+        if ($student->user?->email) {
+            try {
+                Mail::to($student->user->email)->send(new InscriptionAccepted($student, $pdfPath));
+            } catch (\Exception $e) {
+                \Log::error('Email acceptation non envoyé à ' . $student->user->email . ': ' . $e->getMessage());
+            }
         }
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'student.accept',
+            "Dossier accepté pour {$student->prenom} {$student->nom} (matricule {$matricule})",
+            $student
+        );
 
         return response()->json([
             'message' => 'Dossier accepté — étudiant mis en attente de paiement',
@@ -119,6 +128,10 @@ class AdminController extends Controller
             'type'       => 'success',
         ]);
 
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'student.lock', "Profil verrouillé pour {$student->prenom} {$student->nom}", $student
+        );
+
         return response()->json([
             'message' => 'Profil verrouillé avec succès.',
             'student' => $student->fresh(),
@@ -130,6 +143,8 @@ class AdminController extends Controller
     {
         $request->validate(['motif' => 'required|string']);
 
+        $dateLimite = now()->addDays(30);
+
         $student->update([
             'statut_inscription' => 'rejete',
             'notes_admin'        => $request->motif,
@@ -137,12 +152,26 @@ class AdminController extends Controller
 
         StudentNotification::create([
             'student_id' => $student->id,
-            'titre'      => 'Inscription non retenue',
-            'message'    => 'Après examen de votre dossier, nous ne pouvons pas donner suite à votre demande. Motif : ' . $request->motif,
-            'type'       => 'danger',
+            'titre'      => '📋 Dossier à compléter',
+            'message'    => $request->motif,
+            'type'       => 'warning',
         ]);
 
-        return response()->json(['message' => 'Inscription rejetée']);
+        if ($student->user?->email) {
+            try {
+                Mail::to($student->user->email)->send(new DossierIncomplet($student, $request->motif, $dateLimite));
+            } catch (\Exception $e) {
+                \Log::error('Email dossier incomplet non envoyé à ' . $student->user->email . ': ' . $e->getMessage());
+            }
+        }
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'student.reject',
+            "Dossier renvoyé à compléter pour {$student->prenom} {$student->nom} — {$request->motif}",
+            $student
+        );
+
+        return response()->json(['message' => "Message envoyé à l'étudiant — dossier à compléter sous 30 jours"]);
     }
 
     /** Admin manually creates a student */
@@ -170,7 +199,7 @@ class AdminController extends Controller
             : null;
 
         $user = User::create([
-            'name'     => $validated['prenom'] . ' ' . $validated['nom'],
+            'name'     => Student::capitaliserNomPropre($validated['prenom']) . ' ' . Student::capitaliserNomPropre($validated['nom']),
             'email'    => $validated['email'],
             'password' => Hash::make(\Str::random(12)),
             'role'     => 'student',
@@ -193,6 +222,23 @@ class AdminController extends Controller
         }
 
         return response()->json(['message' => 'Étudiant créé', 'student' => $student->fresh()], 201);
+    }
+
+    /** Admin/pédagogique upload ou remplace un document pour le compte de l'étudiant (dépôt en personne, scan) */
+    public function uploadDocument(Request $request, Student $student)
+    {
+        $request->validate([
+            'champ' => 'required|in:doc_bac,doc_releve_notes,doc_cin,doc_acte_naissance,doc_bulletin_transfert',
+            'fichier' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $path = $request->file('fichier')->store('documents/inscriptions', 'public');
+        $student->update([$request->champ => $path]);
+
+        return response()->json([
+            'message' => 'Document enregistré',
+            'student' => $student->fresh(),
+        ]);
     }
 
     /** Generate/regenerate student card */
@@ -372,15 +418,22 @@ class AdminController extends Controller
             \Log::warning('Reset storage: ' . $e->getMessage());
         }
 
-        // Truncate data tables (keep staff/admin users, filieres, licenses)
-        \DB::statement('PRAGMA foreign_keys = OFF');
+        // Truncate data tables (keep staff/admin users, filieres, licenses).
+        // MySQL, pas SQLite : PRAGMA n'existe pas ici, il faut FOREIGN_KEY_CHECKS.
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0');
         Payment::query()->forceDelete();
         \App\Models\StudentCard::query()->forceDelete();
+        \App\Models\PaymentEditRequest::query()->delete();
+        \App\Models\ActivityLog::query()->delete();
         StudentNotification::query()->truncate();
         Student::withTrashed()->forceDelete();
         // Delete student user accounts so emails can be reused
         User::where('role', 'student')->delete();
-        \DB::statement('PRAGMA foreign_keys = ON');
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'system.reset_test_data', 'Réinitialisation des données de test (étudiants, paiements, cartes, notifications).'
+        );
 
         return response()->json(['message' => 'Toutes les données de test ont été supprimées.']);
     }
@@ -404,11 +457,15 @@ class AdminController extends Controller
             'password' => Hash::make($validated['password']),
         ]));
 
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'staff.create', "Compte {$user->role} créé pour {$user->name} ({$user->email})", $user
+        );
+
         return response()->json($user, 201);
     }
 
     /** Delete a staff member */
-    public function deleteStaff(User $user)
+    public function deleteStaff(Request $request, User $user)
     {
         if ($user->role === 'admin') {
             $adminCount = User::where('role', 'admin')->count();
@@ -419,6 +476,11 @@ class AdminController extends Controller
         if ($user->role === 'student') {
             return response()->json(['message' => 'Utilisez la gestion étudiants pour supprimer un étudiant.'], 422);
         }
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'staff.delete', "Compte {$user->role} supprimé : {$user->name} ({$user->email})"
+        );
+
         $user->delete();
         return response()->json(['message' => 'Membre supprimé.']);
     }
@@ -497,5 +559,154 @@ class AdminController extends Controller
         ]);
 
         return response()->json(['message' => 'Mois désactivé', 'actif' => false, 'mois' => $mois]);
+    }
+
+    // ── Permissions de modification de paiement (caisse → admin) ───────────────
+
+    /** Liste des demandes de permission (en attente en premier). */
+    public function permissionsModification(Request $request)
+    {
+        $query = \App\Models\PaymentEditRequest::with(['payment.student', 'demandeur', 'decideur'])
+            ->when($request->statut, fn ($q) => $q->where('statut', $request->statut))
+            ->orderByRaw("CASE WHEN statut = 'en_attente' THEN 0 ELSE 1 END")
+            ->latest();
+
+        return response()->json($query->paginate(20));
+    }
+
+    /** Approuver une demande en un clic — la caisse pourra alors corriger CE paiement précis. */
+    public function approuverPermission(Request $request, \App\Models\PaymentEditRequest $permission)
+    {
+        if ($permission->statut !== 'en_attente') {
+            return response()->json(['message' => 'Cette demande a déjà été traitée.'], 422);
+        }
+
+        $permission->update([
+            'statut'     => 'approuve',
+            'decided_by' => $request->user()->id,
+            'decided_at' => now(),
+        ]);
+
+        \App\Models\StudentNotification::create([
+            'student_id' => $permission->payment->student_id,
+            'titre'      => 'ℹ️ Correction de paiement autorisée',
+            'message'    => "L'administrateur a autorisé une correction sur votre paiement #{$permission->payment_id}.",
+            'type'       => 'info',
+        ]);
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'permission.approve',
+            "Permission de modification approuvée pour le paiement #{$permission->payment_id} (demandée par {$permission->demandeur->name})",
+            $permission
+        );
+
+        return response()->json(['message' => 'Permission accordée.', 'demande' => $permission->fresh()]);
+    }
+
+    /** Refuser une demande en un clic. */
+    public function refuserPermission(Request $request, \App\Models\PaymentEditRequest $permission)
+    {
+        if ($permission->statut !== 'en_attente') {
+            return response()->json(['message' => 'Cette demande a déjà été traitée.'], 422);
+        }
+
+        $permission->update([
+            'statut'     => 'refuse',
+            'decided_by' => $request->user()->id,
+            'decided_at' => now(),
+        ]);
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'permission.refuse',
+            "Permission de modification refusée pour le paiement #{$permission->payment_id} (demandée par {$permission->demandeur->name})",
+            $permission
+        );
+
+        return response()->json(['message' => 'Permission refusée.', 'demande' => $permission->fresh()]);
+    }
+
+    // ── Journal d'audit ──────────────────────────────────────────────────────
+
+    /** Journal d'activité système — filtrable par action, rôle, utilisateur, période. */
+    public function audit(Request $request)
+    {
+        $query = \App\Models\ActivityLog::with('user')
+            ->when($request->action, fn ($q) => $q->where('action', 'like', '%' . $request->action . '%'))
+            ->when($request->role, fn ($q) => $q->where('role', $request->role))
+            ->when($request->user_id, fn ($q) => $q->where('user_id', $request->user_id))
+            ->when($request->date_debut, fn ($q) => $q->whereDate('created_at', '>=', $request->date_debut))
+            ->when($request->date_fin, fn ($q) => $q->whereDate('created_at', '<=', $request->date_fin))
+            ->latest('created_at');
+
+        return response()->json($query->paginate(40));
+    }
+
+    // ── Mode maintenance ─────────────────────────────────────────────────────
+
+    /** Basculer le mode maintenance — bloque l'accès à tout sauf l'admin. */
+    public function toggleMaintenance(Request $request)
+    {
+        $request->validate(['message' => 'nullable|string|max:255']);
+
+        $actif = \Illuminate\Support\Facades\DB::table('site_settings')->where('cle', 'maintenance_mode')->value('valeur') === '1';
+        $nouvelEtat = $actif ? '0' : '1';
+
+        \Illuminate\Support\Facades\DB::table('site_settings')->updateOrInsert(
+            ['cle' => 'maintenance_mode'],
+            ['valeur' => $nouvelEtat, 'updated_at' => now()]
+        );
+        if (!$actif && $request->filled('message')) {
+            \Illuminate\Support\Facades\DB::table('site_settings')->updateOrInsert(
+                ['cle' => 'maintenance_message'],
+                ['valeur' => $request->message, 'updated_at' => now()]
+            );
+        }
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), $nouvelEtat === '1' ? 'system.maintenance_on' : 'system.maintenance_off',
+            $nouvelEtat === '1' ? 'Mode maintenance activé — accès bloqué pour les autres rôles.' : 'Mode maintenance désactivé — accès rétabli.'
+        );
+
+        return response()->json(['maintenance' => $nouvelEtat === '1']);
+    }
+
+    // ── Vérification en deux étapes obligatoire ─────────────────────────────
+
+    /** Un clic du super admin : à partir de maintenant, TOUT compte (quel que soit
+     *  le rôle) qui se connecte doit vérifier un code envoyé par email avant
+     *  d'obtenir son accès. S'applique à la prochaine connexion de chacun — les
+     *  sessions déjà ouvertes ne sont pas coupées. */
+    public function forceTwoFactor(Request $request)
+    {
+        $since = now()->toDateTimeString();
+
+        \Illuminate\Support\Facades\DB::table('site_settings')->updateOrInsert(
+            ['cle' => 'force_2fa_since'],
+            ['valeur' => $since, 'updated_at' => now()]
+        );
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'system.force_2fa',
+            'Vérification en deux étapes rendue obligatoire pour tous les comptes, dès leur prochaine connexion.'
+        );
+
+        return response()->json(['force_2fa_since' => $since]);
+    }
+
+    public function twoFactorStatus(Request $request)
+    {
+        $since = \Illuminate\Support\Facades\DB::table('site_settings')->where('cle', 'force_2fa_since')->value('valeur');
+
+        $total     = \App\Models\User::count();
+        $confirmes = $since
+            ? \App\Models\User::where('two_factor_confirmed_at', '>=', $since)->count()
+            : 0;
+
+        return response()->json([
+            'active'          => (bool) $since,
+            'since'           => $since,
+            'total_comptes'   => $total,
+            'comptes_verifies'=> $confirmes,
+        ]);
     }
 }

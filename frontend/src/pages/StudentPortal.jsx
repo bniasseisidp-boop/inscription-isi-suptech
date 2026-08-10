@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import {
   Clock, CheckCircle, XCircle, AlertTriangle, LogOut, User, Bell, CreditCard,
   GraduationCap, FileText, Phone, MapPin, Calendar, BookOpen, Save,
-  ChevronRight, Wallet, TrendingUp, AlertCircle, Download, QrCode
+  ChevronRight, Wallet, TrendingUp, AlertCircle, Download, QrCode, Upload,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import QRCode from 'qrcode'
@@ -13,8 +13,10 @@ import {
   getStudentDashboard, initiatePayment, markNotificationsRead,
   getStudentPayments, downloadStudentReceiptBlob, cancelStudentPayment,
   downloadStudentCard, updateStudentProfile, updateStudentPhoto,
+  submitMissingDocuments,
 } from '../services/api'
 import api from '../services/api'
+import LightPremiumBackground from '../components/LightPremiumBackground'
 
 // ── Payment tracker month grid ─────────────────────────────────────────────
 function PaymentMonthGrid({ suivi }) {
@@ -25,47 +27,47 @@ function PaymentMonthGrid({ suivi }) {
     <div className="space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-card p-4 border border-green-500/20">
-          <div className="text-green-400 text-xs font-semibold uppercase tracking-wider mb-1">Mois payés</div>
-          <div className="text-3xl font-black text-white">{mois_payes}</div>
-          <div className="text-white/40 text-xs">sur {mois_total} mois</div>
+        <div className="light-card p-4 border border-green-200">
+          <div className="text-green-600 text-xs font-semibold uppercase tracking-wider mb-1">Mois payés</div>
+          <div className="text-3xl font-black text-slate-900">{mois_payes}</div>
+          <div className="text-slate-400 text-xs">sur {mois_total} mois</div>
         </div>
-        <div className={`glass-card p-4 border ${mois_en_retard > 0 ? 'border-red-500/30' : 'border-white/10'}`}>
-          <div className={`text-xs font-semibold uppercase tracking-wider mb-1 ${mois_en_retard > 0 ? 'text-red-400' : 'text-white/40'}`}>En retard</div>
-          <div className={`text-3xl font-black ${mois_en_retard > 0 ? 'text-red-400' : 'text-white'}`}>{mois_en_retard}</div>
-          <div className="text-white/40 text-xs">{mois_en_retard > 0 ? 'mois non payés' : 'Aucun retard'}</div>
+        <div className={`light-card p-4 border ${mois_en_retard > 0 ? 'border-red-300' : 'border-slate-200'}`}>
+          <div className={`text-xs font-semibold uppercase tracking-wider mb-1 ${mois_en_retard > 0 ? 'text-red-600' : 'text-slate-400'}`}>En retard</div>
+          <div className={`text-3xl font-black ${mois_en_retard > 0 ? 'text-red-600' : 'text-slate-900'}`}>{mois_en_retard}</div>
+          <div className="text-slate-400 text-xs">{mois_en_retard > 0 ? 'mois non payés' : 'Aucun retard'}</div>
         </div>
-        <div className="glass-card p-4 border border-brand-500/20">
-          <div className="text-brand-400 text-xs font-semibold uppercase tracking-wider mb-1">Restant</div>
-          <div className="text-2xl font-black text-white">{Number(total_restant).toLocaleString()}</div>
-          <div className="text-white/40 text-xs">FCFA — {mois_restants} mois</div>
+        <div className="light-card p-4 border border-isiblue-100">
+          <div className="text-isiblue-600 text-xs font-semibold uppercase tracking-wider mb-1">Restant</div>
+          <div className="text-2xl font-black text-slate-900">{Number(total_restant).toLocaleString()}</div>
+          <div className="text-slate-400 text-xs">FCFA — {mois_restants} mois</div>
         </div>
-        <div className="glass-card p-4 border border-emerald-500/20">
-          <div className="text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">Total payé</div>
-          <div className="text-2xl font-black text-white">{Number(total_paye).toLocaleString()}</div>
-          <div className="text-white/40 text-xs">FCFA</div>
+        <div className="light-card p-4 border border-emerald-200">
+          <div className="text-emerald-600 text-xs font-semibold uppercase tracking-wider mb-1">Total payé</div>
+          <div className="text-2xl font-black text-slate-900">{Number(total_paye).toLocaleString()}</div>
+          <div className="text-slate-400 text-xs">FCFA</div>
         </div>
       </div>
 
       {/* Progress bar */}
       <div>
-        <div className="flex justify-between text-xs text-white/50 mb-2">
+        <div className="flex justify-between text-xs text-slate-500 mb-2">
           <span>{mois_payes} mois payés</span>
           <span>{mois_restants} mois restants</span>
         </div>
-        <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+        <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${(mois_payes / mois_total) * 100}%` }}
             transition={{ duration: 1.5, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full"
+            className="h-full bg-gradient-to-r from-isiblue-600 to-isigold-400 rounded-full"
           />
         </div>
       </div>
 
       {/* Month grid */}
       <div>
-        <h4 className="text-white/60 text-sm font-medium mb-3">Calendrier des paiements</h4>
+        <h4 className="text-isiblue-600 text-sm font-medium mb-3">Calendrier des paiements</h4>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {mois.map((m, i) => (
             <motion.div
@@ -75,25 +77,25 @@ function PaymentMonthGrid({ suivi }) {
               transition={{ delay: i * 0.04 }}
               className={`relative rounded-xl p-3 border text-center transition-all ${
                 m.paye
-                  ? 'bg-green-500/10 border-green-500/30'
+                  ? 'bg-green-50 border-green-300'
                   : m.en_retard
-                  ? 'bg-red-500/10 border-red-500/40 animate-pulse'
+                  ? 'bg-red-50 border-red-300 animate-pulse'
                   : m.actuel
-                  ? 'bg-brand-500/15 border-brand-400/40'
-                  : 'bg-white/3 border-white/8'
+                  ? 'bg-isigold-100 border-isigold-400'
+                  : 'bg-slate-50 border-slate-200'
               }`}
             >
               {m.actuel && (
-                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-brand-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
+                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-isiblue-500 text-white text-[9px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                   Ce mois
                 </div>
               )}
-              <div className={`text-lg mb-1 ${m.paye ? 'text-green-400' : m.en_retard ? 'text-red-400' : m.actuel ? 'text-brand-400' : 'text-white/20'}`}>
+              <div className={`text-lg mb-1 ${m.paye ? 'text-green-600' : m.en_retard ? 'text-red-600' : m.actuel ? 'text-isiblue-600' : 'text-slate-300'}`}>
                 {m.paye ? '✓' : m.en_retard ? '✗' : '○'}
               </div>
-              <div className="text-white text-[11px] font-semibold leading-tight">{m.label.split(' ')[0]}</div>
-              <div className="text-white/40 text-[10px]">{m.label.split(' ')[1]}</div>
-              <div className={`text-[10px] font-bold mt-1 ${m.paye ? 'text-green-400' : m.en_retard ? 'text-red-400' : 'text-white/50'}`}>
+              <div className="text-slate-900 text-[11px] font-semibold leading-tight">{m.label.split(' ')[0]}</div>
+              <div className="text-slate-400 text-[10px]">{m.label.split(' ')[1]}</div>
+              <div className={`text-[10px] font-bold mt-1 ${m.paye ? 'text-green-600' : m.en_retard ? 'text-red-600' : 'text-slate-500'}`}>
                 {Number(m.montant).toLocaleString()}
               </div>
             </motion.div>
@@ -102,11 +104,11 @@ function PaymentMonthGrid({ suivi }) {
       </div>
 
       {!est_a_jour && mois_en_retard > 0 && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
-          <AlertTriangle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="bg-red-50 border border-red-300 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-red-300 font-semibold text-sm">{mois_en_retard} mois en retard</p>
-            <p className="text-red-400/70 text-xs mt-1">
+            <p className="text-red-700 font-semibold text-sm">{mois_en_retard} mois en retard</p>
+            <p className="text-red-500 text-xs mt-1">
               Montant dû : {(mois_en_retard * frais_mensuel).toLocaleString()} FCFA. Régularisez votre situation pour accéder à tous les services.
             </p>
           </div>
@@ -247,10 +249,10 @@ function F({ label, name, type = 'text', placeholder = '', options = null, texta
   const { form, update, locked } = useContext(ProfileFormCtx)
   return (
     <div>
-      <label className="form-label text-xs">{label}</label>
+      <label className="form-label-light text-xs">{label}</label>
       {options ? (
         <select
-          className={`form-input text-sm py-2 ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`form-input-light text-sm py-2 ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
           value={form[name] ?? ''}
           onChange={(e) => update(name, e.target.value)}
           disabled={locked}
@@ -273,7 +275,7 @@ function F({ label, name, type = 'text', placeholder = '', options = null, texta
         </select>
       ) : textarea ? (
         <textarea
-          className={`form-input text-sm py-2 resize-none ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`form-input-light text-sm py-2 resize-none ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
           rows={3}
           placeholder={placeholder}
           value={form[name] ?? ''}
@@ -282,7 +284,7 @@ function F({ label, name, type = 'text', placeholder = '', options = null, texta
         />
       ) : (
         <input
-          className={`form-input text-sm py-2 ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`form-input-light text-sm py-2 ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
           type={type}
           placeholder={placeholder}
           value={form[name] ?? ''}
@@ -363,17 +365,17 @@ function CompleteProfileForm({ student, onSaved }) {
 
   return (
     <ProfileFormCtx.Provider value={{ form, update, locked }}>
-    <div className="glass-card">
+    <div className="light-card">
       {locked && (
-        <div className="flex items-center gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/20 rounded-t-xl">
-          <span className="text-amber-400 text-lg flex-shrink-0">🔒</span>
-          <p className="text-amber-300 text-sm">
+        <div className="flex items-center gap-3 px-6 py-3 bg-amber-50 border-b border-amber-200 rounded-t-2xl">
+          <span className="text-amber-500 text-lg flex-shrink-0">🔒</span>
+          <p className="text-amber-700 text-sm">
             Votre profil a été <strong>validé et verrouillé</strong> par l'administration ISI SUPTECH. Aucune modification n'est possible. Contactez l'école pour toute correction.
           </p>
         </div>
       )}
       {/* Tab header */}
-      <div className="flex overflow-x-auto border-b border-white/10">
+      <div className="flex overflow-x-auto border-b border-slate-200">
         {PROFILE_TABS.map((t) => {
           const Icon = t.icon
           return (
@@ -382,8 +384,8 @@ function CompleteProfileForm({ student, onSaved }) {
               onClick={() => setActiveTab(t.id)}
               className={`flex items-center gap-2 px-5 py-4 text-sm font-medium whitespace-nowrap transition-all border-b-2 -mb-px ${
                 activeTab === t.id
-                  ? 'border-brand-400 text-brand-300 bg-brand-500/5'
-                  : 'border-transparent text-white/50 hover:text-white/80'
+                  ? 'border-isiblue-500 text-isiblue-600 bg-isiblue-50'
+                  : 'border-transparent text-slate-400 hover:text-isiblue-600'
               }`}
             >
               <Icon size={15} />{t.label}
@@ -424,7 +426,7 @@ function CompleteProfileForm({ student, onSaved }) {
             {activeTab === 'tuteur' && (
               <div className="space-y-6">
                 <div>
-                  <h4 className="text-brand-300 font-semibold text-sm mb-3 flex items-center gap-2"><User size={14} /> Tuteur / Parent 1</h4>
+                  <h4 className="text-isiblue-600 font-semibold text-sm mb-3 flex items-center gap-2"><User size={14} /> Tuteur / Parent 1</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <F label="Nom complet"      name="tuteur_nom" />
                     <F label="Profession"        name="tuteur_profession" />
@@ -433,8 +435,8 @@ function CompleteProfileForm({ student, onSaved }) {
                     <F label="N° Identité tuteur" name="tuteur_identite" />
                   </div>
                 </div>
-                <div className="border-t border-white/10 pt-6">
-                  <h4 className="text-brand-300 font-semibold text-sm mb-3 flex items-center gap-2"><User size={14} /> Tuteur / Parent 2 (optionnel)</h4>
+                <div className="border-t border-slate-200 pt-6">
+                  <h4 className="text-isiblue-600 font-semibold text-sm mb-3 flex items-center gap-2"><User size={14} /> Tuteur / Parent 2 (optionnel)</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <F label="Nom complet"  name="tuteur2_nom" />
                     <F label="Profession"   name="tuteur2_profession" />
@@ -442,16 +444,16 @@ function CompleteProfileForm({ student, onSaved }) {
                     <F label="Email"        name="tuteur2_email"     type="email" />
                   </div>
                 </div>
-                <div className="border-t border-white/10 pt-4">
-                  <h4 className="text-white/60 text-sm mb-3">Mode de surveillance</h4>
+                <div className="border-t border-slate-200 pt-4">
+                  <h4 className="text-isiblue-500 text-sm mb-3 font-medium">Mode de surveillance</h4>
                   <div className="flex gap-6">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" className="w-4 h-4 rounded" checked={form.surveillance_mail} onChange={(e) => update('surveillance_mail', e.target.checked)} />
-                      <span className="text-white/70 text-sm">Surveillance par email</span>
+                      <span className="text-slate-700 text-sm">Surveillance par email</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" className="w-4 h-4 rounded" checked={form.surveillance_telephone} onChange={(e) => update('surveillance_telephone', e.target.checked)} />
-                      <span className="text-white/70 text-sm">Surveillance par téléphone</span>
+                      <span className="text-slate-700 text-sm">Surveillance par téléphone</span>
                     </label>
                   </div>
                 </div>
@@ -466,16 +468,16 @@ function CompleteProfileForm({ student, onSaved }) {
                   <div className="sm:col-span-2"><F label="Logiciels maîtrisés (Informatique)" name="logiciels" placeholder="MS Office, Python, Photoshop..." /></div>
                   <div className="sm:col-span-2"><F label="Expériences professionnelles" name="experiences" textarea /></div>
                 </div>
-                <div className="border-t border-white/10 pt-4">
-                  <h4 className="text-white/60 text-sm mb-3">Informations médicales</h4>
+                <div className="border-t border-slate-200 pt-4">
+                  <h4 className="text-isiblue-500 text-sm mb-3 font-medium">Informations médicales</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <F label="Traitement médical ?" name="traitement_medical" options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
                     <F label="Allergies ?"           name="allergies"         options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
                     <F label="Vaccinations à jour ?" name="vaccinations"      options={[{value:'Oui',label:'Oui'},{value:'Non',label:'Non'}]} />
                   </div>
                 </div>
-                <div className="border-t border-white/10 pt-4">
-                  <h4 className="text-white/60 text-sm mb-3">Personnes à prévenir en urgence</h4>
+                <div className="border-t border-slate-200 pt-4">
+                  <h4 className="text-isiblue-500 text-sm mb-3 font-medium">Personnes à prévenir en urgence</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <F label="Personne 1 (nom)"     name="contact_urgence1" />
                     <F label="Tél. contact 1"        name="tel_urgence1"     type="tel" />
@@ -491,7 +493,7 @@ function CompleteProfileForm({ student, onSaved }) {
         </AnimatePresence>
 
         {!locked && (
-          <div className="flex justify-end mt-6 pt-4 border-t border-white/10">
+          <div className="flex justify-end mt-6 pt-4 border-t border-slate-200">
             <button onClick={save} disabled={saving} className="btn-primary flex items-center gap-2">
               {saving ? <div className="spinner w-4 h-4" /> : <Save size={16} />}
               Enregistrer
@@ -501,6 +503,55 @@ function CompleteProfileForm({ student, onSaved }) {
       </div>
     </div>
     </ProfileFormCtx.Provider>
+  )
+}
+
+// ── Renvoi des documents manquants (dossier "à compléter") ──────────────────
+const DOC_FIELDS = [
+  { key: 'doc_bac',                label: 'Diplôme du Baccalauréat' },
+  { key: 'doc_releve_notes',       label: 'Relevé de notes du Bac' },
+  { key: 'doc_cin',                label: 'CIN légalisée' },
+  { key: 'doc_acte_naissance',     label: 'Acte de naissance' },
+  { key: 'doc_bulletin_transfert', label: 'Bulletin de transfert (si transfert)' },
+]
+
+function DocResendForm({ onSuccess }) {
+  const [files, setFiles] = useState({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const submit = async () => {
+    const entries = Object.entries(files).filter(([, f]) => f)
+    if (entries.length === 0) { toast.error('Sélectionnez au moins un document'); return }
+    setSubmitting(true)
+    try {
+      const fd = new FormData()
+      entries.forEach(([key, file]) => fd.append(key, file))
+      await submitMissingDocuments(fd)
+      toast.success('Documents envoyés — dossier de nouveau en cours d\'examen !')
+      onSuccess()
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Erreur lors de l'envoi")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="text-left space-y-3 mb-6">
+      {DOC_FIELDS.map(({ key, label }) => (
+        <label key={key} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer hover:border-isigold-400 transition-all">
+          <Upload size={15} className="text-isigold-500 flex-shrink-0"/>
+          <span className="flex-1 text-slate-700 text-xs">{label}</span>
+          {files[key] && <span className="text-green-600 text-xs font-semibold truncate max-w-[100px]">{files[key].name}</span>}
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+            onChange={(e) => setFiles(f => ({ ...f, [key]: e.target.files?.[0] || null }))}/>
+        </label>
+      ))}
+      <button onClick={submit} disabled={submitting} className="btn-primary w-full flex items-center justify-center gap-2">
+        {submitting ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/> : <Upload size={16}/>}
+        Envoyer les documents
+      </button>
+    </div>
   )
 }
 
@@ -517,16 +568,36 @@ export default function StudentPortal() {
   const [initiating, setInitiating] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState(null)
   const [changingPhoto, setChangingPhoto] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
 
-  useEffect(() => {
-    getStudentDashboard()
+  const refreshStudent = useCallback(() => {
+    return getStudentDashboard()
       .then(({ data }) => {
         setStudent(data.student)
         setSuivi(data.suivi_paiements)
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    refreshStudent().finally(() => setLoading(false))
+  }, [])
+
+  // Polling automatique pour détecter le changement de statut (ex: paiement caisse confirmé)
+  // S'arrête dès que l'étudiant est "accepte" (inscription payée)
+  useEffect(() => {
+    const statut = student?.statut_inscription
+    if (!statut || statut === 'accepte' || statut === 'rejete') return
+    const interval = setInterval(() => {
+      getStudentDashboard()
+        .then(({ data }) => {
+          setStudent(data.student)
+          setSuivi(data.suivi_paiements)
+        })
+        .catch(() => {})
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [student?.statut_inscription])
 
   // Génère le QR code côté client depuis les données de la carte
   useEffect(() => {
@@ -583,10 +654,11 @@ export default function StudentPortal() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-space-950 flex items-center justify-center">
-      <div className="text-center">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center relative">
+      <LightPremiumBackground/>
+      <div className="text-center relative z-10">
         <div className="spinner mx-auto mb-4" />
-        <p className="text-white/50">Chargement...</p>
+        <p className="text-slate-500">Chargement...</p>
       </div>
     </div>
   )
@@ -599,15 +671,13 @@ export default function StudentPortal() {
 
   // Shared mini-nav for waiting screens
   const WaitNav = () => (
-    <nav className="relative z-10 border-b border-white/10 bg-space-900/80 backdrop-blur-xl">
+    <nav className="relative z-10 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
       <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
-            <span className="text-white font-black text-xs">ISI</span>
-          </div>
-          <span className="text-white font-semibold text-sm">Espace Candidat</span>
+          <img src="/isi-logo.png" alt="ISI SUPTECH" className="h-8 w-auto object-contain"/>
+          <span className="text-isiblue-700 font-semibold text-sm">Espace Candidat</span>
         </div>
-        <button onClick={handleLogout} className="flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors">
+        <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-slate-700 text-sm transition-colors">
           <LogOut size={16} /> Déconnexion
         </button>
       </div>
@@ -616,21 +686,22 @@ export default function StudentPortal() {
 
   // ── STATE 1: En attente d'examen ───────────────────────────────────────────
   if (statut === 'en_attente') return (
-    <div className="min-h-screen bg-space-950 relative">
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(30,58,95,0.3)_0%,_transparent_70%)]" />
+    <div className="min-h-screen bg-slate-50 relative">
+      <LightPremiumBackground/>
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(26,58,143,0.05)_0%,_transparent_70%)]" />
       <WaitNav />
       <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-64px)] px-4">
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="max-w-md w-full">
-          <div className="glass-card p-10 text-center border border-yellow-500/20">
+          <div className="light-card p-10 text-center border border-isigold-300">
             <motion.div
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
               className="text-7xl mb-6"
             >⏳</motion.div>
             <div className="badge-pending mx-auto mb-4 w-fit">Dossier en cours d'examen</div>
-            <h2 className="text-2xl font-black text-white mb-3">Bienvenue, {student?.prenom} !</h2>
-            <p className="text-white/60 mb-6 text-sm leading-relaxed">
-              Votre pré-inscription a bien été reçue. Notre équipe va vous revenir — <strong className="text-white">vérifiez le plus souvent vos emails</strong>.
+            <h2 className="text-2xl font-black text-isiblue-700 mb-3">Bienvenue, {student?.prenom} !</h2>
+            <p className="text-slate-600 mb-6 text-sm leading-relaxed">
+              Votre pré-inscription a bien été reçue. Notre équipe va vous revenir — <strong className="text-slate-900">vérifiez le plus souvent vos emails</strong>.
             </p>
             <div className="space-y-3 text-left mb-8">
               {[
@@ -641,27 +712,27 @@ export default function StudentPortal() {
               ].map((s, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    s.done ? 'bg-green-500' : s.active ? 'bg-yellow-500/30 border border-yellow-400/50' : 'bg-white/10 border border-white/20'
+                    s.done ? 'bg-green-500' : s.active ? 'bg-isigold-100 border border-isigold-400' : 'bg-slate-100 border border-slate-200'
                   }`}>
                     {s.done ? <CheckCircle size={14} className="text-white" /> :
-                     s.active ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }} className="w-3 h-3 border-2 border-yellow-400/60 border-t-yellow-400 rounded-full" /> :
-                     <span className="text-white/30 text-xs">{i+1}</span>}
+                     s.active ? <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }} className="w-3 h-3 border-2 border-isigold-500/60 border-t-isigold-500 rounded-full" /> :
+                     <span className="text-slate-400 text-xs">{i+1}</span>}
                   </div>
-                  <span className={`text-sm ${s.done ? 'text-white font-medium' : s.active ? 'text-yellow-300 font-medium' : 'text-white/40'}`}>{s.label}</span>
+                  <span className={`text-sm ${s.done ? 'text-slate-900 font-medium' : s.active ? 'text-isigold-600 font-medium' : 'text-slate-400'}`}>{s.label}</span>
                 </div>
               ))}
             </div>
             {student?.notifications?.length > 0 && (
               <div className="text-left space-y-2">
                 {student.notifications.slice(0, 3).map((n) => (
-                  <div key={n.id} className="bg-brand-500/10 border border-brand-500/20 rounded-lg p-3">
-                    <p className="text-white/80 text-sm">{n.message}</p>
+                  <div key={n.id} className="bg-isiblue-50 border border-isiblue-100 rounded-lg p-3">
+                    <p className="text-slate-700 text-sm">{n.message}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <div className="text-center mt-4 text-white/20 text-xs">Multi Brain Tech — ISI SUPTECH</div>
+          <div className="text-center mt-4 text-slate-400 text-xs">Multi Brain Tech — ISI SUPTECH</div>
         </motion.div>
       </div>
     </div>
@@ -669,27 +740,28 @@ export default function StudentPortal() {
 
   // ── STATE 2: En attente de paiement ───────────────────────────────────────
   if (estAttentePaiement) return (
-    <div className="min-h-screen bg-space-950 relative">
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(5,60,30,0.35)_0%,_transparent_70%)]" />
+    <div className="min-h-screen bg-slate-50 relative">
+      <LightPremiumBackground/>
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(16,185,129,0.06)_0%,_transparent_70%)]" />
       <WaitNav />
       <div className="relative z-10 flex items-center justify-center min-h-[calc(100vh-64px)] px-4 py-10">
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg w-full space-y-5">
 
           {/* Main acceptance card */}
-          <div className="glass-card p-8 text-center border border-green-500/30">
+          <div className="light-card p-8 text-center border border-green-300">
             <motion.div
               animate={{ scale: [1, 1.08, 1] }}
               transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
               className="text-7xl mb-5"
             >🎉</motion.div>
             <div className="badge-accepted mx-auto mb-4 w-fit">Candidature acceptée !</div>
-            <h2 className="text-2xl font-black text-white mb-2">Félicitations, {student?.prenom} !</h2>
-            <p className="text-white/60 text-sm leading-relaxed mb-1">
-              Votre dossier a été examiné et <strong className="text-green-300">accepté</strong> par notre équipe pédagogique.
+            <h2 className="text-2xl font-black text-isiblue-700 mb-2">Félicitations, {student?.prenom} !</h2>
+            <p className="text-slate-600 text-sm leading-relaxed mb-1">
+              Votre dossier a été examiné et <strong className="text-green-600">accepté</strong> par notre équipe pédagogique.
             </p>
             {student?.matricule && (
-              <p className="text-white/50 text-xs mb-6">
-                Matricule provisoire : <strong className="text-white font-mono">{student.matricule}</strong>
+              <p className="text-slate-500 text-xs mb-6">
+                Matricule provisoire : <strong className="text-slate-900 font-mono">{student.matricule}</strong>
               </p>
             )}
             <div className="space-y-3 text-left mb-6">
@@ -701,28 +773,28 @@ export default function StudentPortal() {
               ].map((s, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    s.done ? 'bg-green-500' : s.active ? 'bg-orange-500/30 border-2 border-orange-400' : 'bg-white/10 border border-white/20'
+                    s.done ? 'bg-green-500' : s.active ? 'bg-orange-100 border-2 border-orange-400' : 'bg-slate-100 border border-slate-200'
                   }`}>
                     {s.done ? <CheckCircle size={14} className="text-white" /> :
-                     s.active ? <CreditCard size={11} className="text-orange-300" /> :
-                     <span className="text-white/30 text-xs">{i+1}</span>}
+                     s.active ? <CreditCard size={11} className="text-orange-500" /> :
+                     <span className="text-slate-400 text-xs">{i+1}</span>}
                   </div>
-                  <span className={`text-sm ${s.done ? 'text-green-300 font-medium' : s.active ? 'text-orange-300 font-bold' : 'text-white/40'}`}>{s.label}</span>
+                  <span className={`text-sm ${s.done ? 'text-green-600 font-medium' : s.active ? 'text-orange-600 font-bold' : 'text-slate-400'}`}>{s.label}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Payment options */}
-          <div className="glass-card p-6 border border-orange-500/20">
-            <h3 className="text-white font-bold mb-1 flex items-center gap-2">
-              <CreditCard size={18} className="text-orange-400" />
+          <div className="light-card p-6 border border-orange-200">
+            <h3 className="text-isiblue-700 font-bold mb-1 flex items-center gap-2">
+              <CreditCard size={18} className="text-orange-500" />
               Procéder au paiement
             </h3>
-            <p className="text-white/50 text-xs mb-5">
+            <p className="text-slate-500 text-xs mb-5">
               Réglez vos frais d'inscription pour finaliser votre dossier.
               {student?.license?.frais_inscription && (
-                <> Montant : <strong className="text-white">{Number(student.license.frais_inscription).toLocaleString()} FCFA</strong></>
+                <> Montant : <strong className="text-slate-900">{Number(student.license.frais_inscription).toLocaleString()} FCFA</strong></>
               )}
             </p>
             <div className="space-y-3">
@@ -736,10 +808,10 @@ export default function StudentPortal() {
                   : <Wallet size={20} />}
                 Payer via Wave
               </button>
-              <div className={`rounded-xl p-4 text-sm flex items-start gap-3 bg-white/4 border border-white/10`}>
-                <AlertTriangle size={16} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-                <p className="text-white/60 text-xs leading-relaxed">
-                  Vous pouvez aussi vous présenter <strong className="text-white">directement à la caisse de l'école</strong> avec les frais en espèces ou par mobile money. Un reçu vous sera remis.
+              <div className={`rounded-xl p-4 text-sm flex items-start gap-3 bg-isigold-100/50 border border-isigold-300`}>
+                <AlertTriangle size={16} className="text-isigold-600 flex-shrink-0 mt-0.5" />
+                <p className="text-slate-600 text-xs leading-relaxed">
+                  Vous pouvez aussi vous présenter <strong className="text-slate-900">directement à la caisse de l'école</strong> avec les frais en espèces ou par mobile money. Un reçu vous sera remis.
                 </p>
               </div>
             </div>
@@ -749,37 +821,40 @@ export default function StudentPortal() {
           {student?.notifications?.length > 0 && (
             <div className="space-y-2">
               {student.notifications.slice(0, 3).map((n) => (
-                <div key={n.id} className={`glass-card p-4 border-l-4 ${
-                  n.type === 'success' ? 'border-green-400' : n.type === 'warning' ? 'border-yellow-400' : 'border-brand-400'
+                <div key={n.id} className={`light-card p-4 border-l-4 ${
+                  n.type === 'success' ? 'border-green-400' : n.type === 'warning' ? 'border-isigold-400' : 'border-isiblue-400'
                 }`}>
-                  {n.titre && <p className="text-white font-semibold text-sm mb-0.5">{n.titre}</p>}
-                  <p className="text-white/70 text-xs">{n.message}</p>
+                  {n.titre && <p className="text-slate-900 font-semibold text-sm mb-0.5">{n.titre}</p>}
+                  <p className="text-slate-600 text-xs">{n.message}</p>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="text-center text-white/20 text-xs">Multi Brain Tech — ISI SUPTECH</div>
+          <div className="text-center text-slate-400 text-xs">Multi Brain Tech — ISI SUPTECH</div>
         </motion.div>
       </div>
     </div>
   )
 
-  // ── STATE 2: Rejeté ────────────────────────────────────────────────────────
+  // ── STATE 2: Dossier à compléter ────────────────────────────────────────────
   if (estRejete) return (
-    <div className="min-h-screen bg-space-950 flex items-center justify-center px-4">
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full text-center">
-        <div className="glass-card p-10 border border-red-500/20">
-          <div className="text-7xl mb-6">😔</div>
-          <h2 className="text-2xl font-black text-white mb-3">Candidature non retenue</h2>
-          <p className="text-white/60 mb-4 text-sm">Votre dossier a été examiné. Malheureusement, nous ne pouvons pas donner suite à votre candidature cette année.</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 relative">
+      <LightPremiumBackground/>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md w-full text-center relative z-10">
+        <div className="light-card p-10 border border-amber-200">
+          <div className="text-7xl mb-6">📋</div>
+          <h2 className="text-2xl font-black text-isiblue-700 mb-3">Votre dossier est à compléter</h2>
+          <p className="text-slate-600 mb-4 text-sm">Après examen, il nous manque des pièces pour finaliser votre candidature. Merci de nous les fournir dans les 30 jours — passé ce délai, votre candidature sera automatiquement clôturée.</p>
           {student?.notes_admin && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 text-left mb-6">
-              <p className="text-red-400 text-xs font-semibold mb-1">Motif :</p>
-              <p className="text-white/70 text-sm">{student.notes_admin}</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left mb-6 whitespace-pre-line">
+              <p className="text-amber-600 text-xs font-semibold mb-1">Message de l'équipe pédagogique :</p>
+              <p className="text-slate-700 text-sm">{student.notes_admin}</p>
             </div>
           )}
-          <button onClick={handleLogout} className="btn-secondary w-full">Retour à l'accueil</button>
+          <DocResendForm onSuccess={refreshStudent}/>
+          <p className="text-slate-400 text-xs mb-4">Vous pouvez aussi contacter l'école ou vous y présenter directement avec les documents demandés.</p>
+          <button onClick={handleLogout} className="btn-secondary-light w-full">Retour à l'accueil</button>
         </div>
       </motion.div>
     </div>
@@ -795,27 +870,26 @@ export default function StudentPortal() {
   ]
 
   return (
-    <div className="min-h-screen bg-space-950 flex">
+    <div className="min-h-screen bg-slate-50 flex relative">
+      <LightPremiumBackground/>
       {/* Fixed sidebar */}
-      <div className="w-64 flex-shrink-0 bg-space-800/60 backdrop-blur-xl border-r border-white/10 flex flex-col fixed top-0 left-0 h-full z-40">
-        <div className="p-5 border-b border-white/10">
+      <div className="w-64 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40">
+        <div className="p-5 border-b border-slate-200">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
-              <span className="text-white font-black text-sm">ISI</span>
-            </div>
+            <img src="/isi-logo.png" alt="ISI SUPTECH" className="h-10 w-auto object-contain"/>
             <div>
-              <div className="text-white font-bold text-sm">ISI SUPTECH</div>
-              <div className="text-brand-400 text-xs">Espace Étudiant</div>
+              <div className="text-isiblue-700 font-bold text-sm">ISI SUPTECH</div>
+              <div className="text-isigold-600 text-xs">Espace Étudiant</div>
             </div>
           </div>
-          <div className="bg-white/5 rounded-xl p-3">
+          <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-600 to-indigo-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-isiblue-600 to-isiblue-400 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {student?.photo ? <img src={`/storage/${student.photo}`} className="w-full h-full object-cover" alt="photo"/> : <User size={16} className="text-white" />}
               </div>
               <div className="min-w-0">
-                <div className="text-white text-sm font-semibold truncate">{student?.prenom} {student?.nom}</div>
-                <div className="text-white/40 text-xs truncate">{student?.matricule}</div>
+                <div className="text-slate-900 text-sm font-semibold truncate">{student?.prenom} {student?.nom}</div>
+                <div className="text-slate-400 text-xs truncate">{student?.matricule}</div>
               </div>
             </div>
           </div>
@@ -830,8 +904,8 @@ export default function StudentPortal() {
                 onClick={() => setActiveSection(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   activeSection === item.id
-                    ? 'bg-brand-600/20 text-brand-300 border border-brand-500/30'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                    ? 'bg-isiblue-50 text-isiblue-700 border border-isiblue-200'
+                    : 'text-slate-500 hover:text-isiblue-700 hover:bg-slate-50'
                 }`}
               >
                 <Icon size={17} />{item.label}
@@ -840,27 +914,67 @@ export default function StudentPortal() {
           })}
         </nav>
 
-        <div className="p-3 border-t border-white/10">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all">
+        <div className="p-3 border-t border-slate-200">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
             <LogOut size={17} /> Déconnexion
           </button>
         </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 ml-64 min-h-screen">
+      <div className="flex-1 ml-64 min-h-screen relative z-10">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-space-900/80 backdrop-blur-xl border-b border-white/10 px-6 h-16 flex items-center justify-between">
-          <h1 className="text-white font-semibold">{navItems.find((n) => n.id === activeSection)?.label}</h1>
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-6 h-16 flex items-center justify-between">
+          <h1 className="text-isiblue-700 font-semibold">{navItems.find((n) => n.id === activeSection)?.label}</h1>
           <div className="flex items-center gap-3">
-            {student?.notifications?.filter((n) => !n.lu).length > 0 && (
-              <button className="relative" onClick={() => markNotificationsRead().catch(() => {})}>
-                <Bell size={20} className="text-white/50 hover:text-white transition-colors" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] flex items-center justify-center font-bold">
-                  {student.notifications.filter((n) => !n.lu).length}
-                </span>
+            <div className="relative">
+              <button
+                className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                onClick={() => setNotifOpen(o => !o)}
+                title="Notifications"
+              >
+                <Bell size={20} className="text-slate-500 hover:text-isiblue-600 transition-colors" />
+                {student?.notifications?.filter((n) => !n.lu).length > 0 && (
+                  <span className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] flex items-center justify-center font-bold">
+                    {student.notifications.filter((n) => !n.lu).length}
+                  </span>
+                )}
               </button>
-            )}
+              {notifOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-50">
+                    <div className="sticky top-0 bg-white/95 backdrop-blur-xl px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-isiblue-700">Notifications</span>
+                      {student?.notifications?.filter((n) => !n.lu).length > 0 && (
+                        <button
+                          className="text-xs text-isiblue-500 hover:text-isiblue-700"
+                          onClick={() => {
+                            markNotificationsRead()
+                              .then(() => setStudent(prev => ({ ...prev, notifications: prev.notifications.map(n => ({ ...n, lu: true })) })))
+                              .catch(() => {})
+                          }}
+                        >
+                          Tout marquer lu
+                        </button>
+                      )}
+                    </div>
+                    {student?.notifications?.length > 0 ? (
+                      <div className="divide-y divide-slate-100">
+                        {student.notifications.map((n) => (
+                          <div key={n.id} className={`px-4 py-3 ${n.lu ? '' : 'bg-isiblue-50/50'}`}>
+                            <div className={`text-sm font-medium ${n.lu ? 'text-slate-600' : 'text-slate-900'}`}>{n.titre}</div>
+                            <div className="text-xs text-slate-500 mt-0.5">{n.message}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="px-4 py-8 text-center text-slate-400 text-sm">Aucune notification</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
             <div className="badge-accepted">{inscriptionPayee ? 'Inscrit' : 'Accepté'}</div>
           </div>
         </div>
@@ -873,13 +987,13 @@ export default function StudentPortal() {
               {activeSection === 'accueil' && (
                 <div className="space-y-6">
                   {!inscriptionPayee && (
-                    <motion.div className="bg-gradient-to-r from-green-900/50 to-emerald-900/50 border border-green-500/30 rounded-2xl p-6">
+                    <motion.div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-2xl p-6">
                       <div className="flex items-start gap-4">
-                        <CheckCircle size={28} className="text-green-400 flex-shrink-0" />
+                        <CheckCircle size={28} className="text-green-500 flex-shrink-0" />
                         <div className="flex-1">
-                          <h3 className="text-green-300 font-bold text-lg mb-1">🎉 Félicitations ! Votre inscription est acceptée</h3>
-                          <p className="text-green-400/80 text-sm mb-4">
-                            Votre matricule étudiant est <strong className="text-white">{student?.matricule}</strong>.
+                          <h3 className="text-green-700 font-bold text-lg mb-1">🎉 Félicitations ! Votre inscription est acceptée</h3>
+                          <p className="text-green-600 text-sm mb-4">
+                            Votre matricule étudiant est <strong className="text-slate-900">{student?.matricule}</strong>.
                             Veuillez procéder au paiement des frais d'inscription pour finaliser votre dossier.
                           </p>
                           <button
@@ -896,20 +1010,20 @@ export default function StudentPortal() {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="glass-card p-5">
-                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Filière</div>
-                      <div className="text-white font-bold">{student?.filiere?.nom || '—'}</div>
-                      <div className="text-white/50 text-sm mt-1">{student?.license?.nom}</div>
+                    <div className="light-card p-5">
+                      <div className="text-isiblue-500 text-xs uppercase tracking-wider mb-2 font-semibold">Filière</div>
+                      <div className="text-slate-900 font-bold">{student?.filiere?.nom || '—'}</div>
+                      <div className="text-slate-500 text-sm mt-1">{student?.license?.nom}</div>
                     </div>
-                    <div className="glass-card p-5">
-                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Année académique</div>
-                      <div className="text-white font-bold">{student?.annee_scolaire}</div>
-                      <div className="text-white/50 text-sm mt-1">En cours</div>
+                    <div className="light-card p-5">
+                      <div className="text-isiblue-500 text-xs uppercase tracking-wider mb-2 font-semibold">Année académique</div>
+                      <div className="text-slate-900 font-bold">{student?.annee_scolaire}</div>
+                      <div className="text-slate-500 text-sm mt-1">En cours</div>
                     </div>
-                    <div className="glass-card p-5">
-                      <div className="text-white/40 text-xs uppercase tracking-wider mb-2">Matricule</div>
-                      <div className="text-white font-bold font-mono">{student?.matricule}</div>
-                      <div className={`text-xs mt-1 ${inscriptionPayee ? 'text-green-400' : 'text-yellow-400'}`}>
+                    <div className="light-card p-5">
+                      <div className="text-isiblue-500 text-xs uppercase tracking-wider mb-2 font-semibold">Matricule</div>
+                      <div className="text-slate-900 font-bold font-mono">{student?.matricule}</div>
+                      <div className={`text-xs mt-1 ${inscriptionPayee ? 'text-green-600' : 'text-isigold-600'}`}>
                         {inscriptionPayee ? '✓ Inscription payée' : '⚠ Paiement requis'}
                       </div>
                     </div>
@@ -917,16 +1031,16 @@ export default function StudentPortal() {
 
                   {student?.notifications?.length > 0 && (
                     <div>
-                      <h3 className="text-white/60 text-sm font-medium mb-3">Dernières notifications</h3>
+                      <h3 className="text-isiblue-600 text-sm font-medium mb-3">Dernières notifications</h3>
                       <div className="space-y-3">
                         {student.notifications.slice(0, 5).map((n) => (
-                          <div key={n.id} className={`glass-card p-4 border-l-4 ${
+                          <div key={n.id} className={`light-card p-4 border-l-4 ${
                             n.type === 'success' ? 'border-green-400' :
                             n.type === 'danger'  ? 'border-red-400' :
-                            n.type === 'warning' ? 'border-yellow-400' : 'border-brand-400'
+                            n.type === 'warning' ? 'border-isigold-400' : 'border-isiblue-400'
                           }`}>
-                            <div className="text-white font-medium text-sm">{n.titre}</div>
-                            <div className="text-white/60 text-xs mt-1">{n.message}</div>
+                            <div className="text-slate-900 font-medium text-sm">{n.titre}</div>
+                            <div className="text-slate-500 text-xs mt-1">{n.message}</div>
                           </div>
                         ))}
                       </div>
@@ -935,21 +1049,21 @@ export default function StudentPortal() {
 
                   {inscriptionPayee && (
                     <div className="grid grid-cols-2 gap-4">
-                      <button onClick={() => setActiveSection('suivi')} className="glass-card-hover p-5 flex items-center gap-4">
-                        <TrendingUp size={22} className="text-brand-400" />
+                      <button onClick={() => setActiveSection('suivi')} className="light-card-hover p-5 flex items-center gap-4">
+                        <TrendingUp size={22} className="text-isiblue-500" />
                         <div className="text-left">
-                          <div className="text-white font-semibold text-sm">Suivi mensuel</div>
-                          <div className="text-white/40 text-xs">Voir mes paiements</div>
+                          <div className="text-slate-900 font-semibold text-sm">Suivi mensuel</div>
+                          <div className="text-slate-400 text-xs">Voir mes paiements</div>
                         </div>
-                        <ChevronRight size={16} className="text-white/30 ml-auto" />
+                        <ChevronRight size={16} className="text-slate-300 ml-auto" />
                       </button>
-                      <button onClick={() => setActiveSection('profil')} className="glass-card-hover p-5 flex items-center gap-4">
-                        <User size={22} className="text-brand-400" />
+                      <button onClick={() => setActiveSection('profil')} className="light-card-hover p-5 flex items-center gap-4">
+                        <User size={22} className="text-isiblue-500" />
                         <div className="text-left">
-                          <div className="text-white font-semibold text-sm">Mon profil</div>
-                          <div className="text-white/40 text-xs">Compléter mes infos</div>
+                          <div className="text-slate-900 font-semibold text-sm">Mon profil</div>
+                          <div className="text-slate-400 text-xs">Compléter mes infos</div>
                         </div>
-                        <ChevronRight size={16} className="text-white/30 ml-auto" />
+                        <ChevronRight size={16} className="text-slate-300 ml-auto" />
                       </button>
                     </div>
                   )}
@@ -960,7 +1074,7 @@ export default function StudentPortal() {
               {activeSection === 'profil' && student && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-white/50 text-sm">Complétez votre dossier académique et personnel.</p>
+                    <p className="text-slate-500 text-sm">Complétez votre dossier académique et personnel.</p>
                     {student.profil_complet && <span className="badge-accepted">Profil complet</span>}
                   </div>
                   <CompleteProfileForm student={student} onSaved={(s) => setStudent((prev) => ({ ...prev, ...s }))} />
@@ -973,13 +1087,13 @@ export default function StudentPortal() {
                   {student?.card ? (
                     <>
                       {/* Aperçu carte */}
-                      <div className="glass-card p-6">
-                        <div className="text-white/40 text-xs uppercase tracking-wider mb-4">Carte étudiante — {student.card.numero_carte}</div>
+                      <div className="light-card p-6">
+                        <div className="text-isiblue-500 text-xs uppercase tracking-wider mb-4 font-semibold">Carte étudiante — {student.card.numero_carte}</div>
                         <div className="flex flex-col sm:flex-row gap-6 items-start">
 
                           {/* Photo étudiant */}
                           <div className="flex flex-col items-center gap-3">
-                            <div className="w-36 h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-brand-700 to-brand-500 border-2 border-white/20 flex-shrink-0">
+                            <div className="w-36 h-36 rounded-2xl overflow-hidden bg-gradient-to-br from-isiblue-700 to-isiblue-500 border-2 border-slate-200 flex-shrink-0">
                               {student.photo ? (
                                 <img
                                   src={`/storage/${student.photo}`}
@@ -988,13 +1102,13 @@ export default function StudentPortal() {
                                   onError={e => { e.currentTarget.style.display = 'none' }}
                                 />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-black text-white/30">
+                                <div className="w-full h-full flex items-center justify-center text-4xl font-black text-white/60">
                                   {student.prenom?.[0]}{student.nom?.[0]}
                                 </div>
                               )}
                             </div>
                             {/* Bouton changer photo */}
-                            <label className={`btn-secondary text-xs cursor-pointer flex items-center gap-1.5 ${changingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
+                            <label className={`btn-secondary-light text-xs cursor-pointer flex items-center gap-1.5 ${changingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
                               {changingPhoto ? <div className="spinner w-3 h-3"/> : <User size={13}/>}
                               Changer photo
                               <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
@@ -1020,42 +1134,42 @@ export default function StudentPortal() {
                           {/* Infos */}
                           <div className="flex-1 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                <div className="text-white/40 text-xs mb-0.5">Nom complet</div>
-                                <div className="text-white font-bold">{student.prenom} {student.nom}</div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                <div className="text-isiblue-500 text-xs mb-0.5 font-semibold">Nom complet</div>
+                                <div className="text-slate-900 font-bold">{student.prenom} {student.nom}</div>
                               </div>
-                              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                <div className="text-white/40 text-xs mb-0.5">Matricule</div>
-                                <div className="text-white font-bold font-mono">{student.matricule}</div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                <div className="text-isiblue-500 text-xs mb-0.5 font-semibold">Matricule</div>
+                                <div className="text-slate-900 font-bold font-mono">{student.matricule}</div>
                               </div>
-                              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                <div className="text-white/40 text-xs mb-0.5">Filière</div>
-                                <div className="text-white font-semibold">{student.filiere?.nom || '—'}</div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                <div className="text-isiblue-500 text-xs mb-0.5 font-semibold">Filière</div>
+                                <div className="text-slate-900 font-semibold">{student.filiere?.nom || '—'}</div>
                               </div>
-                              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                <div className="text-white/40 text-xs mb-0.5">Niveau</div>
-                                <div className="text-white font-semibold">{student.license?.nom || '—'}</div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                <div className="text-isiblue-500 text-xs mb-0.5 font-semibold">Niveau</div>
+                                <div className="text-slate-900 font-semibold">{student.license?.nom || '—'}</div>
                               </div>
-                              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                <div className="text-white/40 text-xs mb-0.5">Année de validité</div>
-                                <div className="text-white font-semibold">{student.card.annee_validite}</div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                <div className="text-isiblue-500 text-xs mb-0.5 font-semibold">Année de validité</div>
+                                <div className="text-slate-900 font-semibold">{student.card.annee_validite}</div>
                               </div>
-                              <div className="bg-white/5 rounded-xl p-3 border border-white/10">
-                                <div className="text-white/40 text-xs mb-0.5">Générée le</div>
-                                <div className="text-white font-semibold">{new Date(student.card.date_generation).toLocaleDateString('fr-FR')}</div>
+                              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                                <div className="text-isiblue-500 text-xs mb-0.5 font-semibold">Générée le</div>
+                                <div className="text-slate-900 font-semibold">{new Date(student.card.date_generation).toLocaleDateString('fr-FR')}</div>
                               </div>
                             </div>
                           </div>
 
                           {/* QR code généré côté client */}
                           <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                            <div className="bg-white rounded-2xl p-3 shadow-xl">
+                            <div className="bg-white rounded-2xl p-3 shadow-xl border border-slate-200">
                               {qrDataUrl
                                 ? <img src={qrDataUrl} alt="QR Code" className="w-36 h-36"/>
                                 : <div className="w-36 h-36 flex items-center justify-center text-gray-400 text-xs">Chargement QR...</div>
                               }
                             </div>
-                            <span className="text-white/30 text-xs">Scanner pour vérifier</span>
+                            <span className="text-slate-400 text-xs">Scanner pour vérifier</span>
                           </div>
                         </div>
                       </div>
@@ -1079,10 +1193,10 @@ export default function StudentPortal() {
                       </button>
                     </>
                   ) : (
-                    <div className="glass-card p-10 text-center border border-white/10">
-                      <QrCode size={48} className="text-white/20 mx-auto mb-4"/>
-                      <div className="text-white/60 text-sm mb-2">Aucune carte n'a encore été générée pour votre compte.</div>
-                      <div className="text-white/30 text-xs">
+                    <div className="light-card p-10 text-center border border-slate-200">
+                      <QrCode size={48} className="text-slate-300 mx-auto mb-4"/>
+                      <div className="text-slate-600 text-sm mb-2">Aucune carte n'a encore été générée pour votre compte.</div>
+                      <div className="text-slate-400 text-xs">
                         La carte étudiante est créée par l'administration après confirmation de votre inscription.
                       </div>
                     </div>
@@ -1094,8 +1208,8 @@ export default function StudentPortal() {
               {activeSection === 'paiements' && (
                 <div className="space-y-6">
                   {inscriptionPayee && (
-                    <div className="glass-card p-5">
-                      <h3 className="text-white font-semibold mb-4">Payer une mensualité</h3>
+                    <div className="light-card p-5">
+                      <h3 className="text-isiblue-700 font-semibold mb-4">Payer une mensualité</h3>
                       <div className="flex flex-wrap gap-3">
                         {suivi?.mois?.filter((m) => !m.paye).slice(0, 3).map((m) => (
                           <button
@@ -1111,15 +1225,15 @@ export default function StudentPortal() {
                     </div>
                   )}
 
-                  <div className="glass-card overflow-hidden">
-                    <div className="p-4 border-b border-white/10">
-                      <h3 className="text-white font-semibold">Historique des paiements</h3>
+                  <div className="light-card overflow-hidden">
+                    <div className="p-4 border-b border-slate-200">
+                      <h3 className="text-isiblue-700 font-semibold">Historique des paiements</h3>
                     </div>
-                    <table className="data-table">
+                    <table className="data-table-light">
                       <thead><tr><th>Type</th><th>Montant</th><th>Méthode</th><th>Date</th><th>Statut</th><th>Reçu</th></tr></thead>
                       <tbody>
                         {payments.length === 0 ? (
-                          <tr><td colSpan={6} className="text-center text-white/30 py-8">Aucun paiement</td></tr>
+                          <tr><td colSpan={6} className="text-center text-slate-400 py-8">Aucun paiement</td></tr>
                         ) : payments.map((p) => (
                           <tr key={p.id}>
                             <td>{p.libelle || p.type}</td>
@@ -1134,7 +1248,7 @@ export default function StudentPortal() {
                                 {p.statut === 'en_attente' && p.methode === 'wave' && (
                                   <button
                                     onClick={() => handleCancelPayment(p.id)}
-                                    className="text-xs text-red-400 hover:text-red-300 underline transition-colors"
+                                    className="text-xs text-red-500 hover:text-red-600 underline transition-colors"
                                     title="Annuler ce paiement Wave non complété"
                                   >
                                     Annuler
@@ -1142,7 +1256,7 @@ export default function StudentPortal() {
                                 )}
                               </div>
                             </td>
-                            <td>{p.recu_pdf_path && <button onClick={() => handleDownloadRecu(p.id)} className="text-brand-400 hover:text-brand-300 flex items-center gap-1 text-xs transition-colors"><Download size={12} />Reçu</button>}</td>
+                            <td>{p.recu_pdf_path && <button onClick={() => handleDownloadRecu(p.id)} className="text-isiblue-600 hover:text-isiblue-700 flex items-center gap-1 text-xs transition-colors"><Download size={12} />Reçu</button>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1158,13 +1272,13 @@ export default function StudentPortal() {
                     suivi ? (
                       <PaymentMonthGrid suivi={suivi} />
                     ) : (
-                      <div className="text-center py-12 text-white/30">Chargement du suivi...</div>
+                      <div className="text-center py-12 text-slate-400">Chargement du suivi...</div>
                     )
                   ) : (
                     <div className="text-center py-16">
-                      <AlertCircle size={48} className="text-yellow-400 mx-auto mb-4" />
-                      <h3 className="text-white font-bold text-xl mb-2">Inscription non finalisée</h3>
-                      <p className="text-white/50 mb-6">Payez vos frais d'inscription pour accéder au suivi mensuel.</p>
+                      <AlertCircle size={48} className="text-isigold-500 mx-auto mb-4" />
+                      <h3 className="text-isiblue-700 font-bold text-xl mb-2">Inscription non finalisée</h3>
+                      <p className="text-slate-500 mb-6">Payez vos frais d'inscription pour accéder au suivi mensuel.</p>
                       <button onClick={() => handlePay('inscription')} className="btn-primary">
                         Payer l'inscription via Wave
                       </button>

@@ -6,7 +6,7 @@ import {
   Moon, Sun, Quote, MapPin, Phone, Mail, Globe, ExternalLink,
   Star, Play, Pause, Cpu, Network, Brain, Shield, Code2, GitBranch,
   Database, Building, CreditCard, UserCheck, Wrench, Server,
-  Award, Zap, Lock, Users, GraduationCap, BookOpen,
+  Award, Zap, Lock, Users, GraduationCap, BookOpen, Calculator, Megaphone,
   TrendingUp, Clock, CheckCircle2, Camera, Image as ImageIcon,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
@@ -58,24 +58,24 @@ const MEMBRES = [
 ]
 
 const FILIERES = [
-  { id:1, code:'INFO',  nom:'Informatique & Systèmes',       icon:Cpu,        color:'blue',    desc:'Systèmes d\'info, bases de données, programmation et architecture logicielle.',      skills:['Python','Java','SQL','OS'],
-    curriculum:['Algorithmique & Programmation','Bases de données (SQL, Oracle)','Architecture des systèmes','Développement d\'applications','Analyse & Conception UML'],
-    duree:'2-3 ans', certifs:['Oracle Certified','Microsoft MTA'], meta:'Fondamentaux IT · Très demandé' },
-  { id:2, code:'RT',    nom:'Réseaux & Télécommunications',  icon:Network,    color:'cyan',    desc:'Infrastructure réseau, protocoles, sécurité des communications et cloud computing.', skills:['Cisco','CCNA','WiFi','5G'],
-    curriculum:['Fondamentaux TCP/IP','Routage & Commutation CCNA','Infrastructure WiFi & 5G','Cloud Networking AWS','Sécurité & Supervision réseau'],
-    duree:'2-3 ans', certifs:['Cisco CCNA','Huawei HCIA'], meta:'Cisco Academy · Certif officielle' },
-  { id:3, code:'IA',    nom:'Intelligence Artificielle',     icon:Brain,      color:'violet',  desc:'Machine learning, deep learning, traitement du langage naturel et vision par ordi.', skills:['Python','TensorFlow','NLP','CV'],
-    curriculum:['Mathématiques pour l\'IA','Machine Learning (Scikit-learn)','Deep Learning TensorFlow/Keras','NLP & Traitement du texte','Computer Vision & Projets IA'],
-    duree:'2-3 ans', certifs:['AWS ML Specialty','Google AI Certificate'], meta:'Filière du futur · Très haute valeur' },
-  { id:4, code:'CYBER', nom:'Cybersécurité',                 icon:Shield,     color:'red',     desc:'Sécurité offensive/défensive, audit, forensique numérique et gestion des risques.',  skills:['Pentest','CTF','SIEM','Kali'],
-    curriculum:['Fondamentaux cybersécurité','Tests de pénétration Kali Linux','Forensique numérique','OSINT & Threat Intelligence','Audit & Conformité RGPD'],
-    duree:'2-3 ans', certifs:['CEH','CompTIA Security+'], meta:'Forte demande · Certifs reconnues' },
-  { id:5, code:'DWM',   nom:'Développement Web & Mobile',    icon:Code2,      color:'emerald', desc:'Applications web modernes, mobile natif et cross-platform, UX/UI design avancé.',    skills:['React','Laravel','Flutter','Node'],
-    curriculum:['JavaScript ES6+ & TypeScript','React.js & Vue.js (Frontend)','Laravel & Node.js Backend','Flutter Mobile iOS/Android','DevOps & Déploiement Cloud'],
-    duree:'2-3 ans', certifs:['Meta Front-End','AWS Developer'], meta:'Le + polyvalent · Débouchés immédiats' },
-  { id:6, code:'GL',    nom:'Génie Logiciel',                icon:GitBranch,  color:'amber',   desc:'Méthodes Agile, DevOps, architecture microservices et assurance qualité logicielle.', skills:['Agile','Docker','CI/CD','Git'],
-    curriculum:['Méthodes Agile & Scrum','Docker & Kubernetes','CI/CD GitHub Actions','Tests automatisés TDD','Architecture microservices'],
-    duree:'2-3 ans', certifs:['Scrum Master','Docker Certified'], meta:'DevOps & Qualité · Architecture' },
+  { id:1, code:'INF-RI',  nom:'Réseaux Informatiques',     icon:Network,    color:'cyan',    desc:'Infrastructure réseau, protocoles TCP/IP, administration Cisco et déploiement de solutions réseau d\'entreprise.', skills:['Cisco CCNA','TCP/IP','VLAN','WiFi'],
+    curriculum:['Fondamentaux TCP/IP','Routage & Commutation Cisco','Administration systèmes & serveurs','Cloud Networking','Sécurité & Supervision réseau'],
+    duree:'DTS 2 ans · Licence Pro 10 mois', certifs:['Cisco CCNA','Huawei HCIA'], meta:'Cisco Academy · Certif officielle' },
+  { id:2, code:'INF-GL',  nom:'Génie Logiciel',            icon:GitBranch,  color:'amber',   desc:'Programmation orientée objet, méthodes Agile, DevOps et architecture logicielle — du DTS au Master Pro.', skills:['Java','Python','Agile','Docker'],
+    curriculum:['Algorithmique & POO','Bases de données relationnelles','Méthodes Agile & Scrum','CI/CD & intégration continue','Architecture microservices'],
+    duree:'DTS · Licence Pro · Master Pro', certifs:['Scrum Master','Docker Certified'], meta:'DevOps & Qualité · Architecture' },
+  { id:3, code:'INF-WEB', nom:'Web Master',                icon:Code2,      color:'emerald', desc:'Conception de sites et applications web modernes, du design à la mise en production.', skills:['HTML/CSS','JavaScript','PHP','React'],
+    curriculum:['HTML/CSS & JavaScript moderne','Développement front-end (React)','Développement back-end & bases de données','Hébergement, déploiement & SEO','Projet web professionnel'],
+    duree:'DTS-BTS-Licence 2 ans', certifs:['Meta Front-End'], meta:'Le + polyvalent · Débouchés immédiats' },
+  { id:4, code:'GES-CF',  nom:'Comptabilité Finance',      icon:Calculator, color:'violet',  desc:'Comptabilité générale, gestion financière, fiscalité et analyse financière d\'entreprise.', skills:['Comptabilité','Fiscalité','Sage','Audit'],
+    curriculum:['Comptabilité générale & analytique','Fiscalité d\'entreprise','Gestion financière & trésorerie','Logiciels comptables (Sage)','Analyse financière & audit'],
+    duree:'DTS · Licence Pro · Master Pro', certifs:['Sage Certified'], meta:'Fondamentaux Gestion · Très demandé' },
+  { id:5, code:'GES-CI',  nom:'Commerce International',    icon:Globe,      color:'red',     desc:'Techniques du commerce international, logistique import-export et négociation commerciale.', skills:['Import-Export','Douane','Négociation','Incoterms'],
+    curriculum:['Techniques du commerce international','Douane & Incoterms','Logistique import-export','Négociation commerciale','Anglais des affaires'],
+    duree:'DTS 2 ans · Licence Pro 10 mois', certifs:['Incoterms Certified'], meta:'Forte demande · Débouchés internationaux' },
+  { id:6, code:'GES-MD',  nom:'Marketing Digital',         icon:Megaphone,  color:'blue',    desc:'Stratégies marketing digital, réseaux sociaux, communication de marque et growth.', skills:['SEO/SEA','Réseaux sociaux','Google Ads','Branding'],
+    curriculum:['Fondamentaux du marketing digital','SEO & référencement payant','Réseaux sociaux & content marketing','Google Ads & Analytics','Branding & communication'],
+    duree:'DTS 2 ans · Licence Pro 10 mois', certifs:['Google Ads Certified'], meta:'Filière en croissance · Créatif' },
 ]
 
 const CM = {
@@ -333,17 +333,17 @@ function CampusStrip({ isDark }) {
 }
 
 // ─── Hero Carousel ────────────────────────────────────────────────────────────
-function Carousel() {
+function Carousel({ slides = SLIDES }) {
   const [cur, setCur] = useState(0)
   const [dir, setDir] = useState(1)
   const [play, setPlay] = useState(true)
   useEffect(() => {
     if (!play) return
-    const t = setInterval(() => { setDir(1); setCur(c => (c+1)%SLIDES.length) }, 5000)
+    const t = setInterval(() => { setDir(1); setCur(c => (c+1)%slides.length) }, 5000)
     return () => clearInterval(t)
-  }, [play])
+  }, [play, slides.length])
   const go = i => { setDir(i>cur?1:-1); setCur(i); setPlay(false); setTimeout(()=>setPlay(true),8000) }
-  const s = SLIDES[cur]
+  const s = slides[cur] || slides[0]
   return (
     <div className="relative w-full h-[540px] lg:h-[640px] rounded-3xl overflow-hidden shadow-2xl shadow-black/40 group">
       <AnimatePresence custom={dir} mode="popLayout">
@@ -365,13 +365,13 @@ function Carousel() {
           </div>
         </motion.div>
       </AnimatePresence>
-      <button onClick={()=>go((cur-1+SLIDES.length)%SLIDES.length)} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 hover:bg-brand-600/70 transition-all z-20"><ChevronLeft size={18}/></button>
-      <button onClick={()=>go((cur+1)%SLIDES.length)} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 hover:bg-brand-600/70 transition-all z-20"><ChevronRight size={18}/></button>
+      <button onClick={()=>go((cur-1+slides.length)%slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 hover:bg-isiblue-600/70 transition-all z-20"><ChevronLeft size={18}/></button>
+      <button onClick={()=>go((cur+1)%slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 hover:bg-isiblue-600/70 transition-all z-20"><ChevronRight size={18}/></button>
       <button onClick={()=>setPlay(p=>!p)} className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 backdrop-blur-sm border border-white/15 flex items-center justify-center text-white/60 hover:text-white opacity-0 group-hover:opacity-100 transition-all z-20">{play?<Pause size={13}/>:<Play size={13}/>}</button>
       <div className="absolute bottom-3 right-6 flex items-center gap-2 z-20">
-        {SLIDES.map((_,i)=><button key={i} onClick={()=>go(i)}><div className={`rounded-full transition-all duration-500 ${i===cur?'w-7 h-2.5 bg-brand-400':'w-2.5 h-2.5 bg-white/40'}`}/></button>)}
+        {slides.map((_,i)=><button key={i} onClick={()=>go(i)}><div className={`rounded-full transition-all duration-500 ${i===cur?'w-7 h-2.5 bg-isiblue-400':'w-2.5 h-2.5 bg-white/40'}`}/></button>)}
       </div>
-      <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1 text-xs text-white/40 font-mono z-20">{String(cur+1).padStart(2,'0')}/{String(SLIDES.length).padStart(2,'0')}</div>
+      <div className="absolute top-3 left-3 bg-black/40 backdrop-blur-sm border border-white/10 rounded-full px-3 py-1 text-xs text-white/40 font-mono z-20">{String(cur+1).padStart(2,'0')}/{String(slides.length).padStart(2,'0')}</div>
     </div>
   )
 }
@@ -794,23 +794,32 @@ function photoUrl(path) {
 }
 
 export default function Landing() {
-  const [isDark, setDark]       = useState(() => localStorage.getItem('isi_theme')==='dark')
+  const [isDark, setDark]       = useState(() => localStorage.getItem('isi_theme_v2')==='dark')
   const [filieres, setFil]      = useState(FILIERES)
   const [formateurs, setForms]  = useState(FORMATEURS)
   const [membres, setMembres]   = useState(MEMBRES)
   const [temos, setTemos]       = useState([])
+  const [temoIndex, setTemoIndex] = useState(0)
   const [selF, setSelF]         = useState(null)
   const [news, setNews]         = useState({ email:'', nom:'' })
   const [newsOK, setNewsOK]     = useState(false)
   const [tForm, setTForm]       = useState({ nom:'', filiere:'', annee_diplome:'', contenu:'', note:5 })
   const [tOK, setTOK]           = useState(false)
   const [socials, setSocials]   = useState({})
+  const [siteStats, setSiteStats] = useState({ stat_etudiants: '2500', stat_experience: '15', stat_insertion: '95', stat_filieres: '20' })
+  const [blocs, setBlocs] = useState({})
 
-  useEffect(() => { localStorage.setItem('isi_theme', isDark?'dark':'light') }, [isDark])
+  useEffect(() => { localStorage.setItem('isi_theme_v2', isDark?'dark':'light') }, [isDark])
   useEffect(() => {
     getFilieres().then(r => {
-      if (r.data?.length) {
-        setFil(r.data.map(f => ({ ...FILIERES.find(d=>d.code===f.code)||FILIERES[0], ...f })))
+      const list = r.data || []
+      if (list.length) {
+        // Le carrousel vitrine affiche 6 filières fixes — on n'y injecte que les
+        // tarifs/licences réels correspondants, sans jamais dépasser 6 cartes.
+        setFil(FILIERES.map(d => {
+          const match = list.find(f => f.code === d.code)
+          return match ? { ...d, ...match } : d
+        }))
       }
     }).catch(()=>{})
     // Load real team from API — fall back to static if empty
@@ -848,7 +857,25 @@ export default function Landing() {
     }).catch(()=>{})
     getTemoignages().then(r => setTemos(r.data||[])).catch(()=>{})
     fetch('/api/settings/social').then(r=>r.json()).then(setSocials).catch(()=>{})
+    fetch('/api/settings/stats').then(r=>r.json()).then(setSiteStats).catch(()=>{})
+    fetch('/api/contenu/blocs').then(r=>r.json()).then(setBlocs).catch(()=>{})
   }, [])
+
+  // Fusionne les blocs modifiés par le super admin (texte/photo) par-dessus les
+  // valeurs par défaut codées en dur — rien ne change tant qu'aucun bloc n'est édité.
+  const heroSlides = useMemo(() => SLIDES.map((s, i) => ({
+    img:   blocs[`slide_${i+1}_image`] || s.img,
+    titre: blocs[`slide_${i+1}_titre`] || s.titre,
+    sous:  blocs[`slide_${i+1}_sous`]  || s.sous,
+  })), [blocs])
+
+  // Fait défiler les vrais témoignages publiés toutes les 3s — dès qu'il y en a
+  // au moins un, on n'affiche plus jamais l'exemple factice par défaut.
+  useEffect(() => {
+    if (temos.length <= 1) return
+    const id = setInterval(() => setTemoIndex(i => (i + 1) % temos.length), 3000)
+    return () => clearInterval(id)
+  }, [temos.length])
 
   // Scroll to section if navigated from another page via Navbar
   useEffect(() => {
@@ -904,19 +931,21 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center">
           <div>
             <motion.div initial={{opacity:0,y:-20}} animate={{opacity:1,y:0}} transition={{duration:0.5}}
-              className={`inline-flex items-center gap-2.5 rounded-full px-5 py-2 text-sm font-bold mb-8 border ${D?'bg-brand-500/10 border-brand-500/25 text-brand-300':'bg-brand-50 border-brand-200 text-brand-700'}`}>
-              <div className="w-2 h-2 rounded-full bg-brand-400 animate-pulse"/> Inscriptions 2025-2026 ouvertes
+              className={`inline-flex items-center gap-2.5 rounded-full px-5 py-2 text-sm font-bold mb-8 border ${D?'bg-isiblue-500/10 border-isiblue-500/25 text-isiblue-300':'bg-isiblue-50 border-isiblue-200 text-isiblue-700'}`}>
+              <div className="w-2 h-2 rounded-full bg-isiblue-400 animate-pulse"/> {blocs.hero_badge || 'Inscriptions 2025-2026 ouvertes'}
             </motion.div>
             <motion.h1 initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.1}}
               className={`text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] mb-6 ${tx}`}>
-              Votre avenir<br/>
-              <span className={D?'gradient-text':'gradient-text-light'}>numérique</span><br/>
-              commence ici
+              {blocs.hero_titre_1 || 'Votre avenir'}<br/>
+              <span className={D?'gradient-text':'gradient-text-light'}>{blocs.hero_titre_accent || 'numérique'}</span><br/>
+              {blocs.hero_titre_2 || 'commence ici'}
             </motion.h1>
             <motion.p initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.2}}
               className={`text-lg max-w-lg mb-10 leading-relaxed ${txs}`}>
-              ISI SUPTECH — Institut d'excellence en informatique, réseaux et innovation numérique.{' '}
-              <span className={D?'text-brand-300 font-bold':'text-brand-700 font-bold'}>Dakar, Sénégal.</span>
+              {blocs.hero_sous_titre ? blocs.hero_sous_titre : (<>
+                ISI SUPTECH — Institut d'excellence en informatique, réseaux et innovation numérique.{' '}
+                <span className={D?'text-isiblue-300 font-bold':'text-isiblue-700 font-bold'}>Dakar, Sénégal.</span>
+              </>)}
             </motion.p>
             <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.3}} className="flex flex-col sm:flex-row gap-4 mb-12">
               <Link to="/pre-inscription" className="btn-primary text-base px-8 py-4 flex items-center justify-center gap-2.5 rounded-2xl shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-shadow">
@@ -928,7 +957,7 @@ export default function Landing() {
             </motion.div>
             <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.7}}
               className={`flex flex-wrap gap-8 pt-8 border-t ${hr}`}>
-              {[['2 500+','Étudiants formés'],['15 ans','d\'expérience'],['95%','Insertion pro']].map(([v,l],i)=>(
+              {[[`${siteStats.stat_etudiants}+`,'Étudiants formés'],[`${siteStats.stat_experience} ans`,'d\'expérience'],[`${siteStats.stat_insertion}%`,'Insertion pro']].map(([v,l],i)=>(
                 <div key={i}>
                   <div className={`text-3xl font-black ${D?'text-white':'text-slate-900'}`}>{v}</div>
                   <div className={`text-xs ${txm}`}>{l}</div>
@@ -937,7 +966,7 @@ export default function Landing() {
             </motion.div>
           </div>
           <motion.div initial={{opacity:0,x:60}} animate={{opacity:1,x:0}} transition={{duration:0.9,delay:0.2}}>
-            <Carousel/>
+            <Carousel slides={heroSlides}/>
           </motion.div>
         </div>
         <motion.div animate={{y:[0,10,0]}} transition={{repeat:Infinity,duration:2.5}} className={`absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 ${txm}`}>
@@ -949,10 +978,10 @@ export default function Landing() {
       <section className={`relative z-10 py-20 px-4 ${sec}`}>
         <div className="max-w-5xl mx-auto">
           <div className={`${card} rounded-3xl p-10 grid grid-cols-2 md:grid-cols-4 gap-8`}>
-            <Counter target="2500" suffix="+" label="Étudiants formés"    icon={GraduationCap} isDark={D}/>
-            <Counter target="15"   suffix="+" label="Années d'expérience" icon={Award}         isDark={D}/>
-            <Counter target="20"   suffix=""  label="Filières & niveaux"  icon={BookOpen}      isDark={D}/>
-            <Counter target="95"   suffix="%" label="Taux d'insertion"    icon={TrendingUp}    isDark={D}/>
+            <Counter target={siteStats.stat_etudiants}  suffix="+" label="Étudiants formés"    icon={GraduationCap} isDark={D}/>
+            <Counter target={siteStats.stat_experience} suffix="+" label="Années d'expérience" icon={Award}         isDark={D}/>
+            <Counter target={siteStats.stat_filieres}   suffix=""  label="Filières & niveaux"  icon={BookOpen}      isDark={D}/>
+            <Counter target={siteStats.stat_insertion}  suffix="%" label="Taux d'insertion"    icon={TrendingUp}    isDark={D}/>
           </div>
         </div>
       </section>
@@ -1210,7 +1239,7 @@ export default function Landing() {
               <div className="absolute inset-0" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.12) 1px,transparent 1px)',backgroundSize:'22px 22px'}}/>
               <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 blur-2xl -translate-y-1/2 translate-x-1/2"/>
               <div className="relative z-10 grid grid-cols-3 gap-6 w-full">
-                {[['2 500+','Étudiants formés'],['20','Filières actives'],['95%','Insertion pro']].map(([v,l],i)=>(
+                {[[`${siteStats.stat_etudiants}+`,'Étudiants formés'],[siteStats.stat_filieres,'Filières actives'],[`${siteStats.stat_insertion}%`,'Insertion pro']].map(([v,l],i)=>(
                   <div key={i} className="text-center">
                     <div className="text-2xl md:text-3xl font-black text-white mb-1">{v}</div>
                     <div className="text-white/55 text-[11px] font-medium leading-tight">{l}</div>
@@ -1296,9 +1325,9 @@ export default function Landing() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-3 mb-8">
                 {[
-                  {n:'2 500+',l:'Étudiants',Icon:Users},
-                  {n:'95%',l:'Satisfaction',Icon:Star},
-                  {n:'15 ans',l:'Excellence',Icon:Award},
+                  {n:`${siteStats.stat_etudiants}+`,l:'Étudiants',Icon:Users},
+                  {n:`${siteStats.stat_insertion}%`,l:'Satisfaction',Icon:Star},
+                  {n:`${siteStats.stat_experience} ans`,l:'Excellence',Icon:Award},
                 ].map(({n,l,Icon},i)=>(
                   <motion.div key={i} initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.2+i*0.1}}
                     className={`border rounded-2xl p-3.5 text-center ${D?'bg-white/8 border-white/12':'bg-white border-slate-200 shadow-sm'}`}>
@@ -1308,25 +1337,43 @@ export default function Landing() {
                   </motion.div>
                 ))}
               </div>
-              {/* Sample testimonial */}
-              <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.5}}
-                className={`border rounded-2xl p-5 relative overflow-hidden ${D?'bg-white/5 border-white/12':'bg-white border-slate-200 shadow-md'}`}>
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-brand-500 via-cyan-500 to-violet-500"/>
-                <Quote size={18} className={D?'text-brand-300 mb-3':'text-brand-500 mb-3'}/>
-                <p className={`text-sm leading-relaxed italic mb-4 ${D?'text-white/65':'text-slate-600'}`}>
-                  "ISI SUPTECH m'a donné les outils pour réussir dans le numérique. Les formateurs sont de vrais experts du terrain."
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-cyan-500 flex items-center justify-center flex-shrink-0 text-white font-black text-sm">A</div>
-                  <div>
-                    <div className={`font-bold text-sm ${D?'text-white':'text-slate-800'}`}>Amadou D.</div>
-                    <div className={`text-xs ${D?'text-white/40':'text-slate-400'}`}>Cybersécurité · 2024</div>
-                  </div>
-                  <div className="ml-auto flex gap-0.5">
-                    {[1,2,3,4,5].map(i=><Star key={i} size={11} className="text-amber-400 fill-amber-400"/>)}
-                  </div>
-                </div>
-              </motion.div>
+              {/* Témoignage — un vrai avis publié tourne toutes les 3s ; à défaut, un exemple */}
+              {(() => {
+                const real = temos[temoIndex]
+                const shown = real
+                  ? { nom: real.nom, sousTitre: [real.filiere, real.annee_diplome].filter(Boolean).join(' · '), contenu: real.contenu, note: real.note || 5, photo: real.photo }
+                  : { nom: 'Amadou D.', sousTitre: 'Réseaux Informatiques · 2024', contenu: "ISI SUPTECH m'a donné les outils pour réussir dans le numérique. Les formateurs sont de vrais experts du terrain.", note: 5, photo: null }
+                return (
+                  <AnimatePresence mode="wait">
+                    <motion.div key={real?.id ?? 'exemple'}
+                      initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.4}}
+                      className={`border rounded-2xl p-5 relative overflow-hidden ${D?'bg-white/5 border-white/12':'bg-white border-slate-200 shadow-md'}`}>
+                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-isiblue-500 to-isigold-500"/>
+                      <Quote size={18} className={D?'text-isiblue-300 mb-3':'text-isiblue-500 mb-3'}/>
+                      <p className={`text-sm leading-relaxed italic mb-4 ${D?'text-white/65':'text-slate-600'}`}>
+                        "{shown.contenu}"
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-500 to-isigold-500 flex items-center justify-center flex-shrink-0 text-white font-black text-sm">
+                          {shown.photo ? <img src={shown.photo} alt={shown.nom} className="w-full h-full object-cover"/> : shown.nom[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <div className={`font-bold text-sm ${D?'text-white':'text-slate-800'}`}>{shown.nom}</div>
+                          {shown.sousTitre && <div className={`text-xs ${D?'text-white/40':'text-slate-400'}`}>{shown.sousTitre}</div>}
+                        </div>
+                        <div className="ml-auto flex gap-0.5">
+                          {[1,2,3,4,5].map(i=><Star key={i} size={11} className={i<=shown.note?'text-isigold-500 fill-isigold-500':D?'text-white/20':'text-slate-300'}/>)}
+                        </div>
+                      </div>
+                      {temos.length > 1 && (
+                        <div className="flex gap-1 mt-4 justify-center">
+                          {temos.map((_,i)=><div key={i} className={`h-1 rounded-full transition-all ${i===temoIndex?'w-5 bg-isiblue-500':'w-1 bg-slate-300'}`}/>)}
+                        </div>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                )
+              })()}
             </motion.div>
 
             {/* ── Right: form ── */}

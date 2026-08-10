@@ -7,20 +7,33 @@ import {
   Search, Check, X, Eye, UserPlus, RefreshCw,
   Pencil,
   Clock, Award, Plus, FileText, Handshake,
-  MessageSquare, Mail, Share2, Trash2, ThumbsUp, Star,
+  MessageSquare, Mail, Share2, Trash2, ThumbsUp, Star, Send,
   GraduationCap, Building2, Sun, Moon, Menu, ChevronRight,
-  TrendingUp, Shield, Calendar, Download, ExternalLink, ToggleLeft, ToggleRight, Wallet, Lock, AlertTriangle
+  TrendingUp, Shield, Calendar, Download, ExternalLink, ToggleLeft, ToggleRight, Wallet, Lock, AlertTriangle, Upload,
+  KeyRound, Activity, Power, ShieldCheck, UserCog, Camera, Image as ImageIcon
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getAdminStats, getAdminStudents, acceptStudent, rejectStudent,
   deleteStudent, getTrashedStudents, restoreStudent, forceDeleteStudent,
   generateStudentCard, downloadAdminCard, getAdminPayments, getFilieres, createAdminStudent, createFiliere,
+  downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription, uploadStudentDocument,
   downloadClassListPdf,
   updateAdminFiliere, deleteAdminFiliere, createLicense, updateAdminLicense, deleteAdminLicense,
   getAdminSettings, updateAdminSettings,
   getStaff, createStaff, deleteStaff, resetDonneesTest,
   adminGetMoisDesactives, adminToggleMoisDesactive, lockStudentProfile,
+  getPermissionsModification, approuverPermission, refuserPermission,
+  getAuditLog, toggleMaintenance, getMaintenanceStatus,
+  forceTwoFactorForAll, getForceTwoFactorStatus,
+  updateMyPhoto, updateMyPassword,
+  adminGetTemoignages, adminApprouverTemoignage, adminDeleteTemoignage,
+  adminGetNewsletter, adminSendNewsletterAnnouncement,
+  getSiteStats, updateSiteStats,
+  getContentBlocks, updateContentBlockText, updateContentBlockImage,
+  adminGetFormateurs, adminCreateFormateur, adminDeleteFormateur,
+  adminGetMembres, adminCreateMembre, adminDeleteMembre,
+  adminGetPartenaires, adminCreatePartenaire, adminDeletePartenaire,
 } from '../services/api'
 import api from '../services/api'
 
@@ -42,29 +55,39 @@ const YEARS_BIRTH = (() => { const y = new Date().getFullYear(); const arr = [];
 const YEARS_DIPLOMA = (() => { const y = new Date().getFullYear(); const arr = []; for (let i = y; i >= y - 30; i--) arr.push(i); return arr })()
 
 const NAV = [
-  { id: 'dashboard',   label: 'Tableau de bord',   icon: LayoutDashboard, color: 'text-violet-400',  badge: null },
-  { id: 'etudiants',   label: 'Étudiants',          icon: Users,           color: 'text-blue-400',    badge: null },
-  { id: 'paiements',   label: 'Paiements',           icon: CreditCard,      color: 'text-emerald-400', badge: null },
-  { id: 'filieres',    label: 'Filières & Niveaux',  icon: BookOpen,        color: 'text-amber-400',   badge: null },
-  { id: 'staff',       label: 'Équipe staff',        icon: Shield,          color: 'text-red-400',     badge: null },
-  { id: 'mois',        label: 'Mois désactivés',     icon: Calendar,        color: 'text-purple-400',  badge: null },
-  { id: 'corbeille',   label: 'Corbeille',            icon: Trash2,          color: 'text-red-400',     badge: null },
+  { id: 'dashboard',   label: 'Tableau de bord',   icon: LayoutDashboard, color: 'text-isiblue-400',  badge: null },
+  { id: 'etudiants',   label: 'Étudiants',          icon: Users,           color: 'text-isiblue-400',  badge: null },
+  { id: 'paiements',   label: 'Paiements',           icon: CreditCard,      color: 'text-isigold-500',  badge: null },
+  { id: 'filieres',    label: 'Filières & Niveaux',  icon: BookOpen,        color: 'text-isiblue-400',  badge: null },
+  { id: 'staff',       label: 'Équipe staff',        icon: Shield,          color: 'text-isiblue-400',  badge: null },
+  { id: 'mois',        label: 'Mois désactivés',     icon: Calendar,        color: 'text-isigold-500',  badge: null },
+  { id: 'permissions', label: 'Permissions caisse',  icon: KeyRound,        color: 'text-isigold-500',  badge: null },
+  { id: 'temoignages', label: 'Témoignages',         icon: MessageSquare,   color: 'text-isigold-500',  badge: null },
+  { id: 'newsletter',  label: 'Newsletter',          icon: Mail,            color: 'text-isiblue-400',  badge: null },
+  { id: 'formateurs',  label: 'Formateurs',          icon: Award,           color: 'text-isiblue-400',  badge: null },
+  { id: 'membres',     label: 'Membres admin (site)', icon: Building2,      color: 'text-isiblue-400',  badge: null },
+  { id: 'partenaires', label: 'Partenaires',         icon: Handshake,       color: 'text-isigold-500',  badge: null },
+  { id: 'social',      label: 'Réseaux sociaux',     icon: Share2,          color: 'text-isiblue-400',  badge: null },
+  { id: 'audit',       label: 'Journal d\'audit',    icon: Activity,        color: 'text-isiblue-400',  badge: null },
+  { id: 'contenu',     label: 'Contenu du site',      icon: ImageIcon,       color: 'text-isigold-500',  badge: null },
+  { id: 'profil',      label: 'Mon profil',          icon: UserCog,         color: 'text-isigold-500',  badge: null },
+  { id: 'corbeille',   label: 'Corbeille',            icon: Trash2,          color: 'text-red-400',      badge: null },
 ]
 
 function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, onClose }) {
   const T = isDark ? {
     logo:   'text-white',
-    sub:    'text-brand-400',
+    sub:    'text-isiblue-400',
     item:   'text-white/50 hover:text-white hover:bg-white/5',
-    active: 'bg-brand-600/20 text-brand-300 border border-brand-500/30',
+    active: 'bg-isiblue-600/20 text-isiblue-300 border border-isiblue-500/30',
     foot:   'text-white/40 hover:text-red-400 hover:bg-red-500/5',
-    theme:  'bg-white/10 text-amber-300 hover:bg-white/20 border-white/10',
+    theme:  'bg-white/10 text-isigold-400 hover:bg-white/20 border-white/10',
     div:    'border-white/10',
   } : {
     logo:   'text-slate-900',
-    sub:    'text-brand-600',
+    sub:    'text-isiblue-600',
     item:   'text-slate-500 hover:text-slate-900 hover:bg-slate-100',
-    active: 'bg-brand-50 text-brand-700 border border-brand-200',
+    active: 'bg-isiblue-50 text-isiblue-700 border border-isiblue-100',
     foot:   'text-slate-400 hover:text-red-600 hover:bg-red-50',
     theme:  'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200',
     div:    'border-slate-200',
@@ -74,10 +97,10 @@ function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, 
       {/* En-tête */}
       <div className={`flex-shrink-0 p-5 border-b ${T.div}`}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex-shrink-0 w-11 h-11 flex items-center justify-center">
-            <img src="/isi-logo.png" alt="ISI" className="h-11 w-auto object-contain"
+          <div className={`flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl ${isDark ? 'bg-white p-1' : ''}`}>
+            <img src="/isi-logo.png" alt="ISI" className="h-full w-auto object-contain"
               onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex' }}/>
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-pink-500 items-center justify-center shadow-lg hidden">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-isiblue-600 via-isiblue-500 to-isigold-500 items-center justify-center shadow-lg hidden">
               <span className="text-white font-black text-sm">ISI</span>
             </div>
           </div>
@@ -90,9 +113,14 @@ function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, 
           )}
         </div>
         <div className={`flex items-center gap-2.5 px-3 py-2 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-100'}`}>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-600 to-pink-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-xs">{(user?.name || 'A')[0].toUpperCase()}</span>
-          </div>
+          <button onClick={() => { setActive('profil'); onClose?.() }}
+            className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-600 to-isigold-500 flex items-center justify-center flex-shrink-0">
+            {user?.photo_url ? (
+              <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover"/>
+            ) : (
+              <span className="text-white font-bold text-xs">{(user?.name || 'A')[0].toUpperCase()}</span>
+            )}
+          </button>
           <div className="flex-1 min-w-0">
             <div className={`text-xs font-bold truncate ${T.logo}`}>{user?.name || 'Administrateur'}</div>
             <div className={`text-xs ${T.sub}`}>Admin</div>
@@ -102,7 +130,7 @@ function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, 
 
       {/* Navigation */}
       <nav className={`flex-1 overflow-y-auto p-3 space-y-1`}>
-        {NAV.map((item) => {
+        {NAV.filter(item => (item.id !== 'audit' && item.id !== 'contenu') || user?.role === 'super_admin').map((item) => {
           const Icon = item.icon
           const isActive = active === item.id
           return (
@@ -135,8 +163,8 @@ function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, 
 
 function StatCard({ label, value, icon: Icon, color = 'brand', sub, isDark }) {
   const colors = {
-    brand:  isDark ? 'bg-violet-600/20 border-violet-500/20 text-violet-400' : 'bg-violet-50 border-violet-200 text-violet-600',
-    green:  isDark ? 'bg-emerald-600/20 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-600',
+    brand:  isDark ? 'bg-isiblue-600/20 border-isiblue-500/20 text-isiblue-400' : 'bg-isiblue-50 border-isiblue-200 text-isiblue-600',
+    green:  isDark ? 'bg-isiblue-600/20 border-isiblue-500/20 text-isiblue-400' : 'bg-isiblue-50 border-isiblue-200 text-isiblue-600',
     yellow: isDark ? 'bg-amber-600/20 border-amber-500/20 text-amber-400' : 'bg-amber-50 border-amber-200 text-amber-600',
     red:    isDark ? 'bg-red-600/20 border-red-500/20 text-red-400' : 'bg-red-50 border-red-200 text-red-600',
   }
@@ -166,20 +194,49 @@ Bienvenue dans la grande famille ISI SUPTECH !
 
 L'équipe pédagogique`
 
-const TEMPLATE_REJECT = `Madame / Monsieur,
+const DOCS_MANQUANTS_OPTIONS = [
+  { key: 'Diplôme du BAC', label: 'Diplôme du BAC' },
+  { key: 'Relevé de notes', label: 'Relevé de notes' },
+  { key: 'CIN légalisée', label: 'CIN légalisée' },
+  { key: 'Acte de naissance', label: 'Acte de naissance' },
+  { key: 'Bulletin de transfert', label: 'Bulletin de transfert' },
+  { key: 'Photo d\'identité', label: "Photo d'identité" },
+]
+
+function buildRejectMessage(docsManquants, precisions) {
+  const dateLimite = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')
+  const liste = docsManquants.length
+    ? docsManquants.map(d => `- ${d}`).join('\n')
+    : '- (à préciser)'
+  return `Madame / Monsieur,
 
 Nous avons bien réceptionné et examiné votre dossier de candidature pour intégrer ISI SUPTECH.
 
-Après étude approfondie, nous regrettons de vous informer que votre dossier ne peut être retenu à ce stade.
-
-Nous vous encourageons à postuler à nouveau lors de la prochaine session d'inscription.
+Votre dossier est actuellement incomplet. Merci de nous fournir les pièces suivantes avant le ${dateLimite} :
+${liste}
+${precisions.trim() ? '\n' + precisions.trim() + '\n' : ''}
+Passé ce délai, votre candidature sera automatiquement clôturée.
 
 Cordialement,
 L'équipe pédagogique ISI SUPTECH`
+}
 
 function ActionModal({ student, action, onClose, onDone, isDark }) {
-  const [value, setValue] = useState(action === 'accepter' ? TEMPLATE_ACCEPT : TEMPLATE_REJECT)
+  const [docsManquants, setDocsManquants] = useState([])
+  const [precisions, setPrecisions] = useState('')
+  const [value, setValue] = useState(action === 'accepter' ? TEMPLATE_ACCEPT : buildRejectMessage([], ''))
   const [loading, setLoading] = useState(false)
+
+  const toggleDoc = (key) => {
+    const next = docsManquants.includes(key) ? docsManquants.filter(d => d !== key) : [...docsManquants, key]
+    setDocsManquants(next)
+    setValue(buildRejectMessage(next, precisions))
+  }
+  const updatePrecisions = (text) => {
+    setPrecisions(text)
+    setValue(buildRejectMessage(docsManquants, text))
+  }
+
   const handle = async () => {
     if (action === 'rejeter' && !value.trim()) { toast.error('Veuillez indiquer un motif'); return }
     setLoading(true)
@@ -189,7 +246,7 @@ function ActionModal({ student, action, onClose, onDone, isDark }) {
         toast.success('Dossier accepté ! Étudiant mis en attente de paiement.')
       } else {
         await rejectStudent(student.id, { motif: value })
-        toast.success('Candidature rejetée')
+        toast.success('Message envoyé — étudiant informé (30 jours pour compléter)')
       }
       onDone(); onClose()
     } catch (e) {
@@ -199,17 +256,17 @@ function ActionModal({ student, action, onClose, onDone, isDark }) {
   const bg      = isDark ? 'bg-[#0e0d1f] border border-white/10' : 'bg-white border border-slate-200 shadow-2xl'
   const text    = isDark ? 'text-white' : 'text-slate-900'
   const sub     = isDark ? 'text-white/60' : 'text-slate-500'
-  const lbl     = isDark ? 'block text-xs font-bold mb-1.5 text-brand-300' : 'block text-xs font-bold mb-1.5 text-slate-600'
+  const lbl     = isDark ? 'block text-xs font-bold mb-1.5 text-isiblue-300' : 'block text-xs font-bold mb-1.5 text-slate-600'
   const taCls   = isDark
-    ? 'w-full rounded-xl px-3 py-2.5 text-xs leading-relaxed resize-none focus:outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-brand-500/60'
-    : 'w-full rounded-xl px-3 py-2.5 text-xs leading-relaxed resize-none focus:outline-none transition-all bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand-400'
+    ? 'w-full rounded-xl px-3 py-2.5 text-xs leading-relaxed resize-none focus:outline-none transition-all bg-white/5 border border-white/10 text-white placeholder-white/30 focus:border-isiblue-500/60'
+    : 'w-full rounded-xl px-3 py-2.5 text-xs leading-relaxed resize-none focus:outline-none transition-all bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-isiblue-400'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose}/>
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-        className={`relative ${bg} p-6 w-full max-w-md rounded-2xl`}>
+        className={`relative ${bg} p-6 w-full ${action === 'accepter' ? 'max-w-md' : 'max-w-lg'} rounded-2xl max-h-[90vh] overflow-y-auto`}>
         <h3 className={`font-bold text-lg mb-2 ${text}`}>
-          {action === 'accepter' ? '✅ Valider le dossier' : '❌ Rejeter la candidature'}
+          {action === 'accepter' ? '✅ Valider le dossier' : '📋 Demander des compléments'}
         </h3>
         <p className={`text-sm mb-1 ${sub}`}>Candidat : <strong className={text}>{student.prenom} {student.nom}</strong></p>
         {action === 'accepter' && (
@@ -217,7 +274,31 @@ function ActionModal({ student, action, onClose, onDone, isDark }) {
             ℹ️ L'étudiant sera mis en attente de paiement et notifié par email.
           </p>
         )}
-        <label className={lbl}>📧 Notes / Message email {action === 'accepter' ? '(joint à la notification)' : '*'}</label>
+        {action === 'rejeter' && (
+          <>
+            <p className={`text-xs mb-4 font-semibold ${isDark ? 'text-amber-300/80' : 'text-amber-600'}`}>
+              ℹ️ L'étudiant recevra ce message par email et sur son espace candidat — il aura 30 jours pour compléter son dossier.
+            </p>
+            <label className={lbl}>Pièces manquantes</label>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {DOCS_MANQUANTS_OPTIONS.map(d => (
+                <label key={d.key} className={`flex items-center gap-2 text-xs px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
+                  docsManquants.includes(d.key)
+                    ? (isDark ? 'bg-isiblue-500/20 text-isiblue-300 border border-isiblue-500/40' : 'bg-isiblue-50 text-isiblue-700 border border-isiblue-300')
+                    : (isDark ? 'bg-white/5 text-white/60 border border-white/10' : 'bg-slate-50 text-slate-600 border border-slate-200')
+                }`}>
+                  <input type="checkbox" className="accent-isiblue-500" checked={docsManquants.includes(d.key)} onChange={() => toggleDoc(d.key)}/>
+                  {d.label}
+                </label>
+              ))}
+            </div>
+            <label className={lbl}>Précisions (optionnel — ce qui ne va pas, autre document…)</label>
+            <textarea className={taCls} rows={2} value={precisions} onChange={e => updatePrecisions(e.target.value)}
+              placeholder="Ex: la photo d'identité fournie est illisible…"/>
+            <div className="mt-3"/>
+          </>
+        )}
+        <label className={lbl}>📧 Message final {action === 'accepter' ? '(joint à la notification)' : '(envoyé par email et notification)'}</label>
         <textarea className={taCls} rows={8} value={value} onChange={e => setValue(e.target.value)}/>
         <div className="flex gap-3 mt-4">
           <button onClick={onClose} className="btn-secondary flex-1">Annuler</button>
@@ -232,10 +313,57 @@ function ActionModal({ student, action, onClose, onDone, isDark }) {
   )
 }
 
+/* ── Aperçu inline d'un document (image ou PDF) sans le télécharger ────────── */
+function DocPreviewModal({ url, label, onClose }) {
+  const isPdf = /\.pdf(\?|$)/i.test(url)
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose}/>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        className="relative bg-white rounded-2xl overflow-hidden w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+          <span className="font-semibold text-sm text-slate-700 flex items-center gap-2"><FileText size={15} className="text-isiblue-500"/>{label}</span>
+          <div className="flex items-center gap-1">
+            <a href={url} download className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-all" title="Télécharger"><Download size={16}/></a>
+            <button onClick={onClose} className="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200 transition-all"><X size={18}/></button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto bg-slate-100 flex items-center justify-center">
+          {isPdf
+            ? <iframe src={url} className="w-full h-full" title={label}/>
+            : <img src={url} className="max-w-full max-h-full object-contain" alt={label}/>}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 function StudentDrawer({ student, onClose, onRefresh, isDark }) {
   const [genCard, setGenCard]           = useState(false)
   const [viewingCard, setViewingCard]   = useState(false)
   const [dlCard, setDlCard]             = useState(false)
+  const [docBusy, setDocBusy]           = useState(null)
+  const [previewDoc, setPreviewDoc]     = useState(null)
+  const [docUploading, setDocUploading] = useState(null)
+  const [docOverrides, setDocOverrides] = useState({})
+
+  const handleUploadDoc = async (champ, file) => {
+    if (!file) return
+    setDocUploading(champ)
+    try {
+      const fd = new FormData()
+      fd.append('champ', champ)
+      fd.append('fichier', file)
+      const { data } = await uploadStudentDocument(student.id, fd)
+      setDocOverrides(prev => ({ ...prev, [champ]: data.student[champ] }))
+      toast.success('Document enregistré')
+      onRefresh()
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Erreur lors de l'envoi du document")
+    } finally {
+      setDocUploading(null)
+    }
+  }
   const [locking, setLocking]           = useState(false)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState(null)
@@ -291,6 +419,20 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
     } catch { toast.error('Erreur téléchargement carte') } finally { setDlCard(false) }
   }
 
+  const DOC_FETCHERS = {
+    scolarite:    downloadAttestationScolarite,
+    inscription:  downloadAttestationInscription,
+    fiche:        downloadFicheInscription,
+  }
+  const openDoc = async (type) => {
+    setDocBusy(type)
+    try {
+      const { data } = await DOC_FETCHERS[type](student.id)
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      window.open(url, '_blank')
+    } catch { toast.error('Erreur ouverture du document') } finally { setDocBusy(null) }
+  }
+
   const handleStudentSave = async () => {
     if (!formData) return
     setSaving(true)
@@ -332,6 +474,8 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
   const mute = isDark ? 'text-white/40' : 'text-slate-400'
   const div  = isDark ? 'border-white/5' : 'border-slate-100'
   return (
+    <>
+    {previewDoc && <DocPreviewModal url={previewDoc.url} label={previewDoc.label} onClose={() => setPreviewDoc(null)}/>}
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}/>
       <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type:'spring', damping: 30, stiffness: 300 }}
@@ -349,18 +493,18 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
               </button>
             </div>
           <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-brand-700 to-brand-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+            <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-isiblue-700 to-isiblue-500 flex items-center justify-center overflow-hidden flex-shrink-0">
               {student.photo
                 ? <img src={student.photo.startsWith('http') ? student.photo : `/storage/${student.photo}`} className="w-full h-full object-cover" onError={e => { e.target.style.display='none' }}/>
                 : <span className="text-white text-3xl">👤</span>}
             </div>
             <div>
               <h2 className={`font-black text-xl ${text}`}>{student.prenom} {student.nom}</h2>
-              <p className="text-brand-400 font-mono text-sm">{student.matricule || 'Sans matricule'}</p>
+              <p className="text-isiblue-400 font-mono text-sm">{student.matricule || 'Sans matricule'}</p>
               <p className={`text-sm mt-1 ${sub}`}>{student.user?.email}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className={student.statut_inscription === 'accepte' ? 'badge-accepted' : student.statut_inscription === 'rejete' ? 'badge-rejected' : 'badge-pending'}>
-                  {student.statut_inscription === 'accepte' ? 'Accepté' : student.statut_inscription === 'rejete' ? 'Rejeté' : 'En attente'}
+                  {student.statut_inscription === 'accepte' ? 'Accepté' : student.statut_inscription === 'rejete' ? 'À compléter' : 'En attente'}
                 </span>
                 {isLocked && (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium flex items-center gap-1">
@@ -368,13 +512,13 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                   </span>
                 )}
                 {student.profil_complet && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-medium">✓ Profil complet</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-isiblue-500/20 text-isiblue-300 border border-isiblue-500/30 font-medium">✓ Profil complet</span>
                 )}
               </div>
             </div>
           </div>
           {editing && formData && (
-            <div className="glass-card p-5 border border-brand-500/10">
+            <div className="glass-card p-5 border border-isiblue-500/10">
               <h4 className={`font-semibold mb-4 ${text}`}>Modifier les informations</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 {[
@@ -467,45 +611,53 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
           )}
 
           {/* Documents */}
-          {(student.doc_bac || student.doc_cin || student.doc_acte_naissance || student.doc_releve_notes || student.doc_bulletin_transfert) && (
-            <div>
-              <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${mute}`}>Documents soumis</div>
-              <div className="space-y-2">
-                {[
-                  { key: 'doc_bac',              label: 'Diplôme BAC' },
-                  { key: 'doc_releve_notes',     label: 'Relevé de notes' },
-                  { key: 'doc_cin',              label: 'CIN légalisée' },
-                  { key: 'doc_acte_naissance',   label: 'Acte de naissance' },
-                  { key: 'doc_bulletin_transfert', label: 'Bulletin transfert' },
-                ].map(({ key, label }) => {
-                  const path = student[key]
-                  if (!path) return null
-                  const url = path.startsWith('http') ? path : `/storage/${path}`
-                  return (
-                    <div key={key} className={`flex items-center gap-3 p-2.5 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50 border border-slate-200'}`}>
-                      <FileText size={15} className="text-brand-400 flex-shrink-0"/>
-                      <span className={`text-xs flex-1 ${sub}`}>{label}</span>
-                      <div className="flex gap-1.5">
-                        <a href={url} target="_blank" rel="noopener noreferrer"
-                          className="p-1.5 rounded-lg text-brand-400 hover:text-brand-300 hover:bg-brand-500/10 transition-all" title="Voir">
-                          <ExternalLink size={13}/>
-                        </a>
-                        <a href={url} download
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all" title="Télécharger">
-                          <Download size={13}/>
-                        </a>
-                      </div>
+          <div>
+            <div className={`text-xs font-bold uppercase tracking-widest mb-2 ${mute}`}>Documents</div>
+            <div className="space-y-2">
+              {[
+                { key: 'doc_bac',              label: 'Diplôme BAC' },
+                { key: 'doc_releve_notes',     label: 'Relevé de notes' },
+                { key: 'doc_cin',              label: 'CIN légalisée' },
+                { key: 'doc_acte_naissance',   label: 'Acte de naissance' },
+                { key: 'doc_bulletin_transfert', label: 'Bulletin transfert' },
+              ].map(({ key, label }) => {
+                const path = key in docOverrides ? docOverrides[key] : student[key]
+                const url = path ? (path.startsWith('http') ? path : `/storage/${path}`) : null
+                const uploading = docUploading === key
+                return (
+                  <div key={key} className={`flex items-center gap-3 p-2.5 rounded-xl ${isDark ? 'bg-white/5' : 'bg-slate-50 border border-slate-200'}`}>
+                    <FileText size={15} className={`flex-shrink-0 ${path ? 'text-isiblue-400' : (isDark ? 'text-white/20' : 'text-slate-300')}`}/>
+                    <span className={`text-xs flex-1 ${path ? sub : mute}`}>{label}{!path && ' — manquant'}</span>
+                    <div className="flex gap-1.5 items-center">
+                      {path && (
+                        <>
+                          <button onClick={() => setPreviewDoc({ url, label })}
+                            className="p-1.5 rounded-lg text-isiblue-400 hover:text-isiblue-300 hover:bg-isiblue-500/10 transition-all" title="Visualiser">
+                            <Eye size={13}/>
+                          </button>
+                          <a href={url} download
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all" title="Télécharger">
+                            <Download size={13}/>
+                          </a>
+                        </>
+                      )}
+                      <label className={`p-1.5 rounded-lg cursor-pointer transition-all ${uploading ? 'opacity-50 pointer-events-none' : ''} ${isDark ? 'text-amber-400 hover:bg-amber-500/10' : 'text-amber-600 hover:bg-amber-50'}`}
+                        title={path ? 'Remplacer' : 'Ajouter (scan / dépôt en personne)'}>
+                        {uploading ? <div className="spinner w-3.5 h-3.5"/> : <Upload size={13}/>}
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                          onChange={(e) => { handleUploadDoc(key, e.target.files?.[0]); e.target.value = '' }}/>
+                      </label>
                     </div>
-                  )
-                })}
-              </div>
-              {student.est_transfert && (
-                <div className={`mt-2 text-xs px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 ${isDark ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                  🔁 Transfert d'une autre école
-                </div>
-              )}
+                  </div>
+                )
+              })}
             </div>
-          )}
+            {student.est_transfert && (
+              <div className={`mt-2 text-xs px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1.5 ${isDark ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                🔁 Transfert d'une autre école
+              </div>
+            )}
+          </div>
 
           {student.notes_admin && (
             <div className={`rounded-xl p-3 ${isDark ? 'bg-white/5' : 'bg-slate-50 border border-slate-200'}`}>
@@ -543,9 +695,26 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                   {viewingCard ? <div className="spinner w-4 h-4"/> : <ExternalLink size={14}/>}
                   Voir dans un onglet
                 </button>
-                <button onClick={downloadCard} disabled={dlCard} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-all disabled:opacity-50">
+                <button onClick={downloadCard} disabled={dlCard} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-isiblue-500/30 text-isiblue-400 hover:bg-isiblue-500/10 transition-all disabled:opacity-50">
                   {dlCard ? <div className="spinner w-4 h-4"/> : <Download size={14}/>}
                   Télécharger PDF
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => openDoc('scolarite')} disabled={docBusy === 'scolarite'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'scolarite' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
+                  Attestation scolarité
+                </button>
+                <button onClick={() => openDoc('inscription')} disabled={docBusy === 'inscription'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'inscription' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
+                  Attestation inscription
+                </button>
+                <button onClick={() => openDoc('fiche')} disabled={docBusy === 'fiche'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'fiche' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
+                  Fiche d'inscription
                 </button>
               </div>
             </div>
@@ -553,13 +722,14 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
         </div>
       </motion.div>
     </div>
+    </>
   )
 }
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const navigate = useNavigate()
-  const [isDark, setIsDark]     = useState(() => localStorage.getItem('isi_theme') !== 'light')
+  const [isDark, setIsDark]     = useState(() => localStorage.getItem('isi_theme_v2') === 'dark')
   const [sideOpen, setSideOpen] = useState(false)
   const [active, setActive]     = useState('dashboard')
   const [stats, setStats]       = useState(null)
@@ -611,13 +781,37 @@ export default function AdminDashboard() {
   const [filiereLocked, setFiliereLocked] = useState(false)
   const [loadingLock, setLoadingLock] = useState(false)
   const [fraisAnnexes, setFraisAnnexes] = useState({ frais_amea: 10000, frais_tenue: 60000, frais_assurance: 10000 })
+  const [siteStats, setSiteStats] = useState({ stat_etudiants: '2500', stat_experience: '15', stat_insertion: '95', stat_filieres: '20' })
+  const [savingStats, setSavingStats] = useState(false)
+  const [blocs, setBlocs] = useState({})
+  const [savingBloc, setSavingBloc] = useState(null)
+  const [uploadingSlide, setUploadingSlide] = useState(null)
   const [savingFrais, setSavingFrais] = useState(false)
   const [dlListId, setDlListId] = useState(null)
   const [formateurPhoto, setFormateurPhoto] = useState(null)
   const [membrePhoto, setMembrePhoto]       = useState(null)
   const [partenaireLogo, setPartenaireLogo] = useState(null)
+  const [permissions, setPermissions]   = useState([])
+  const [loadingPerms, setLoadingPerms] = useState(false)
+  const [permStatutFilter, setPermStatutFilter] = useState('en_attente')
+  const [decidingPerm, setDecidingPerm] = useState(null)
+  const [auditLogs, setAuditLogs]       = useState([])
+  const [loadingAudit, setLoadingAudit] = useState(false)
+  const [auditFilters, setAuditFilters] = useState({ action: '', role: '' })
+  const [maintenance, setMaintenance]   = useState(false)
+  const [maintenanceMsg, setMaintenanceMsg] = useState('')
+  const [togglingMaint, setTogglingMaint] = useState(false)
+  const [showMaintModal, setShowMaintModal] = useState(false)
+  const [twoFaStatus, setTwoFaStatus] = useState(null)
+  const [forcing2fa, setForcing2fa]   = useState(false)
+  const [show2faModal, setShow2faModal] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
+  const [changingPwd, setChangingPwd] = useState(false)
+  const [announceForm, setAnnounceForm] = useState({ sujet: '', corps: '' })
+  const [sendingAnnounce, setSendingAnnounce] = useState(false)
 
-  useEffect(() => { localStorage.setItem('isi_theme', isDark ? 'dark' : 'light') }, [isDark])
+  useEffect(() => { localStorage.setItem('isi_theme_v2', isDark ? 'dark' : 'light') }, [isDark])
 
   const handleLogout = async () => { await logout(); navigate('/') }
 
@@ -636,11 +830,139 @@ export default function AdminDashboard() {
         setFiliereLocked(data.filieres_lock_pedagogique)
         setFraisAnnexes({ frais_amea: data.frais_amea ?? 10000, frais_tenue: data.frais_tenue ?? 60000, frais_assurance: data.frais_assurance ?? 10000 })
       }).catch(() => {})
+      if (user?.role === 'super_admin') getSiteStats().then(({ data }) => setSiteStats(data)).catch(() => {})
     }
     if (active === 'staff')      getStaff().then(({ data }) => setStaff(data)).catch(() => {})
     if (active === 'corbeille')   { setTrashLoading(true); getTrashedStudents().then(({ data }) => setTrash(data)).catch(() => {}).finally(() => setTrashLoading(false)) }
     if (active === 'mois')        adminGetMoisDesactives().then(({ data }) => setMoisDesactives(data)).catch(() => {})
+    if (active === 'permissions') loadPermissions()
+    if (active === 'audit')       loadAudit()
+    if (active === 'temoignages') adminGetTemoignages().then(({ data }) => setTemoignages(data)).catch(() => {})
+    if (active === 'newsletter')  adminGetNewsletter().then(({ data }) => setNewsletterSubs(data)).catch(() => {})
+    if (active === 'contenu')     getContentBlocks().then(({ data }) => setBlocs(data)).catch(() => {})
+    if (active === 'formateurs')  adminGetFormateurs().then(({ data }) => setFormateurs(data)).catch(() => {})
+    if (active === 'membres')     adminGetMembres().then(({ data }) => setMembres(data)).catch(() => {})
+    if (active === 'partenaires') adminGetPartenaires().then(({ data }) => setPartenaires(data)).catch(() => {})
+    if (active === 'social')      api.get('/admin/contenu/social').then(({ data }) => setSocialLinks(data)).catch(() => {})
   }, [active])
+
+  useEffect(() => {
+    getMaintenanceStatus().then(({ data }) => setMaintenance(data.maintenance)).catch(() => {})
+    if (user?.role === 'super_admin') {
+      getForceTwoFactorStatus().then(({ data }) => setTwoFaStatus(data)).catch(() => {})
+    }
+  }, [])
+
+  const loadPermissions = (statut = permStatutFilter) => {
+    setLoadingPerms(true)
+    getPermissionsModification({ statut: statut || undefined })
+      .then(({ data }) => setPermissions(data.data || []))
+      .catch(() => {})
+      .finally(() => setLoadingPerms(false))
+  }
+
+  const decidePermission = async (id, action) => {
+    setDecidingPerm(id)
+    try {
+      await (action === 'approuver' ? approuverPermission(id) : refuserPermission(id))
+      toast.success(action === 'approuver' ? 'Permission accordée !' : 'Permission refusée.')
+      loadPermissions()
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur')
+    } finally {
+      setDecidingPerm(null)
+    }
+  }
+
+  const loadAudit = (filters = auditFilters) => {
+    setLoadingAudit(true)
+    getAuditLog({ action: filters.action || undefined, role: filters.role || undefined })
+      .then(({ data }) => setAuditLogs(data.data || []))
+      .catch(() => {})
+      .finally(() => setLoadingAudit(false))
+  }
+
+  const handleToggleMaintenance = async () => {
+    setTogglingMaint(true)
+    try {
+      const { data } = await toggleMaintenance(!maintenance ? { message: maintenanceMsg } : {})
+      setMaintenance(data.maintenance)
+      toast.success(data.maintenance ? 'Mode maintenance activé — accès bloqué pour les autres rôles.' : 'Mode maintenance désactivé.')
+      setShowMaintModal(false)
+      setMaintenanceMsg('')
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur')
+    } finally {
+      setTogglingMaint(false)
+    }
+  }
+
+  const handleForceTwoFactor = async () => {
+    setForcing2fa(true)
+    try {
+      await forceTwoFactorForAll()
+      const { data } = await getForceTwoFactorStatus()
+      setTwoFaStatus(data)
+      toast.success('Vérification en 2 étapes exigée — chaque compte devra la faire à sa prochaine connexion.')
+      setShow2faModal(false)
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur')
+    } finally {
+      setForcing2fa(false)
+    }
+  }
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const { data } = await updateMyPhoto(formData)
+      updateUser(data.user)
+      toast.success('Photo mise à jour !')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de l\'envoi de la photo')
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
+    }
+  }
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    if (pwdForm.password !== pwdForm.password_confirmation) {
+      toast.error('Les mots de passe ne correspondent pas.')
+      return
+    }
+    setChangingPwd(true)
+    try {
+      await updateMyPassword(pwdForm)
+      toast.success('Mot de passe mis à jour !')
+      setPwdForm({ current_password: '', password: '', password_confirmation: '' })
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur — vérifiez votre mot de passe actuel.')
+    } finally {
+      setChangingPwd(false)
+    }
+  }
+
+  const handleSendAnnouncement = async (e) => {
+    e.preventDefault()
+    if (!announceForm.sujet.trim() || !announceForm.corps.trim()) return
+    if (!confirm(`Envoyer cette annonce à ${newsletterSubs.filter(s => s.actif).length} abonné(s) ?`)) return
+    setSendingAnnounce(true)
+    try {
+      const { data } = await adminSendNewsletterAnnouncement(announceForm)
+      toast.success(data.message)
+      setAnnounceForm({ sujet: '', corps: '' })
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de l\'envoi')
+    } finally {
+      setSendingAnnounce(false)
+    }
+  }
 
   const loadStudents = async (page = 1) => {
     setLoading(true)
@@ -725,21 +1047,87 @@ export default function AdminDashboard() {
       toast.success('Frais annexes mis à jour !')
     } catch { toast.error('Erreur lors de la sauvegarde') } finally { setSavingFrais(false) }
   }
-  const downloadAdminList = async (filiereId, licenseId = null, filiereName = '', licenseName = '') => {
+  const saveSiteStats = async () => {
+    setSavingStats(true)
+    try {
+      await updateSiteStats(siteStats)
+      toast.success('Chiffres du site mis à jour — visibles immédiatement sur le site public.')
+    } catch { toast.error('Erreur lors de la sauvegarde') } finally { setSavingStats(false) }
+  }
+  const saveBlocTexte = async (cle) => {
+    setSavingBloc(cle)
+    try {
+      await updateContentBlockText(cle, blocs[cle] || '')
+      toast.success('Enregistré !')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur') } finally { setSavingBloc(null) }
+  }
+  const handleSlideImageChange = async (cle, e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingSlide(cle)
+    try {
+      const formData = new FormData()
+      formData.append('cle', cle)
+      formData.append('photo', file)
+      const { data } = await updateContentBlockImage(cle, formData)
+      setBlocs(b => ({ ...b, [cle]: data.url }))
+      toast.success('Photo mise à jour !')
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de l\'envoi')
+    } finally {
+      setUploadingSlide(null)
+      e.target.value = ''
+    }
+  }
+  const [listMenuFor, setListMenuFor] = useState(null)
+  const downloadAdminList = async (filiereId, licenseId = null, filiereName = '', licenseName = '', type = 'presence', mode = 'download') => {
     const key = licenseId ? `l${licenseId}` : `f${filiereId}`
     setDlListId(key)
+    setListMenuFor(null)
     try {
-      const params = { filiere_id: filiereId }
+      const params = { filiere_id: filiereId, type }
       if (licenseId) params.license_id = licenseId
+      if (mode === 'preview') params.preview = 1
       const { data } = await downloadClassListPdf(params)
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
-      const a = document.createElement('a'); a.href = url
-      a.download = `liste_${filiereName}_${licenseName || 'tous'}.pdf`
-      document.body.appendChild(a); a.click(); a.remove()
-      URL.revokeObjectURL(url)
-      toast.success('Liste téléchargée !')
-    } catch { toast.error('Erreur téléchargement liste') } finally { setDlListId(null) }
+      if (mode === 'preview') {
+        window.open(url, '_blank')
+      } else {
+        const a = document.createElement('a'); a.href = url
+        a.download = `liste_${type}_${filiereName}_${licenseName || 'tous'}.pdf`
+        document.body.appendChild(a); a.click(); a.remove()
+        URL.revokeObjectURL(url)
+        toast.success('Liste téléchargée !')
+      }
+    } catch { toast.error('Erreur liste PDF') } finally { setDlListId(null) }
   }
+  const ListMenu = ({ id, filiereId, licenseId, filiereName, licenseName }) => (
+    listMenuFor === id && (
+      <>
+        <div className="fixed inset-0 z-40" onClick={() => setListMenuFor(null)}/>
+        <div className={`absolute right-0 mt-1 w-60 rounded-xl shadow-2xl z-50 overflow-hidden border ${isDark ? 'bg-space-800 border-white/10' : 'bg-white border-slate-200'}`}>
+          {[
+            { type: 'presence', label: 'Liste de présence' },
+            { type: 'notes',    label: 'Liste de notes' },
+          ].map(o => (
+            <div key={o.type} className={`px-3 py-2 border-b last:border-0 ${isDark ? 'border-white/5' : 'border-slate-100'}`}>
+              <div className={`text-xs font-semibold mb-1.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>{o.label}</div>
+              <div className="flex gap-1.5">
+                <button onClick={() => downloadAdminList(filiereId, licenseId, filiereName, licenseName, o.type, 'preview')}
+                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1 rounded-lg border border-isiblue-500/30 text-isiblue-500 hover:bg-isiblue-500/10">
+                  <Eye size={11}/> Aperçu
+                </button>
+                <button onClick={() => downloadAdminList(filiereId, licenseId, filiereName, licenseName, o.type, 'download')}
+                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1 rounded-lg border border-isiblue-500/30 text-isiblue-500 hover:bg-isiblue-500/10">
+                  <Download size={11}/> DL
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    )
+  )
   const submitStaff = async () => {
     try { 
       await createStaff(newStaff)
@@ -793,7 +1181,7 @@ export default function AdminDashboard() {
     page:  'bg-space-950',
     topbar:'bg-space-900/80 backdrop-blur-xl border-white/10',
     title: 'text-white',
-    sub:   'text-brand-300',
+    sub:   'text-isiblue-300',
     card:  'glass-card',
     input: 'form-input',
     label: 'form-label',
@@ -808,9 +1196,9 @@ export default function AdminDashboard() {
     page:  'bg-slate-50',
     topbar:'bg-white/90 backdrop-blur-xl border-slate-200',
     title: 'text-slate-900',
-    sub:   'text-brand-600',
+    sub:   'text-isiblue-600',
     card:  'light-card',
-    input: 'w-full rounded-xl px-4 py-3 text-sm bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-400 transition-all shadow-sm',
+    input: 'w-full rounded-xl px-4 py-3 text-sm bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-isiblue-400 transition-all shadow-sm',
     label: 'block text-xs font-semibold mb-1.5 text-slate-600',
     table: 'w-full border-collapse',
     th:    'text-left text-xs font-bold uppercase tracking-widest px-4 py-3 text-slate-500 bg-slate-50 border-b border-slate-200',
@@ -863,11 +1251,90 @@ export default function AdminDashboard() {
               <div className={`text-xs font-semibold hidden sm:block ${T.sub}`}>Espace Administration</div>
             </div>
           </div>
-          <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${isDark?'bg-brand-500/20 text-brand-300 border border-brand-500/30':'bg-brand-50 text-brand-700 border border-brand-200'}`}>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-            En ligne
+          <div className="flex items-center gap-2">
+            {user?.role === 'super_admin' && (
+              <button
+                onClick={() => !twoFaStatus?.active && setShow2faModal(true)}
+                disabled={twoFaStatus?.active}
+                title={twoFaStatus?.active ? `2FA obligatoire active depuis le ${new Date(twoFaStatus.since).toLocaleString('fr-FR')}` : 'Exiger la vérification en 2 étapes pour tous les comptes'}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                  twoFaStatus?.active
+                    ? 'bg-isiblue-500/20 text-isiblue-400 border-isiblue-500/40 cursor-default'
+                    : isDark ? 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                }`}>
+                <ShieldCheck size={13}/>
+                {twoFaStatus?.active ? `2FA active (${twoFaStatus.comptes_verifies}/${twoFaStatus.total_comptes})` : 'Exiger la 2FA'}
+              </button>
+            )}
+            {user?.role === 'super_admin' && (
+              <button
+                onClick={() => maintenance ? handleToggleMaintenance() : setShowMaintModal(true)}
+                title={maintenance ? 'Désactiver le mode maintenance' : 'Activer le mode maintenance (bloque tous les autres rôles, admin inclus)'}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                  maintenance
+                    ? 'bg-red-500/20 text-red-400 border-red-500/40 animate-pulse'
+                    : isDark ? 'bg-white/5 text-white/50 border-white/10 hover:bg-white/10' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                }`}>
+                <Power size={13}/>
+                {maintenance ? 'Maintenance active' : 'Maintenance'}
+              </button>
+            )}
+            <div className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${isDark?'bg-isiblue-500/20 text-isiblue-300 border border-isiblue-500/30':'bg-isiblue-50 text-isiblue-700 border border-isiblue-200'}`}>
+              <div className="w-1.5 h-1.5 rounded-full bg-isiblue-400 animate-pulse"/>
+              En ligne
+            </div>
           </div>
         </div>
+
+        {showMaintModal && user?.role === 'super_admin' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowMaintModal(false)}/>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className={`relative p-6 max-w-sm w-full rounded-2xl border ${isDark ? 'bg-space-800 border-white/10' : 'bg-white border-slate-200 shadow-2xl'}`}>
+              <h3 className={`font-bold text-lg mb-2 flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <Power size={18} className="text-red-500"/> Activer le mode maintenance
+              </h3>
+              <p className={`text-sm mb-4 ${isDark ? 'text-white/60' : 'text-slate-500'}`}>
+                Bloque l'accès à la caisse, l'accueil, l'accueil pédagogique et les étudiants — vous restez le seul à avoir accès.
+              </p>
+              <label className={isDark ? 'block text-xs font-semibold mb-1.5 text-isiblue-300' : 'block text-xs font-semibold mb-1.5 text-slate-600'}>Message affiché (optionnel)</label>
+              <textarea rows={2} value={maintenanceMsg} onChange={e => setMaintenanceMsg(e.target.value)}
+                placeholder="Ex: Maintenance en cours, retour prévu à 15h."
+                className={isDark ? 'w-full rounded-xl px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none resize-none' : 'w-full rounded-xl px-4 py-3 border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none resize-none'}/>
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => setShowMaintModal(false)} className="btn-secondary flex-1 text-sm py-2.5">Annuler</button>
+                <button onClick={handleToggleMaintenance} disabled={togglingMaint}
+                  className="flex-1 flex items-center justify-center gap-2 text-sm py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all disabled:opacity-50">
+                  {togglingMaint ? <div className="spinner w-4 h-4"/> : 'Activer'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {show2faModal && user?.role === 'super_admin' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShow2faModal(false)}/>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+              className={`relative p-6 max-w-sm w-full rounded-2xl border ${isDark ? 'bg-space-800 border-white/10' : 'bg-white border-slate-200 shadow-2xl'}`}>
+              <h3 className={`font-bold text-lg mb-2 flex items-center gap-2 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                <ShieldCheck size={18} className="text-isiblue-500"/> Exiger la vérification en 2 étapes
+              </h3>
+              <p className={`text-sm mb-4 ${isDark ? 'text-white/60' : 'text-slate-500'}`}>
+                Dès l'activation, tous les comptes — admin, caisse, accueil, pédagogique, étudiants, vous y compris — devront
+                vérifier un code envoyé par email à leur prochaine connexion. Cette vérification sera obligatoire, sans possibilité de la contourner.
+                Les sessions déjà ouvertes ne sont pas coupées.
+              </p>
+              <div className="flex gap-3 mt-5">
+                <button onClick={() => setShow2faModal(false)} className="btn-secondary flex-1 text-sm py-2.5">Annuler</button>
+                <button onClick={handleForceTwoFactor} disabled={forcing2fa}
+                  className="flex-1 flex items-center justify-center gap-2 text-sm py-2.5 rounded-xl font-bold text-white bg-isiblue-600 hover:bg-isiblue-700 transition-all disabled:opacity-50">
+                  {forcing2fa ? <div className="spinner w-4 h-4"/> : 'Activer pour tous'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
         {/* Zone de contenu */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
@@ -892,7 +1359,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className={`${T.card} p-5`}>
                       <div className={`text-xs uppercase tracking-wider mb-1 font-bold ${T.mute}`}>Recettes ce mois</div>
-                      <div className="text-3xl font-black text-brand-400">{Number(stats?.paiements_ce_mois || 0).toLocaleString()}</div>
+                      <div className="text-3xl font-black text-isiblue-400">{Number(stats?.paiements_ce_mois || 0).toLocaleString()}</div>
                       <div className={`text-xs mt-0.5 ${T.mute}`}>FCFA</div>
                     </div>
                   </div>
@@ -910,7 +1377,7 @@ export default function AdminDashboard() {
                               </div>
                               <div className={`h-2 rounded-full ${isDark?'bg-white/10':'bg-slate-200'}`}>
                                 <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 1 }}
-                                  className="h-full bg-gradient-to-r from-brand-600 to-brand-400 rounded-full"/>
+                                  className="h-full bg-gradient-to-r from-isiblue-600 to-isiblue-400 rounded-full"/>
                               </div>
                             </div>
                           )
@@ -1064,7 +1531,7 @@ export default function AdminDashboard() {
                           <tr key={s.id} className={isDark ? '' : T.tr}>
                             <td className={isDark ? '' : T.td}>
                               <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-700 to-brand-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden border-2 border-brand-500/30">
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-isiblue-700 to-isiblue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 overflow-hidden border-2 border-isiblue-500/30">
                                   {s.photo
                                     ? <img src={s.photo.startsWith('http') ? s.photo : `/storage/${s.photo}`} className="w-full h-full object-cover" onError={e => { e.target.style.display='none'; e.target.parentNode.querySelector('span')?.style && (e.target.parentNode.querySelector('span').style.display='flex') }}/>
                                     : null}
@@ -1088,7 +1555,7 @@ export default function AdminDashboard() {
                                 'badge-pending'
                               }>
                                 {s.statut_inscription === 'accepte' ? 'Inscrit' :
-                                 s.statut_inscription === 'rejete'  ? 'Rejeté' :
+                                 s.statut_inscription === 'rejete'  ? 'À compléter' :
                                  s.statut_inscription === 'en_attente_paiement' ? '💳 Attente paiement' :
                                  'En attente'}
                               </span>
@@ -1099,11 +1566,11 @@ export default function AdminDashboard() {
                             <td className={`text-xs ${isDark ? T.mute : T.td}`}>{new Date(s.created_at).toLocaleDateString('fr-FR')}</td>
                             <td className={isDark ? '' : T.td}>
                               <div className="flex items-center gap-2">
-                                <button onClick={() => setDrawerStudent(s)} className="text-brand-400 hover:text-brand-300 p-1.5 rounded-lg hover:bg-brand-500/10 transition-all" title="Voir"><Eye size={15}/></button>
+                                <button onClick={() => setDrawerStudent(s)} className="text-isiblue-400 hover:text-isiblue-300 p-1.5 rounded-lg hover:bg-isiblue-500/10 transition-all" title="Voir"><Eye size={15}/></button>
                                 {(s.statut_inscription === 'en_attente') && (
                                   <>
-                                    <button onClick={() => { setModalStudent(s); setModalAction('accepter') }} className="text-emerald-400 hover:text-emerald-300 p-1.5 rounded-lg hover:bg-emerald-500/10 transition-all" title="Accepter le dossier"><Check size={15}/></button>
-                                    <button onClick={() => { setModalStudent(s); setModalAction('rejeter') }} className="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition-all" title="Rejeter la candidature"><X size={15}/></button>
+                                    <button onClick={() => { setModalStudent(s); setModalAction('accepter') }} className="text-isiblue-400 hover:text-isiblue-300 p-1.5 rounded-lg hover:bg-isiblue-500/10 transition-all" title="Accepter le dossier"><Check size={15}/></button>
+                                    <button onClick={() => { setModalStudent(s); setModalAction('rejeter') }} className="text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition-all" title="Demander des compléments (dossier incomplet)"><X size={15}/></button>
                                   </>
                                 )}
                                 <button onClick={async () => {
@@ -1192,11 +1659,46 @@ export default function AdminDashboard() {
                     </button>
                   </div>
 
+                  {/* Chiffres clés du site public — super admin uniquement */}
+                  {user?.role === 'super_admin' && (
+                  <div className={`${T.card} p-5`}>
+                    <div className={`font-semibold text-sm mb-1 flex items-center gap-2 ${T.title}`}><ShieldCheck size={15} className="text-isigold-500"/> Chiffres du site public</div>
+                    <div className={`text-xs mb-4 ${T.mute}`}>
+                      Affichés sur la page d'accueil, les formations et les témoignages — modifiez-les une seule fois ici, ça se répercute automatiquement partout sur le site.
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <label className={T.label}>Étudiants formés</label>
+                        <input className={T.input} value={siteStats.stat_etudiants}
+                          onChange={e => setSiteStats(s => ({ ...s, stat_etudiants: e.target.value }))}/>
+                      </div>
+                      <div>
+                        <label className={T.label}>Années d'expérience</label>
+                        <input className={T.input} value={siteStats.stat_experience}
+                          onChange={e => setSiteStats(s => ({ ...s, stat_experience: e.target.value }))}/>
+                      </div>
+                      <div>
+                        <label className={T.label}>Taux d'insertion (%)</label>
+                        <input className={T.input} value={siteStats.stat_insertion}
+                          onChange={e => setSiteStats(s => ({ ...s, stat_insertion: e.target.value }))}/>
+                      </div>
+                      <div>
+                        <label className={T.label}>Filières & niveaux</label>
+                        <input className={T.input} value={siteStats.stat_filieres}
+                          onChange={e => setSiteStats(s => ({ ...s, stat_filieres: e.target.value }))}/>
+                      </div>
+                    </div>
+                    <button onClick={saveSiteStats} disabled={savingStats} className="btn-primary text-sm px-6">
+                      {savingStats ? 'Enregistrement…' : 'Enregistrer les chiffres'}
+                    </button>
+                  </div>
+                  )}
+
                   {/* Toggle verrou pédagogique */}
                   <div className={`${T.card} p-4 flex items-center justify-between gap-4`}>
                     <div>
                       <div className={`font-semibold text-sm ${T.title} flex items-center gap-2`}>
-                        {filiereLocked ? <Lock size={14} className="text-red-400"/> : <Shield size={14} className="text-emerald-400"/>}
+                        {filiereLocked ? <Lock size={14} className="text-red-400"/> : <Shield size={14} className="text-isiblue-400"/>}
                         Accueil Pédagogique — Droit de modification
                       </div>
                       <div className={`text-xs mt-0.5 ${T.mute}`}>
@@ -1204,7 +1706,7 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <button onClick={toggleFiliereLock} disabled={loadingLock}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 disabled:opacity-60 ${filiereLocked ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 disabled:opacity-60 ${filiereLocked ? 'bg-red-500' : 'bg-isiblue-500'}`}>
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${filiereLocked ? 'translate-x-6' : 'translate-x-1'}`}/>
                     </button>
                   </div>
@@ -1251,13 +1753,16 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <span className={`font-semibold ${T.title}`}>{f.nom}</span>
-                            <span className="ml-2 text-xs bg-brand-500/20 text-brand-300 px-2 py-0.5 rounded">{f.code}</span>
+                            <span className="ml-2 text-xs bg-isiblue-500/20 text-isiblue-300 px-2 py-0.5 rounded">{f.code}</span>
                             {f.description && <p className={`text-xs mt-0.5 ${T.mute}`}>{f.description}</p>}
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => downloadAdminList(f.id, null, f.code)} disabled={dlListId === `f${f.id}`} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${isDark?'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10':'border-emerald-500 text-emerald-600 hover:bg-emerald-50'} disabled:opacity-50`} title="Télécharger liste complète">
-                              {dlListId === `f${f.id}` ? <RefreshCw size={12} className="animate-spin"/> : <Download size={12}/>} Tous
-                            </button>
+                            <div className="relative">
+                              <button onClick={() => setListMenuFor(`f${f.id}`)} disabled={dlListId === `f${f.id}`} className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${isDark?'border-isiblue-500/30 text-isiblue-400 hover:bg-isiblue-500/10':'border-isiblue-500 text-isiblue-600 hover:bg-isiblue-50'} disabled:opacity-50`} title="Liste PDF (classe entière)">
+                                {dlListId === `f${f.id}` ? <RefreshCw size={12} className="animate-spin"/> : <Download size={12}/>} Tous
+                              </button>
+                              <ListMenu id={`f${f.id}`} filiereId={f.id} licenseId={null} filiereName={f.code}/>
+                            </div>
                             <button onClick={() => setEditingFiliere({ id: f.id, nom: f.nom, code: f.code, description: f.description || '' })} className={`p-1.5 rounded-lg hover:bg-amber-500/10 text-amber-400 transition-colors`} title="Modifier"><Pencil size={14}/></button>
                             <button onClick={() => handleDeleteFiliere(f.id)} className={`p-1.5 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors`} title="Supprimer"><Trash2 size={14}/></button>
                           </div>
@@ -1269,7 +1774,10 @@ export default function AdminDashboard() {
                                 <div className="flex items-center justify-between mb-1">
                                   <div className={`text-sm font-medium ${T.title}`}>{l.nom}</div>
                                   <div className="flex gap-1">
-                                    <button onClick={() => downloadAdminList(f.id, l.id, f.code, l.code)} disabled={dlListId === `l${l.id}`} className={`p-1 rounded transition-colors ${isDark?'text-emerald-400 hover:bg-emerald-500/10':'text-emerald-600 hover:bg-emerald-50'} disabled:opacity-50`} title="Liste PDF"><Download size={12}/></button>
+                                    <div className="relative">
+                                      <button onClick={() => setListMenuFor(`l${l.id}`)} disabled={dlListId === `l${l.id}`} className={`p-1 rounded transition-colors ${isDark?'text-isiblue-400 hover:bg-isiblue-500/10':'text-isiblue-600 hover:bg-isiblue-50'} disabled:opacity-50`} title="Liste PDF"><Download size={12}/></button>
+                                      <ListMenu id={`l${l.id}`} filiereId={f.id} licenseId={l.id} filiereName={f.code} licenseName={l.code}/>
+                                    </div>
                                     <button onClick={() => setEditingLicense({ id: l.id, filiere_id: l.filiere_id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_mensuel: l.frais_mensuel })} className="p-1 rounded hover:bg-amber-500/10 text-amber-400 transition-colors" title="Modifier"><Pencil size={12}/></button>
                                     <button onClick={() => handleDeleteLicense(l.id)} className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors" title="Supprimer"><Trash2 size={12}/></button>
                                   </div>
@@ -1377,7 +1885,7 @@ export default function AdminDashboard() {
                             <td className={`font-medium ${T.title} ${isDark?'':T.td}`}>{s.name}</td>
                             <td className={`text-sm ${isDark?'text-white/60':T.td}`}>{s.email}</td>
                             <td className={isDark?'':T.td}>
-                              <span className={`text-xs px-2 py-0.5 rounded font-semibold ${s.role==='admin'?'bg-red-500/20 text-red-300':s.role==='cashier'?'bg-emerald-500/20 text-emerald-300':'bg-blue-500/20 text-blue-300'}`}>
+                              <span className={`text-xs px-2 py-0.5 rounded font-semibold ${s.role==='admin'?'bg-red-500/20 text-red-300':s.role==='cashier'?'bg-isiblue-500/20 text-isiblue-300':'bg-blue-500/20 text-blue-300'}`}>
                                 {s.role==='admin'?'Admin':s.role==='cashier'?'Caissier':s.role==='pedagogique'?'Pédagogique':'Accueil'}
                               </span>
                             </td>
@@ -1399,10 +1907,11 @@ export default function AdminDashboard() {
                     </table>
                   </div>
 
-                  {/* Zone Danger */}
+                  {/* Zone Danger — réservée au super admin */}
+                  {user?.role === 'super_admin' && (
                   <div className={`border-2 border-red-500/40 rounded-xl p-5 ${isDark?'bg-red-500/5':'bg-red-50'}`}>
-                    <h3 className="font-semibold text-red-500 flex items-center gap-2 mb-2"><AlertTriangle size={16}/> Zone Danger</h3>
-                    <p className={`text-xs mb-4 ${T.mute}`}>Supprime tous les étudiants, paiements, notifications et PDFs générés. Les comptes utilisateurs, filières et niveaux sont conservés.</p>
+                    <h3 className="font-semibold text-red-500 flex items-center gap-2 mb-2"><AlertTriangle size={16}/> Zone Danger — Super Admin</h3>
+                    <p className={`text-xs mb-4 ${T.mute}`}>Supprime tous les étudiants, paiements, notifications et PDFs générés (données de test). Les comptes staff, filières et niveaux sont conservés.</p>
                     {!resetConfirm ? (
                       <button onClick={() => setResetConfirm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 font-semibold text-sm transition-colors">
                         <Trash2 size={14}/> Réinitialiser toutes les données test
@@ -1427,11 +1936,12 @@ export default function AdminDashboard() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>
               )}
 
               {/* FORMATEURS - désactivé temporairement */}
-              {false && active === 'formateurs' && (
+              {active === 'formateurs' && (
                 <div className="space-y-6">
                   <div className={`${T.card} p-5`}>
                     <h3 className={`font-semibold mb-4 flex items-center gap-2 ${T.title}`}><Plus size={16}/> Ajouter un formateur</h3>
@@ -1462,12 +1972,12 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {formateurs.map(f => (
                       <div key={f.id} className={`${T.card} p-4 flex items-start gap-3`}>
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-brand-600 to-indigo-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-isiblue-600 to-isiblue-600 flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {f.photo ? <img src={f.photo} className="w-full h-full object-cover" alt={f.nom}/> : <span className="text-white font-bold">{f.prenom?.[0]}{f.nom?.[0]}</span>}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className={`font-semibold text-sm ${T.title}`}>{f.titre} {f.prenom} {f.nom}</div>
-                          <div className="text-brand-400 text-xs">{f.specialite}</div>
+                          <div className="text-isiblue-400 text-xs">{f.specialite}</div>
                           {f.email && <div className={`text-xs ${T.mute}`}>{f.email}</div>}
                         </div>
                         <button onClick={async () => { await adminDeleteFormateur(f.id); setFormateurs(frs => frs.filter(x => x.id !== f.id)); toast.success('Supprimé') }}
@@ -1479,7 +1989,7 @@ export default function AdminDashboard() {
               )}
 
               {/* MEMBRES - désactivé temporairement */}
-              {false && active === 'membres' && (
+              {active === 'membres' && (
                 <div className="space-y-6">
                   <div className={`${T.card} p-5`}>
                     <h3 className={`font-semibold mb-4 flex items-center gap-2 ${T.title}`}><Plus size={16}/> Ajouter un membre</h3>
@@ -1507,12 +2017,12 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {membres.map(m => (
                       <div key={m.id} className={`${T.card} p-4 flex items-start gap-3`}>
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-isiblue-600 to-isiblue-700 flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {m.photo ? <img src={m.photo} className="w-full h-full object-cover" alt={m.nom}/> : <Building2 size={20} className="text-white"/>}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className={`font-semibold text-sm ${T.title}`}>{m.titre} {m.prenom} {m.nom}</div>
-                          <div className="text-indigo-400 text-xs">{m.poste}</div>
+                          <div className="text-isiblue-400 text-xs">{m.poste}</div>
                           {m.email && <div className={`text-xs ${T.mute}`}>{m.email}</div>}
                         </div>
                         <button onClick={async () => { await adminDeleteMembre(m.id); setMembres(ms => ms.filter(x => x.id !== m.id)); toast.success('Supprimé') }}
@@ -1524,7 +2034,7 @@ export default function AdminDashboard() {
               )}
 
               {/* PARTENAIRES - désactivé temporairement */}
-              {false && active === 'partenaires' && (
+              {active === 'partenaires' && (
                 <div className="space-y-6">
                   <div className={`${T.card} p-5`}>
                     <h3 className={`font-semibold mb-4 flex items-center gap-2 ${T.title}`}><Plus size={16}/> Ajouter un partenaire</h3>
@@ -1551,10 +2061,10 @@ export default function AdminDashboard() {
                     {partenaires.map(p => (
                       <div key={p.id} className={`${T.card} p-4 flex flex-col items-center gap-2 relative`}>
                         <div className="w-20 h-16 flex items-center justify-center">
-                          {p.logo ? <img src={p.logo} className="max-h-full max-w-full object-contain" alt={p.nom}/> : <Handshake size={32} className="text-brand-400"/>}
+                          {p.logo ? <img src={p.logo} className="max-h-full max-w-full object-contain" alt={p.nom}/> : <Handshake size={32} className="text-isiblue-400"/>}
                         </div>
                         <div className={`text-sm font-semibold text-center ${T.title}`}>{p.nom}</div>
-                        {p.site_web && <a href={p.site_web} target="_blank" rel="noopener noreferrer" className="text-brand-400 text-xs">Visiter</a>}
+                        {p.site_web && <a href={p.site_web} target="_blank" rel="noopener noreferrer" className="text-isiblue-400 text-xs">Visiter</a>}
                         <button onClick={async () => { await adminDeletePartenaire(p.id); setPartenaires(ps => ps.filter(x => x.id !== p.id)); toast.success('Supprimé') }}
                           className="absolute top-2 right-2 text-red-400 hover:text-red-300"><Trash2 size={14}/></button>
                       </div>
@@ -1563,24 +2073,27 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* TEMOIGNAGES - désactivé temporairement */}
-              {false && active === 'temoignages' && (
+              {/* TEMOIGNAGES */}
+              {active === 'temoignages' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className={`text-sm ${T.mute}`}>{temoignages.length} témoignage{temoignages.length !== 1 ? 's' : ''} au total</div>
-                    <span className="text-emerald-400 text-sm">· {temoignages.filter(t => t.approuve).length} approuvé{temoignages.filter(t => t.approuve).length !== 1 ? 's' : ''}</span>
-                    <span className="text-amber-400 text-sm">· {temoignages.filter(t => !t.approuve).length} en attente</span>
+                    <span className="text-isiblue-500 text-sm font-semibold">· {temoignages.filter(t => t.approuve).length} publié{temoignages.filter(t => t.approuve).length !== 1 ? 's' : ''}</span>
+                    <span className="text-isigold-600 text-sm font-semibold">· {temoignages.filter(t => !t.approuve).length} en attente</span>
                   </div>
                   <div className="space-y-3">
                     {temoignages.map(t => (
                       <div key={t.id} className={`${T.card} p-4 flex items-start gap-4`}>
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-500 to-isigold-500 flex items-center justify-center flex-shrink-0 text-white font-black text-sm">
+                          {t.photo ? <img src={t.photo} alt={t.nom} className="w-full h-full object-cover"/> : t.nom?.[0]?.toUpperCase()}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className={`font-semibold text-sm ${T.title}`}>{t.nom}</span>
-                            {t.filiere && <span className="text-brand-400 text-xs">{t.filiere}</span>}
+                            {t.filiere && <span className="text-isiblue-400 text-xs">{t.filiere}</span>}
                             {t.annee_diplome && <span className={`text-xs ${T.mute}`}>{t.annee_diplome}</span>}
                             <div className="flex gap-0.5 ml-auto">
-                              {[1,2,3,4,5].map(i => <Star key={i} size={12} className={i <= t.note ? 'text-amber-400 fill-amber-400' : 'text-white/20'}/>)}
+                              {[1,2,3,4,5].map(i => <Star key={i} size={12} className={i <= t.note ? 'text-isigold-500 fill-isigold-500' : 'text-white/20'}/>)}
                             </div>
                           </div>
                           <p className={`text-sm leading-relaxed line-clamp-3 ${isDark?'text-white/60':'text-slate-600'}`}>{t.contenu}</p>
@@ -1591,12 +2104,12 @@ export default function AdminDashboard() {
                             <button onClick={async () => {
                               await adminApprouverTemoignage(t.id)
                               setTemoignages(ts => ts.map(x => x.id === t.id ? {...x, approuve: true} : x))
-                              toast.success('Approuvé !')
-                            }} className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-lg transition-all">
-                              <ThumbsUp size={12}/> Approuver
+                              toast.success('Publié !')
+                            }} className="flex items-center gap-1 text-xs text-isiblue-500 hover:text-isiblue-600 bg-isiblue-500/10 px-2 py-1 rounded-lg transition-all">
+                              <ThumbsUp size={12}/> Publier
                             </button>
                           )}
-                          {t.approuve && <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">✓ Publié</span>}
+                          {t.approuve && <span className="text-xs text-isiblue-500 bg-isiblue-500/10 px-2 py-1 rounded-lg">✓ Publié</span>}
                           <button onClick={async () => { await adminDeleteTemoignage(t.id); setTemoignages(ts => ts.filter(x => x.id !== t.id)); toast.success('Supprimé') }}
                             className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-red-500/10 px-2 py-1 rounded-lg transition-all">
                             <Trash2 size={12}/> Supprimer
@@ -1609,9 +2122,26 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* NEWSLETTER - désactivé temporairement */}
-              {false && active === 'newsletter' && (
+              {/* NEWSLETTER */}
+              {active === 'newsletter' && (
                 <div className="space-y-4">
+                  <div className={`${T.card} p-5 max-w-xl`}>
+                    <h3 className={`font-semibold mb-1 flex items-center gap-2 ${T.title}`}><Send size={16}/> Diffuser une annonce</h3>
+                    <p className={`text-xs mb-4 ${T.mute}`}>Envoyée par email, tout de suite, à tous les abonnés actifs.</p>
+                    <form onSubmit={handleSendAnnouncement} className="space-y-3">
+                      <input placeholder="Objet de l'annonce" value={announceForm.sujet}
+                        onChange={e => setAnnounceForm(f => ({ ...f, sujet: e.target.value }))}
+                        className={T.input} required/>
+                      <textarea placeholder="Votre message..." rows={5} value={announceForm.corps}
+                        onChange={e => setAnnounceForm(f => ({ ...f, corps: e.target.value }))}
+                        className={T.input} required/>
+                      <button type="submit" disabled={sendingAnnounce}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm text-white bg-isiblue-600 hover:bg-isiblue-700 transition-colors disabled:opacity-50">
+                        {sendingAnnounce ? <div className="spinner w-4 h-4"/> : <><Send size={14}/> Envoyer à tous les abonnés</>}
+                      </button>
+                    </form>
+                  </div>
+
                   <div className={`text-sm ${T.mute}`}>{newsletterSubs.length} abonné{newsletterSubs.length !== 1 ? 's' : ''}</div>
                   <div className={`${T.card} overflow-hidden`}>
                     <table className={T.table}>
@@ -1637,8 +2167,8 @@ export default function AdminDashboard() {
               {/* MOIS DESACTIVES */}
               {active === 'mois' && (
                 <div className="space-y-5 max-w-3xl">
-                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-purple-900/10 border-purple-500/20' : 'bg-purple-50 border-purple-200'}`}>
-                    <p className={`text-sm ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>
+                  <div className={`p-4 rounded-xl border ${isDark ? 'bg-isiblue-900/10 border-isiblue-500/20' : 'bg-isiblue-50 border-isiblue-200'}`}>
+                    <p className={`text-sm ${isDark ? 'text-isiblue-300' : 'text-isiblue-700'}`}>
                       <strong>Mois désactivés</strong> — Les mois sélectionnés ne seront pas comptabilisés dans les mensualités requises. Les étudiants n'auront pas à payer ces mois-là (vacances, périodes spéciales…).
                     </p>
                   </div>
@@ -1709,6 +2239,274 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* PERMISSIONS DE MODIFICATION PAIEMENT */}
+              {active === 'permissions' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className={`text-sm ${T.mute}`}>Demandes de la caisse pour corriger un paiement déjà saisi.</p>
+                    <div className="flex gap-2">
+                      {[
+                        { v: 'en_attente', l: 'En attente' },
+                        { v: 'approuve',   l: 'Approuvées' },
+                        { v: 'refuse',     l: 'Refusées' },
+                        { v: '',           l: 'Toutes' },
+                      ].map(o => (
+                        <button key={o.v} onClick={() => { setPermStatutFilter(o.v); loadPermissions(o.v) }}
+                          className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${
+                            permStatutFilter === o.v
+                              ? 'bg-isiblue-500 border-isiblue-500 text-white'
+                              : isDark ? 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10' : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                          }`}>
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {loadingPerms ? (
+                    <div className="flex justify-center py-16"><div className="spinner"/></div>
+                  ) : permissions.length === 0 ? (
+                    <div className={`text-center py-16 ${T.mute}`}>
+                      <KeyRound size={40} className="mx-auto mb-3 opacity-30"/>
+                      <p>Aucune demande {permStatutFilter === 'en_attente' ? 'en attente' : ''}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {permissions.map(p => (
+                        <div key={p.id} className={`${T.card} p-4 flex flex-wrap items-center justify-between gap-3`}>
+                          <div className="min-w-0">
+                            <div className={`font-semibold text-sm ${T.title}`}>
+                              {p.payment?.student?.prenom} {p.payment?.student?.nom} — Paiement #{p.payment_id}
+                              <span className={`ml-2 text-xs font-mono ${T.mute}`}>{Number(p.payment?.montant).toLocaleString()} FCFA</span>
+                            </div>
+                            {p.motif && <div className={`text-xs mt-0.5 ${T.mute}`}>Motif : {p.motif}</div>}
+                            <div className={`text-xs mt-0.5 ${T.mute}`}>
+                              Demandé par {p.demandeur?.name} — {new Date(p.created_at).toLocaleString('fr-FR')}
+                              {p.decideur && <> · {p.statut === 'approuve' ? 'Approuvé' : 'Refusé'} par {p.decideur.name}</>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {p.statut === 'en_attente' ? (
+                              <>
+                                <button onClick={() => decidePermission(p.id, 'approuver')} disabled={decidingPerm === p.id}
+                                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg bg-isiblue-600 text-white hover:bg-isiblue-700 transition-all disabled:opacity-50">
+                                  {decidingPerm === p.id ? <div className="spinner w-3.5 h-3.5"/> : <Check size={13}/>} Approuver
+                                </button>
+                                <button onClick={() => decidePermission(p.id, 'refuser')} disabled={decidingPerm === p.id}
+                                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50">
+                                  <X size={13}/> Refuser
+                                </button>
+                              </>
+                            ) : (
+                              <span className={p.statut === 'approuve' ? 'badge-accepted' : p.statut === 'utilise' ? 'badge-paid' : 'badge-rejected'}>
+                                {p.statut === 'approuve' ? 'Approuvée' : p.statut === 'utilise' ? 'Utilisée' : 'Refusée'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* JOURNAL D'AUDIT */}
+              {active === 'audit' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input placeholder="Filtrer par action (ex: payment, student, permission...)"
+                      value={auditFilters.action}
+                      onChange={e => setAuditFilters(f => ({ ...f, action: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && loadAudit()}
+                      className={`${T.input} max-w-xs`}/>
+                    <select value={auditFilters.role} onChange={e => { const f = { ...auditFilters, role: e.target.value }; setAuditFilters(f); loadAudit(f) }} className={`${T.input} w-auto`}>
+                      <option value="">Tous les rôles</option>
+                      <option value="admin">Admin</option>
+                      <option value="cashier">Caisse</option>
+                      <option value="accueil">Accueil</option>
+                      <option value="pedagogique">Accueil pédagogique</option>
+                    </select>
+                    <button onClick={() => loadAudit()} className="btn-secondary text-sm py-2 flex items-center gap-1.5">
+                      <RefreshCw size={14}/> Actualiser
+                    </button>
+                  </div>
+
+                  {loadingAudit ? (
+                    <div className="flex justify-center py-16"><div className="spinner"/></div>
+                  ) : auditLogs.length === 0 ? (
+                    <div className={`text-center py-16 ${T.mute}`}>
+                      <Activity size={40} className="mx-auto mb-3 opacity-30"/>
+                      <p>Aucune activité trouvée</p>
+                    </div>
+                  ) : (
+                    <div className={`${T.card} overflow-hidden`}>
+                      <div className="divide-y" style={{ borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}>
+                        {auditLogs.map(l => (
+                          <div key={l.id} className="p-3.5 flex items-start gap-3">
+                            <div className={`flex-shrink-0 mt-0.5 w-2 h-2 rounded-full ${
+                              l.action?.includes('delete') || l.action?.includes('refuse') ? 'bg-red-400'
+                              : l.action?.includes('approve') || l.action?.includes('accept') ? 'bg-isiblue-400'
+                              : 'bg-isiblue-400'
+                            }`}/>
+                            <div className="min-w-0 flex-1">
+                              <div className={`text-sm ${T.title}`}>{l.description}</div>
+                              <div className={`text-xs mt-0.5 ${T.mute}`}>
+                                <span className="font-mono">{l.action}</span> · {l.user?.name || 'Système'} ({l.role || '—'}) · {new Date(l.created_at).toLocaleString('fr-FR')}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* CONTENU DU SITE — super admin uniquement */}
+              {active === 'contenu' && user?.role === 'super_admin' && (
+                <div className="space-y-6 max-w-3xl">
+                  <div className={`${T.card} p-5`}>
+                    <h3 className={`font-semibold mb-1 flex items-center gap-2 ${T.title}`}><ImageIcon size={16}/> Section Hero (page d'accueil)</h3>
+                    <p className={`text-xs mb-4 ${T.mute}`}>Laissez un champ vide pour garder le texte par défaut.</p>
+                    <div className="space-y-4">
+                      <div>
+                        <label className={T.label}>Badge (au-dessus du titre)</label>
+                        <div className="flex gap-2">
+                          <input className={T.input} placeholder="Inscriptions 2025-2026 ouvertes"
+                            value={blocs.hero_badge || ''} onChange={e => setBlocs(b => ({ ...b, hero_badge: e.target.value }))}/>
+                          <button onClick={() => saveBlocTexte('hero_badge')} disabled={savingBloc==='hero_badge'} className="btn-secondary text-sm px-4 flex-shrink-0">
+                            {savingBloc==='hero_badge' ? '...' : 'OK'}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className={T.label}>Titre — ligne 1</label>
+                          <input className={T.input} placeholder="Votre avenir"
+                            value={blocs.hero_titre_1 || ''} onChange={e => setBlocs(b => ({ ...b, hero_titre_1: e.target.value }))}/>
+                        </div>
+                        <div>
+                          <label className={T.label}>Titre — mot en couleur</label>
+                          <input className={T.input} placeholder="numérique"
+                            value={blocs.hero_titre_accent || ''} onChange={e => setBlocs(b => ({ ...b, hero_titre_accent: e.target.value }))}/>
+                        </div>
+                        <div>
+                          <label className={T.label}>Titre — ligne 3</label>
+                          <input className={T.input} placeholder="commence ici"
+                            value={blocs.hero_titre_2 || ''} onChange={e => setBlocs(b => ({ ...b, hero_titre_2: e.target.value }))}/>
+                        </div>
+                      </div>
+                      <button onClick={async () => { await saveBlocTexte('hero_titre_1'); await saveBlocTexte('hero_titre_accent'); await saveBlocTexte('hero_titre_2') }}
+                        disabled={savingBloc?.startsWith('hero_titre')} className="btn-secondary text-sm px-4">
+                        Enregistrer le titre
+                      </button>
+                      <div>
+                        <label className={T.label}>Sous-titre</label>
+                        <div className="flex gap-2">
+                          <textarea rows={2} className={T.input}
+                            placeholder="ISI SUPTECH — Institut d'excellence en informatique, réseaux et innovation numérique. Dakar, Sénégal."
+                            value={blocs.hero_sous_titre || ''} onChange={e => setBlocs(b => ({ ...b, hero_sous_titre: e.target.value }))}/>
+                          <button onClick={() => saveBlocTexte('hero_sous_titre')} disabled={savingBloc==='hero_sous_titre'} className="btn-secondary text-sm px-4 flex-shrink-0 self-start">
+                            {savingBloc==='hero_sous_titre' ? '...' : 'OK'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`${T.card} p-5`}>
+                    <h3 className={`font-semibold mb-1 flex items-center gap-2 ${T.title}`}><ImageIcon size={16}/> Carrousel (5 diapositives)</h3>
+                    <p className={`text-xs mb-4 ${T.mute}`}>Photo, titre et sous-titre de chaque diapositive — ex. "Soutenances & Diplômes".</p>
+                    <div className="space-y-4">
+                      {[1,2,3,4,5].map(i => (
+                        <div key={i} className={`p-3 rounded-xl border flex gap-4 items-start ${isDark?'border-white/10':'border-slate-200'}`}>
+                          <div className="flex-shrink-0 text-center">
+                            <div className="w-20 h-14 rounded-lg overflow-hidden bg-slate-200 mb-1.5">
+                              {blocs[`slide_${i}_image`] && <img src={blocs[`slide_${i}_image`]} alt="" className="w-full h-full object-cover"/>}
+                            </div>
+                            <label className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg cursor-pointer bg-isiblue-500/10 text-isiblue-500 hover:bg-isiblue-500/20 transition-colors">
+                              <Camera size={11}/> {uploadingSlide===`slide_${i}_image` ? '...' : 'Photo'}
+                              <input type="file" accept="image/*" className="hidden" disabled={uploadingSlide===`slide_${i}_image`}
+                                onChange={e => handleSlideImageChange(`slide_${i}_image`, e)}/>
+                            </label>
+                          </div>
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex gap-2">
+                              <input className={T.input} placeholder={`Titre diapositive ${i}`}
+                                value={blocs[`slide_${i}_titre`] || ''} onChange={e => setBlocs(b => ({ ...b, [`slide_${i}_titre`]: e.target.value }))}/>
+                              <button onClick={() => saveBlocTexte(`slide_${i}_titre`)} disabled={savingBloc===`slide_${i}_titre`} className="btn-secondary text-sm px-4 flex-shrink-0">
+                                {savingBloc===`slide_${i}_titre` ? '...' : 'OK'}
+                              </button>
+                            </div>
+                            <div className="flex gap-2">
+                              <input className={T.input} placeholder={`Sous-titre diapositive ${i}`}
+                                value={blocs[`slide_${i}_sous`] || ''} onChange={e => setBlocs(b => ({ ...b, [`slide_${i}_sous`]: e.target.value }))}/>
+                              <button onClick={() => saveBlocTexte(`slide_${i}_sous`)} disabled={savingBloc===`slide_${i}_sous`} className="btn-secondary text-sm px-4 flex-shrink-0">
+                                {savingBloc===`slide_${i}_sous` ? '...' : 'OK'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* MON PROFIL */}
+              {active === 'profil' && (
+                <div className="space-y-6 max-w-lg">
+                  <div className={`${T.card} p-5`}>
+                    <h3 className={`font-semibold mb-4 flex items-center gap-2 ${T.title}`}><UserCog size={16}/> Photo de profil</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-600 to-isigold-500 flex items-center justify-center flex-shrink-0">
+                        {user?.photo_url ? (
+                          <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover"/>
+                        ) : (
+                          <span className="text-white font-bold text-lg">{(user?.name || 'A')[0].toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className={`text-sm font-semibold ${T.title}`}>{user?.name}</div>
+                        <div className={`text-xs mb-2 ${T.mute}`}>{user?.email} · {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}</div>
+                        <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer bg-isiblue-500/10 text-isiblue-500 hover:bg-isiblue-500/20 transition-colors">
+                          <Camera size={13}/> {uploadingPhoto ? 'Envoi...' : 'Changer la photo'}
+                          <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto} onChange={handlePhotoChange}/>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`${T.card} p-5`}>
+                    <h3 className={`font-semibold mb-4 flex items-center gap-2 ${T.title}`}><Lock size={16}/> Modifier le mot de passe</h3>
+                    <form onSubmit={handleChangePassword} className="space-y-3">
+                      <div>
+                        <label className={`text-xs font-semibold mb-1 block ${T.mute}`}>Mot de passe actuel</label>
+                        <input type="password" required value={pwdForm.current_password}
+                          onChange={e => setPwdForm(f => ({ ...f, current_password: e.target.value }))}
+                          className={T.input}/>
+                      </div>
+                      <div>
+                        <label className={`text-xs font-semibold mb-1 block ${T.mute}`}>Nouveau mot de passe</label>
+                        <input type="password" required minLength={8} value={pwdForm.password}
+                          onChange={e => setPwdForm(f => ({ ...f, password: e.target.value }))}
+                          className={T.input}/>
+                      </div>
+                      <div>
+                        <label className={`text-xs font-semibold mb-1 block ${T.mute}`}>Confirmer le nouveau mot de passe</label>
+                        <input type="password" required minLength={8} value={pwdForm.password_confirmation}
+                          onChange={e => setPwdForm(f => ({ ...f, password_confirmation: e.target.value }))}
+                          className={T.input}/>
+                      </div>
+                      <button type="submit" disabled={changingPwd}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm text-white bg-isiblue-600 hover:bg-isiblue-700 transition-colors disabled:opacity-50">
+                        {changingPwd ? <div className="spinner w-4 h-4"/> : 'Mettre à jour le mot de passe'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
               {/* CORBEILLE */}
               {active === 'corbeille' && (
                 <div className="space-y-4">
@@ -1757,7 +2555,7 @@ export default function AdminDashboard() {
                                 'badge-pending'
                               }>
                                 {s.statut_inscription === 'accepte' ? 'Inscrit' :
-                                 s.statut_inscription === 'rejete'  ? 'Rejeté' :
+                                 s.statut_inscription === 'rejete'  ? 'À compléter' :
                                  s.statut_inscription === 'en_attente_paiement' ? '💳 Attente paiement' :
                                  'En attente'}
                               </span>
@@ -1768,7 +2566,7 @@ export default function AdminDashboard() {
                                 <button onClick={async () => {
                                   try { await restoreStudent(s.id); toast.success(`${s.prenom} ${s.nom} restauré !`); setTrash(t => t.filter(x => x.id !== s.id)); getAdminStats().then(({ data }) => setStats(data)).catch(() => {}) }
                                   catch { toast.error('Erreur restauration') }
-                                }} className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-medium">
+                                }} className="flex items-center gap-1.5 text-xs text-isiblue-400 hover:text-isiblue-300 bg-isiblue-500/10 hover:bg-isiblue-500/20 px-3 py-1.5 rounded-lg transition-all font-medium">
                                   <RefreshCw size={13}/> Restaurer
                                 </button>
                                 <button onClick={async () => {
@@ -1789,7 +2587,7 @@ export default function AdminDashboard() {
               )}
 
               {/* RESEAUX SOCIAUX - désactivé temporairement */}
-              {false && active === 'social' && (
+              {active === 'social' && (
                 <div className="max-w-xl">
                   <div className={`${T.card} p-6 space-y-4`}>
                     <h3 className={`font-semibold mb-2 ${T.title}`}>Liens réseaux sociaux</h3>

@@ -6,6 +6,12 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
+        // Cette migration ne corrige qu'un historique SQLite (FK cassées après
+        // suppression de _students_fk_bk / _users_role_bk) — sans objet sur MySQL.
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            return;
+        }
+
         DB::statement('PRAGMA foreign_keys = OFF');
 
         // ── Fix student_notifications: FK refs _students_fk_bk ──
