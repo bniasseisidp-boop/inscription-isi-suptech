@@ -4,6 +4,14 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+// bootstrap/app.php s'exécute avant le cycle normal de démarrage de Laravel — le
+// .env n'est donc pas encore chargé au moment où apiPrefix ci-dessous est évalué
+// (c'est juste un argument de fonction, calculé immédiatement). On le charge donc
+// manuellement en avance, uniquement pour rendre cette valeur disponible ici.
+if (file_exists(dirname(__DIR__).'/.env')) {
+    \Dotenv\Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
+}
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
