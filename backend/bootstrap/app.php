@@ -7,7 +7,13 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        // En prod, Laravel est physiquement servi depuis un dossier "api/" (isisuptech.com/api/...) :
+        // le préfixe "/api" est donc déjà fourni par l'emplacement du fichier, et Symfony le retire
+        // automatiquement de l'URL vue par Laravel. Ajouter EN PLUS le préfixe "api" natif de Laravel
+        // ferait chercher "/api/xxx" alors qu'il ne reste plus que "/xxx" → 404 sur toutes les routes.
+        // En local (php artisan serve à la racine), rien n'est retiré, donc on garde le préfixe "api".
         api: __DIR__.'/../routes/api.php',
+        apiPrefix: env('API_URL_PREFIX', 'api'),
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )

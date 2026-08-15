@@ -13,7 +13,13 @@ class CheckMaintenance
 
     public function handle(Request $request, Closure $next): mixed
     {
-        if (in_array($request->path(), array_map(fn ($r) => 'api/' . $r, self::EXEMPTES), true)) {
+        // Compare aux deux conventions possibles ("api/login" en local où Laravel garde son
+        // préfixe natif, "login" en prod où le dossier physique "api/" fournit déjà le préfixe
+        // et Symfony le retire de l'URL vue par Laravel) — évite de dépendre de l'environnement.
+        $chemin = trim($request->path(), '/');
+        $exempte = in_array($chemin, self::EXEMPTES, true)
+            || in_array($chemin, array_map(fn ($r) => 'api/' . $r, self::EXEMPTES), true);
+        if ($exempte) {
             return $next($request);
         }
 
