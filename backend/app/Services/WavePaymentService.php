@@ -13,7 +13,7 @@ class WavePaymentService
 
     public function __construct()
     {
-        $this->apiKey = config('services.wave.api_key');
+        $this->apiKey = config('services.wave.api_key') ?? '';
     }
 
     /**
@@ -21,6 +21,10 @@ class WavePaymentService
      */
     public function createCheckoutSession(Student $student, Payment $payment): array
     {
+        if ($this->apiKey === '') {
+            throw new \Exception('Le paiement Wave n\'est pas configuré sur ce serveur (WAVE_API_KEY manquant).');
+        }
+
         $successUrl = config('app.frontend_url') . '/student/paiement/succes?payment_id=' . $payment->id;
         $errorUrl   = config('app.frontend_url') . '/student/paiement/erreur?payment_id=' . $payment->id;
 
