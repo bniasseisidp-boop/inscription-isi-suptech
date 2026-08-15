@@ -165,7 +165,7 @@ html, body { margin:0pt; padding:0pt; width:245pt; font-family:'DejaVu Sans', sa
   <tr><td>
     <table class="row2 b-foot"><tr>
       <td class="b-foot-l"><span class="code">{{ $codeBas }}</span></td>
-      <td class="b-foot-r"><span class="brand">ISI SUPTECH · Multi Brain Tech</span></td>
+      <td class="b-foot-r"><span class="brand">ISI SUPTECH</span></td>
     </tr></table>
   </td></tr>
 </tbody></table>

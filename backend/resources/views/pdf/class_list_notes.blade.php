@@ -96,7 +96,7 @@
   <table>
     <tr>
       <td>ISI SUPTECH &mdash; Tél : 77 978 26 18 &mdash; www.isisuptech.com</td>
-      <td class="right">Généré le {{ now()->format('d/m/Y à H:i') }} &nbsp;|&nbsp; Créé par MULTI BRAIN TECH</td>
+      <td class="right">Généré le {{ now()->format('d/m/Y à H:i') }}</td>
     </tr>
   </table>
 </div>

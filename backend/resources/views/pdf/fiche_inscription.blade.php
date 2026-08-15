@@ -237,7 +237,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8px; color:#1a1a2e;
   <td>Apprenant</td><td>Tuteur</td><td>Direction des études</td><td>La Caisse</td>
 </tr></table>
 
-<div style="text-align:center;font-size:6px;color:#94a3b8;margin-top:6px;">Développé par Multi Brain Tech</div>
 
 </body>
 </html>

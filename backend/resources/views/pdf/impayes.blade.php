@@ -126,9 +126,7 @@ tbody td { padding:7px 10px; border-bottom:1px solid #f1f5f9; font-size:9.5px; v
 </div>
 
 <div class="footer">
-  <p>ISI SUPTECH — Dakar, Sénégal — Document confidentiel réservé à l'administration</p>
-  <p>Développé par <strong>Multi Brain Tech</strong></p>
-</div>
+  <p>ISI SUPTECH — Dakar, Sénégal — Document confidentiel réservé à l'administration</p></div>
 
 </body>
 </html>

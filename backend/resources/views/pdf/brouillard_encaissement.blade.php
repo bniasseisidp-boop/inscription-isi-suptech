@@ -88,7 +88,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:8px; color:#1a1a2e;
 
 <table class="footer-table"><tr>
   <td>{{ now()->format('d/m/Y à H:i:s') }}</td>
-  <td class="fr">ISI SUPTECH — Dakar, Sénégal &nbsp;|&nbsp; Multi Brain Tech</td>
+  <td class="fr">ISI SUPTECH — Dakar, Sénégal</td>
 </tr></table>
 
 </body>

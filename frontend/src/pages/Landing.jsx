@@ -932,7 +932,7 @@ export default function Landing() {
           <div>
             <motion.div initial={{opacity:0,y:-20}} animate={{opacity:1,y:0}} transition={{duration:0.5}}
               className={`inline-flex items-center gap-2.5 rounded-full px-5 py-2 text-sm font-bold mb-8 border ${D?'bg-isiblue-500/10 border-isiblue-500/25 text-isiblue-300':'bg-isiblue-50 border-isiblue-200 text-isiblue-700'}`}>
-              <div className="w-2 h-2 rounded-full bg-isiblue-400 animate-pulse"/> {blocs.hero_badge || 'Inscriptions 2025-2026 ouvertes'}
+              <div className="w-2 h-2 rounded-full bg-isiblue-400 animate-pulse"/> {blocs.hero_badge || 'Inscriptions 2026-2027 ouvertes'}
             </motion.div>
             <motion.h1 initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.1}}
               className={`text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] mb-6 ${tx}`}>
@@ -1606,7 +1606,7 @@ export default function Landing() {
             <div className="max-w-2xl mx-auto text-center">
               {/* Status badge */}
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black mb-6 border ${D?'bg-brand-50 border-brand-200 text-brand-700':'bg-white/10 border-white/20 text-white/80'}`}>
-                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/> Inscriptions 2025-2026 ouvertes
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/> Inscriptions 2026-2027 ouvertes
               </div>
               {/* Animated icon */}
               <motion.div className={`w-20 h-20 rounded-2xl mx-auto mb-7 flex items-center justify-center shadow-2xl ${D?'bg-gradient-to-br from-brand-600 to-cyan-600 shadow-brand-400/40':'bg-white/10 border-2 border-white/20'}`}

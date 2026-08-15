@@ -104,7 +104,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10px; color:#1a1a2e
   <td class="left">ISI SUPTECH<br/>Dakar</td>
   <td class="right">Tél: 33 825 62 10 &nbsp;E-mail: contact@isisuptech.com &nbsp;Web site: www.isisuptech.com</td>
 </tr></table>
-<div style="text-align:center;font-size:6.5px;color:#94a3b8;margin-top:3px;">Développé par Multi Brain Tech</div>
 
 </body>
 </html>

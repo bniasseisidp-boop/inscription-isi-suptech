@@ -45,9 +45,7 @@
     <p style="color:#94a3b8;font-size:12px;">La lettre d'acceptation officielle est jointe en PDF à cet email.</p>
   </div>
   <div style="background:#0a1628;padding:16px;text-align:center;font-size:11px;color:rgba(255,255,255,0.4);">
-    ISI SUPTECH — inscription.isisuptech.com &nbsp;|&nbsp;
-    <span style="color:#60a5fa;">Multi Brain Tech</span>
-  </div>
+    ISI SUPTECH — inscription.isisuptech.com</div>
 </div>
 </body>
 </html>

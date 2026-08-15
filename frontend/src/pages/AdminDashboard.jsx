@@ -2372,7 +2372,7 @@ export default function AdminDashboard() {
                       <div>
                         <label className={T.label}>Badge (au-dessus du titre)</label>
                         <div className="flex gap-2">
-                          <input className={T.input} placeholder="Inscriptions 2025-2026 ouvertes"
+                          <input className={T.input} placeholder="Inscriptions 2026-2027 ouvertes"
                             value={blocs.hero_badge || ''} onChange={e => setBlocs(b => ({ ...b, hero_badge: e.target.value }))}/>
                           <button onClick={() => saveBlocTexte('hero_badge')} disabled={savingBloc==='hero_badge'} className="btn-secondary text-sm px-4 flex-shrink-0">
                             {savingBloc==='hero_badge' ? '...' : 'OK'}

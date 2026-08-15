@@ -100,8 +100,6 @@
 </div>
 
 <div class="footer">
-  <p>Plateforme de gestion académique ISI SUPTECH — inscription.isisuptech.com</p>
-  <p>Développé par <strong>Multi Brain Tech</strong></p>
-</div>
+  <p>Plateforme de gestion académique ISI SUPTECH — inscription.isisuptech.com</p></div>
 </body>
 </html>

@@ -280,9 +280,6 @@ export default function Login() {
         </div>
         )}
 
-        <div className="text-center mt-6 text-slate-400 text-xs">
-          Développé par <span className="text-isiblue-500/70 font-semibold">Multi Brain Tech</span>
-        </div>
       </motion.div>
 
       {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}

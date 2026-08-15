@@ -732,7 +732,6 @@ export default function StudentPortal() {
               </div>
             )}
           </div>
-          <div className="text-center mt-4 text-slate-400 text-xs">Multi Brain Tech — ISI SUPTECH</div>
         </motion.div>
       </div>
     </div>
@@ -831,7 +830,6 @@ export default function StudentPortal() {
             </div>
           )}
 
-          <div className="text-center text-slate-400 text-xs">Multi Brain Tech — ISI SUPTECH</div>
         </motion.div>
       </div>
     </div>
