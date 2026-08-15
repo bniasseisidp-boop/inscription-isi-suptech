@@ -217,7 +217,12 @@ class StudentController extends Controller
             'methode'    => 'wave',
         ]);
 
-        $checkoutData = $this->waveService->createCheckoutSession($student, $payment);
+        try {
+            $checkoutData = $this->waveService->createCheckoutSession($student, $payment);
+        } catch (\Exception $e) {
+            $payment->delete();
+            return response()->json(['message' => $e->getMessage()], 502);
+        }
 
         return response()->json($checkoutData);
     }
