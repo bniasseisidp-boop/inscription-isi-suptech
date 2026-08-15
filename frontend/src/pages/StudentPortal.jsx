@@ -18,6 +18,7 @@ import {
 } from '../services/api'
 import api from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
+import InstallAppButton from '../components/InstallAppButton'
 
 // ── Payment tracker month grid ─────────────────────────────────────────────
 function PaymentMonthGrid({ suivi }) {
@@ -931,6 +932,7 @@ export default function StudentPortal() {
         </nav>
 
         <div className="p-3 border-t border-slate-200">
+          <InstallAppButton className="mb-1"/>
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all">
             <LogOut size={17} /> Déconnexion
           </button>
