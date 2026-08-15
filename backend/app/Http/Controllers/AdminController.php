@@ -446,6 +446,40 @@ class AdminController extends Controller
         return response()->json(['message' => 'Toutes les données de test ont été supprimées.']);
     }
 
+    /** Delete every account (students + staff) except super_admin — full reset for testing */
+    public function deleteAllAccounts(Request $request)
+    {
+        $request->validate(['confirmation' => 'required|in:DELETE_ALL_CONFIRMED']);
+
+        try {
+            Storage::disk('public')->deleteDirectory('receipts');
+            Storage::disk('public')->deleteDirectory('letters');
+            Storage::disk('public')->deleteDirectory('cards');
+            Storage::disk('public')->deleteDirectory('impayes');
+            Storage::disk('public')->deleteDirectory('photos');
+            Storage::disk('public')->deleteDirectory('brouillards');
+        } catch (\Throwable $e) {
+            \Log::warning('Delete all accounts storage: ' . $e->getMessage());
+        }
+
+        \DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        Payment::query()->forceDelete();
+        \App\Models\StudentCard::query()->forceDelete();
+        \App\Models\PaymentEditRequest::query()->delete();
+        \App\Models\ActivityLog::query()->delete();
+        StudentNotification::query()->truncate();
+        Student::withTrashed()->forceDelete();
+        \DB::table('personal_access_tokens')->truncate();
+        User::where('role', '!=', 'super_admin')->delete();
+        \DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'system.delete_all_accounts', 'Suppression définitive de tous les comptes (sauf super admin) et de leurs données.'
+        );
+
+        return response()->json(['message' => 'Tous les comptes (sauf super admin) ont été supprimés définitivement.']);
+    }
+
     /** List staff accounts */
     public function staff()
     {
@@ -485,12 +519,6 @@ class AdminController extends Controller
     /** Delete a staff member */
     public function deleteStaff(Request $request, User $user)
     {
-        if ($user->role === 'admin') {
-            $adminCount = User::where('role', 'admin')->count();
-            if ($adminCount <= 1) {
-                return response()->json(['message' => 'Impossible de supprimer le dernier administrateur.'], 422);
-            }
-        }
         if ($user->role === 'student') {
             return response()->json(['message' => 'Utilisez la gestion étudiants pour supprimer un étudiant.'], 422);
         }
@@ -532,11 +560,13 @@ class AdminController extends Controller
         return response()->json(['message' => 'Étudiant restauré']);
     }
 
-    /** Permanently delete student */
+    /** Permanently delete student — also frees up their email by deleting the linked account */
     public function forceDeleteStudent(int $id)
     {
         $student = Student::onlyTrashed()->findOrFail($id);
+        $userId = $student->user_id;
         $student->forceDelete();
+        User::where('id', $userId)->delete();
         return response()->json(['message' => 'Étudiant supprimé définitivement']);
     }
 

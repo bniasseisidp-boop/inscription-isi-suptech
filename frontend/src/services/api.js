@@ -200,6 +200,7 @@ export const updateAdminSettings = (data) => api.put('/admin/settings', data)
 export const getPedagogiqueSettings = () => api.get('/pedagogique/settings')
 // Admin — reset test data
 export const resetDonneesTest = () => api.post('/admin/reset-donnees-test', { confirmation: 'RESET_CONFIRMED' })
+export const deleteAllAccounts = () => api.post('/admin/delete-all-accounts', { confirmation: 'DELETE_ALL_CONFIRMED' })
 
 // Accueil — matricule verification
 export const verifyMatriculeAccueil = (matricule) => api.get(`/accueil/verify-matricule/${encodeURIComponent(matricule)}`)

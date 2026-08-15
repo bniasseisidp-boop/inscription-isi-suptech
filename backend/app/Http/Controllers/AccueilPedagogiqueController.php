@@ -93,14 +93,22 @@ class AccueilPedagogiqueController extends Controller
             'pays_residence'     => $validated['pays_residence'] ?? 'Sénégal',
         ]));
 
-        $this->qrService->generateStudentCard($student);
+        try {
+            $this->qrService->generateStudentCard($student);
+        } catch (\Exception $e) {
+            \Log::error('Génération carte étudiant (pédagogique, addStudent) : ' . $e->getMessage());
+        }
 
-        StudentNotification::create([
-            'student_id' => $student->id,
-            'titre'      => '✅ Inscription enregistrée',
-            'message'    => 'Votre inscription a été enregistrée par le service pédagogique. Matricule : ' . $student->matricule,
-            'type'       => 'success',
-        ]);
+        try {
+            StudentNotification::create([
+                'student_id' => $student->id,
+                'titre'      => '✅ Inscription enregistrée',
+                'message'    => 'Votre inscription a été enregistrée par le service pédagogique. Matricule : ' . $student->matricule,
+                'type'       => 'success',
+            ]);
+        } catch (\Exception $e) {
+            \Log::warning('Notification inscription (pédagogique, addStudent) : ' . $e->getMessage());
+        }
 
         try {
             \Illuminate\Support\Facades\Mail::to($user->email)

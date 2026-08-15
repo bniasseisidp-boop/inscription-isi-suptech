@@ -21,7 +21,7 @@ import {
   downloadClassListPdf,
   updateAdminFiliere, deleteAdminFiliere, createLicense, updateAdminLicense, deleteAdminLicense,
   getAdminSettings, updateAdminSettings,
-  getStaff, createStaff, deleteStaff, resetDonneesTest,
+  getStaff, createStaff, deleteStaff, resetDonneesTest, deleteAllAccounts,
   adminGetMoisDesactives, adminToggleMoisDesactive, lockStudentProfile,
   getPermissionsModification, approuverPermission, refuserPermission,
   getAuditLog, toggleMaintenance, getMaintenanceStatus,
@@ -761,6 +761,8 @@ export default function AdminDashboard() {
   const [createAdvanced, setCreateAdvanced] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [resetting, setResetting]     = useState(false)
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
+  const [deletingAll, setDeletingAll]           = useState(false)
   const [newStaff, setNewStaff]       = useState({ name: '', email: '', role: 'cashier' })
   const [formateurs, setFormateurs]   = useState([])
   const [membres, setMembres]         = useState([])
@@ -1931,6 +1933,34 @@ export default function AdminDashboard() {
                             finally { setResetting(false) }
                           }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50 transition-colors">
                             <Trash2 size={14}/>{resetting ? 'Suppression...' : 'Confirmer la suppression'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <hr className="my-4 border-red-500/20"/>
+
+                    <p className={`text-xs mb-4 ${T.mute}`}>Supprime <strong className="text-red-500">absolument tous les comptes</strong> (étudiants, admins, caisse, accueil, accueil pédagogique) ainsi que leurs données — sauf votre compte super admin. Les emails redeviennent immédiatement réutilisables. Filières et niveaux sont conservés.</p>
+                    {!deleteAllConfirm ? (
+                      <button onClick={() => setDeleteAllConfirm(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 font-semibold text-sm transition-colors">
+                        <Trash2 size={14}/> Supprimer tous les comptes (sauf super admin)
+                      </button>
+                    ) : (
+                      <div className={`${T.card} p-4 border border-red-500/50 mt-3`}>
+                        <p className="text-red-400 font-semibold text-sm mb-3">Action irréversible : tous les comptes staff et étudiants seront définitivement supprimés. Continuer ?</p>
+                        <div className="flex gap-3">
+                          <button onClick={() => setDeleteAllConfirm(false)} className="btn-secondary text-sm">Annuler</button>
+                          <button disabled={deletingAll} onClick={async () => {
+                            setDeletingAll(true)
+                            try {
+                              await deleteAllAccounts()
+                              toast.success('Tous les comptes ont été supprimés.')
+                              setDeleteAllConfirm(false)
+                              getStaff().then(({ data }) => setStaff(data))
+                            } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+                            finally { setDeletingAll(false) }
+                          }} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-sm disabled:opacity-50 transition-colors">
+                            <Trash2 size={14}/>{deletingAll ? 'Suppression...' : 'Confirmer la suppression totale'}
                           </button>
                         </div>
                       </div>

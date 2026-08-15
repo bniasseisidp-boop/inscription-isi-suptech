@@ -6,7 +6,7 @@ import {
   Wallet, Search, Plus, Download, LogOut, LayoutDashboard, TrendingUp,
   Clock, CheckCircle, RefreshCw, X, Users, AlertCircle, Filter,
   AlertTriangle, CreditCard, ChevronDown, ChevronRight, Check, BookOpen, FileDown, UserSearch, Pencil, Eye,
-  UserCog,
+  UserCog, Menu,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -783,6 +783,7 @@ export default function CashierDashboard() {
 
   const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
   const [changingPwd, setChangingPwd] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const handleChangePassword = async (e) => {
     e.preventDefault()
     if (pwdForm.password !== pwdForm.password_confirmation) {
@@ -826,24 +827,33 @@ export default function CashierDashboard() {
           onClose={() => { URL.revokeObjectURL(previewPdf.url); setPreviewPdf(null) }}/>
       )}
 
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)}/>
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40">
+      <div className={`w-64 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-slate-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-isiblue-500 to-isiblue-400 flex items-center justify-center">
-              <Wallet size={20} className="text-white"/>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-isiblue-500 to-isiblue-400 flex items-center justify-center">
+                <Wallet size={20} className="text-white"/>
+              </div>
+              <div>
+                <div className="text-isiblue-700 font-bold">ISI SUPTECH</div>
+                <div className="text-isigold-600 text-xs font-medium">Caisse</div>
+              </div>
             </div>
-            <div>
-              <div className="text-isiblue-700 font-bold">ISI SUPTECH</div>
-              <div className="text-isigold-600 text-xs font-medium">Caisse</div>
-            </div>
+            <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 lg:hidden">
+              <X size={18}/>
+            </button>
           </div>
         </div>
         <nav className="flex-1 p-3 space-y-1">
           {NAV.map((item) => {
             const Icon = item.icon
             return (
-              <button key={item.id} onClick={() => setActive(item.id)}
+              <button key={item.id} onClick={() => { setActive(item.id); setSidebarOpen(false) }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   active === item.id
                     ? 'bg-isiblue-50 text-isiblue-700 border border-isiblue-200'
@@ -865,12 +875,17 @@ export default function CashierDashboard() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 ml-64 relative z-10">
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-6 h-16 flex items-center justify-between">
-          <h1 className="text-isiblue-700 font-semibold">
-            {NAV.find(n => n.id === active)?.label}
-          </h1>
-          <div className="text-isigold-600 text-xs font-semibold uppercase tracking-wider">Caisse</div>
+      <div className="flex-1 lg:ml-64 relative z-10 min-w-0">
+        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-isiblue-700 hover:bg-slate-100 lg:hidden flex-shrink-0">
+              <Menu size={20}/>
+            </button>
+            <h1 className="text-isiblue-700 font-semibold truncate">
+              {NAV.find(n => n.id === active)?.label}
+            </h1>
+          </div>
+          <div className="text-isigold-600 text-xs font-semibold uppercase tracking-wider flex-shrink-0">Caisse</div>
         </div>
 
         <div className="p-6">

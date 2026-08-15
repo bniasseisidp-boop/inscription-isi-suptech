@@ -170,6 +170,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Super Admin — reset données test ────────────────────────────────────
     Route::middleware('role:super_admin')->post('/admin/reset-donnees-test', [AdminController::class, 'resetDonneesTest']);
+    Route::middleware('role:super_admin')->post('/admin/delete-all-accounts', [AdminController::class, 'deleteAllAccounts']);
 
     // ── Accueil routes ──────────────────────────────────────────────────────
     Route::middleware('role:accueil,admin')->prefix('accueil')->group(function () {

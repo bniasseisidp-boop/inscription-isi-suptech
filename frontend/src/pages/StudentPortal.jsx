@@ -6,6 +6,7 @@ import {
   Clock, CheckCircle, XCircle, AlertTriangle, LogOut, User, Bell, CreditCard,
   GraduationCap, FileText, Phone, MapPin, Calendar, BookOpen, Save,
   ChevronRight, Wallet, TrendingUp, AlertCircle, Download, QrCode, Upload,
+  Menu, X,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import QRCode from 'qrcode'
@@ -570,6 +571,7 @@ export default function StudentPortal() {
   const [changingPhoto, setChangingPhoto] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [waveEnabled, setWaveEnabled] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const refreshStudent = useCallback(() => {
     return getStudentDashboard()
@@ -876,15 +878,25 @@ export default function StudentPortal() {
   return (
     <div className="min-h-screen bg-slate-50 flex relative">
       <LightPremiumBackground/>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)}/>
+      )}
+
       {/* Fixed sidebar */}
-      <div className="w-64 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40">
+      <div className={`w-64 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-slate-200">
-          <div className="flex items-center gap-3 mb-4">
-            <img src="/isi-logo.png" alt="ISI SUPTECH" className="h-10 w-auto object-contain"/>
-            <div>
-              <div className="text-isiblue-700 font-bold text-sm">ISI SUPTECH</div>
-              <div className="text-isigold-600 text-xs">Espace Étudiant</div>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <img src="/isi-logo.png" alt="ISI SUPTECH" className="h-10 w-auto object-contain"/>
+              <div>
+                <div className="text-isiblue-700 font-bold text-sm">ISI SUPTECH</div>
+                <div className="text-isigold-600 text-xs">Espace Étudiant</div>
+              </div>
             </div>
+            <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 lg:hidden">
+              <X size={18}/>
+            </button>
           </div>
           <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
             <div className="flex items-center gap-3">
@@ -905,7 +917,7 @@ export default function StudentPortal() {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveSection(item.id)}
+                onClick={() => { setActiveSection(item.id); setSidebarOpen(false) }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                   activeSection === item.id
                     ? 'bg-isiblue-50 text-isiblue-700 border border-isiblue-200'
@@ -926,10 +938,15 @@ export default function StudentPortal() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 ml-64 min-h-screen relative z-10">
+      <div className="flex-1 lg:ml-64 min-h-screen relative z-10 min-w-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-6 h-16 flex items-center justify-between">
-          <h1 className="text-isiblue-700 font-semibold">{navItems.find((n) => n.id === activeSection)?.label}</h1>
+        <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-isiblue-700 hover:bg-slate-100 lg:hidden flex-shrink-0">
+              <Menu size={20}/>
+            </button>
+            <h1 className="text-isiblue-700 font-semibold truncate">{navItems.find((n) => n.id === activeSection)?.label}</h1>
+          </div>
           <div className="flex items-center gap-3">
             <div className="relative">
               <button

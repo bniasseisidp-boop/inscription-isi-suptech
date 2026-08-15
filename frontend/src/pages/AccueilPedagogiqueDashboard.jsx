@@ -6,7 +6,7 @@ import {
   Users, LogOut, BookOpen, Search, Plus, Download, CreditCard,
   Lock, Unlock, Eye, ChevronRight, ChevronDown, RefreshCw,
   GraduationCap, CheckCircle, XCircle, AlertTriangle, Upload,
-  UserCheck, Clock, X, Camera, ExternalLink, Pencil, Trash2, Settings, FileText, UserCog,
+  UserCheck, Clock, X, Camera, ExternalLink, Pencil, Trash2, Settings, FileText, UserCog, Menu,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -463,6 +463,7 @@ export default function AccueilPedagogiqueDashboard() {
 
   const [showFilieresManagement, setShowFilieresManagement] = useState(false)
   const [showMonProfil, setShowMonProfil] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
   const [changingPwd, setChangingPwd] = useState(false)
   const handleChangePassword = async (e) => {
@@ -534,6 +535,7 @@ export default function AccueilPedagogiqueDashboard() {
     setSelectedLicense(license)
     setSearch('')
     setActiveTab('inscrits')
+    if (license) setSidebarOpen(false)
   }
 
   const [listMenuOpen, setListMenuOpen] = useState(false)
@@ -631,17 +633,26 @@ export default function AccueilPedagogiqueDashboard() {
     <div className="min-h-screen bg-white flex relative">
       <LightPremiumBackground/>
 
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 z-30 lg:hidden" onClick={() => setSidebarOpen(false)}/>
+      )}
+
       {/* ── Sidebar ─────────────────────────────────────── */}
-      <div className="w-72 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40">
+      <div className={`w-72 flex-shrink-0 bg-white/95 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed top-0 left-0 h-full z-40 transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-slate-200">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-isiblue-600 to-isiblue-400 flex items-center justify-center">
-              <BookOpen size={16} className="text-white"/>
+          <div className="flex items-center justify-between gap-3 mb-1">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-isiblue-600 to-isiblue-400 flex items-center justify-center">
+                <BookOpen size={16} className="text-white"/>
+              </div>
+              <div>
+                <div className="text-isiblue-700 font-bold text-sm">ISI SUPTECH</div>
+                <div className="text-isigold-600 text-xs font-medium">Accueil Pédagogique</div>
+              </div>
             </div>
-            <div>
-              <div className="text-isiblue-700 font-bold text-sm">ISI SUPTECH</div>
-              <div className="text-isigold-600 text-xs font-medium">Accueil Pédagogique</div>
-            </div>
+            <button onClick={() => setSidebarOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 lg:hidden flex-shrink-0">
+              <X size={18}/>
+            </button>
           </div>
         </div>
 
@@ -706,19 +717,24 @@ export default function AccueilPedagogiqueDashboard() {
       </div>
 
       {/* ── Contenu principal ────────────────────────────── */}
-      <div className="relative z-10 flex-1 ml-72 min-h-screen">
+      <div className="relative z-10 flex-1 lg:ml-72 min-h-screen min-w-0">
 
         {/* Topbar */}
-        <div className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-6 h-16 flex items-center justify-between">
-          <div>
-            <h1 className="text-isiblue-700 font-semibold text-sm">
-              {selectedFiliere
-                ? `${selectedFiliere.nom}${selectedLicense ? ' — ' + selectedLicense.nom : ''}`
-                : 'Sélectionnez une classe'}
-            </h1>
-            {selectedFiliere && (
-              <div className="text-slate-400 text-xs">{totalStudents} étudiant(s)</div>
-            )}
+        <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-xl border-b border-slate-200 px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 rounded-lg text-slate-500 hover:text-isiblue-700 hover:bg-slate-100 lg:hidden flex-shrink-0">
+              <Menu size={20}/>
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-isiblue-700 font-semibold text-sm truncate">
+                {selectedFiliere
+                  ? `${selectedFiliere.nom}${selectedLicense ? ' — ' + selectedLicense.nom : ''}`
+                  : 'Sélectionnez une classe'}
+              </h1>
+              {selectedFiliere && (
+                <div className="text-slate-400 text-xs">{totalStudents} étudiant(s)</div>
+              )}
+            </div>
           </div>
           {selectedFiliere && (
             <div className="flex items-center gap-2">
