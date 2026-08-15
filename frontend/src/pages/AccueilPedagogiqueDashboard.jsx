@@ -6,7 +6,7 @@ import {
   Users, LogOut, BookOpen, Search, Plus, Download, CreditCard,
   Lock, Unlock, Eye, ChevronRight, ChevronDown, RefreshCw,
   GraduationCap, CheckCircle, XCircle, AlertTriangle, Upload,
-  UserCheck, Clock, X, Camera, ExternalLink, Pencil, Trash2, Settings, FileText,
+  UserCheck, Clock, X, Camera, ExternalLink, Pencil, Trash2, Settings, FileText, UserCog,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -16,7 +16,7 @@ import {
   getPedagogiquePending, acceptPedagogiqueStudent, getFilieres,
   createPedagogiqueFiliere, updatePedagogiqueFiliere, deletePedagogiqueFiliere,
   createPedagogiqueLicense, updatePedagogiqueLicense, deletePedagogiqueLicense,
-  getPedagogiqueSettings,
+  getPedagogiqueSettings, updateMyPassword,
   downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
@@ -438,7 +438,7 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
 
 /* ── Page principale ──────────────────────────────────────────────────────── */
 export default function AccueilPedagogiqueDashboard() {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
 
   const [classes, setClasses]           = useState([])
@@ -462,6 +462,27 @@ export default function AccueilPedagogiqueDashboard() {
   const [acceptingId, setAcceptingId]   = useState(null)
 
   const [showFilieresManagement, setShowFilieresManagement] = useState(false)
+  const [showMonProfil, setShowMonProfil] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
+  const [changingPwd, setChangingPwd] = useState(false)
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    if (pwdForm.password !== pwdForm.password_confirmation) {
+      toast.error('Les mots de passe ne correspondent pas.')
+      return
+    }
+    setChangingPwd(true)
+    try {
+      await updateMyPassword(pwdForm)
+      toast.success('Mot de passe mis à jour !')
+      setPwdForm({ current_password: '', password: '', password_confirmation: '' })
+      setShowMonProfil(false)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur — vérifiez votre mot de passe actuel.')
+    } finally {
+      setChangingPwd(false)
+    }
+  }
   const [mgmtFilieres, setMgmtFilieres] = useState([])
   const [filieresLocked, setFilieresLocked] = useState(false)
   const [editingLicense, setEditingLicense] = useState(null)
@@ -672,6 +693,10 @@ export default function AccueilPedagogiqueDashboard() {
           <button onClick={openFilieresManagement}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-500 hover:text-isigold-600 hover:bg-isigold-100/40 transition-all">
             <Settings size={17}/> Gérer les filières
+          </button>
+          <button onClick={() => setShowMonProfil(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-500 hover:text-isiblue-600 hover:bg-isiblue-50 transition-all">
+            <UserCog size={17}/> Mon profil
           </button>
           <button onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all">
@@ -918,6 +943,48 @@ export default function AccueilPedagogiqueDashboard() {
           )}
         </div>
       </div>
+
+      {/* Modal mon profil */}
+      <AnimatePresence>
+        {showMonProfil && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-isiblue-700 font-bold text-lg flex items-center gap-2"><UserCog size={18} className="text-isigold-600"/> Mon profil</h2>
+                <button onClick={() => setShowMonProfil(false)} className="p-2 rounded-xl text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 transition-all"><X size={18}/></button>
+              </div>
+              <div className="text-sm text-slate-700 font-semibold">{user?.name}</div>
+              <div className="text-xs text-slate-400 mb-4">{user?.email} · Accueil Pédagogique</div>
+              <h3 className="text-isiblue-700 font-semibold text-sm mb-3">Modifier le mot de passe</h3>
+              <form onSubmit={handleChangePassword} className="space-y-3">
+                <div>
+                  <label className="block text-slate-500 text-xs mb-1.5">Mot de passe actuel</label>
+                  <input type="password" required value={pwdForm.current_password}
+                    onChange={e => setPwdForm(f => ({ ...f, current_password: e.target.value }))}
+                    className="form-input-light"/>
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-xs mb-1.5">Nouveau mot de passe</label>
+                  <input type="password" required minLength={8} value={pwdForm.password}
+                    onChange={e => setPwdForm(f => ({ ...f, password: e.target.value }))}
+                    className="form-input-light"/>
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-xs mb-1.5">Confirmer le nouveau mot de passe</label>
+                  <input type="password" required minLength={8} value={pwdForm.password_confirmation}
+                    onChange={e => setPwdForm(f => ({ ...f, password_confirmation: e.target.value }))}
+                    className="form-input-light"/>
+                </div>
+                <button type="submit" disabled={changingPwd} className="btn-primary w-full text-sm">
+                  {changingPwd ? <div className="spinner w-4 h-4 mx-auto"/> : 'Mettre à jour le mot de passe'}
+                </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal gestion filières */}
       <AnimatePresence>

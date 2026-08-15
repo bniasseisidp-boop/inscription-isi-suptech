@@ -5,10 +5,10 @@ import toast from 'react-hot-toast'
 import { Html5Qrcode } from 'html5-qrcode'
 import {
   Search, QrCode, Users, LogOut, CheckCircle, XCircle,
-  AlertTriangle, RefreshCw, GraduationCap, Hash, Camera, CameraOff
+  AlertTriangle, RefreshCw, GraduationCap, Hash, Camera, CameraOff, UserCog, X,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { getPublicStudents, verifyQR, verifyMatriculeAccueil } from '../services/api'
+import { getPublicStudents, verifyQR, verifyMatriculeAccueil, updateMyPassword } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 
 /* ── Scanner caméra ───────────────────────────────────────────────────────── */
@@ -243,9 +243,31 @@ function VerifResult({ result, onClose }) {
 
 /* ── Page principale ──────────────────────────────────────────────────────── */
 export default function AccueilDashboard() {
-  const { logout }     = useAuth()
+  const { logout, user } = useAuth()
   const navigate       = useNavigate()
   const matriculeRef   = useRef(null)
+
+  const [showMonProfil, setShowMonProfil] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
+  const [changingPwd, setChangingPwd] = useState(false)
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    if (pwdForm.password !== pwdForm.password_confirmation) {
+      toast.error('Les mots de passe ne correspondent pas.')
+      return
+    }
+    setChangingPwd(true)
+    try {
+      await updateMyPassword(pwdForm)
+      toast.success('Mot de passe mis à jour !')
+      setPwdForm({ current_password: '', password: '', password_confirmation: '' })
+      setShowMonProfil(false)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur — vérifiez votre mot de passe actuel.')
+    } finally {
+      setChangingPwd(false)
+    }
+  }
 
   const [students, setStudents]           = useState([])
   const [filtered, setFiltered]           = useState([])
@@ -359,11 +381,51 @@ export default function AccueilDashboard() {
           <div className="text-slate-500 text-sm">
             <span className="text-slate-900 font-semibold">{students.length}</span> étudiants inscrits
           </div>
+          <button onClick={() => setShowMonProfil(true)} className="flex items-center gap-2 text-slate-400 hover:text-isiblue-600 text-sm transition-colors">
+            <UserCog size={16}/> Mon profil
+          </button>
           <button onClick={handleLogout} className="flex items-center gap-2 text-slate-400 hover:text-red-500 text-sm transition-colors">
             <LogOut size={16}/> Déconnexion
           </button>
         </div>
       </div>
+
+      {showMonProfil && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-isiblue-700 font-bold text-lg flex items-center gap-2"><UserCog size={18} className="text-isigold-600"/> Mon profil</h2>
+              <button onClick={() => setShowMonProfil(false)} className="p-2 rounded-xl text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 transition-all"><X size={18}/></button>
+            </div>
+            <div className="text-sm text-slate-700 font-semibold">{user?.name}</div>
+            <div className="text-xs text-slate-400 mb-4">{user?.email} · Accueil</div>
+            <h3 className="text-isiblue-700 font-semibold text-sm mb-3">Modifier le mot de passe</h3>
+            <form onSubmit={handleChangePassword} className="space-y-3">
+              <div>
+                <label className="block text-slate-500 text-xs mb-1.5">Mot de passe actuel</label>
+                <input type="password" required value={pwdForm.current_password}
+                  onChange={e => setPwdForm(f => ({ ...f, current_password: e.target.value }))}
+                  className="form-input-light"/>
+              </div>
+              <div>
+                <label className="block text-slate-500 text-xs mb-1.5">Nouveau mot de passe</label>
+                <input type="password" required minLength={8} value={pwdForm.password}
+                  onChange={e => setPwdForm(f => ({ ...f, password: e.target.value }))}
+                  className="form-input-light"/>
+              </div>
+              <div>
+                <label className="block text-slate-500 text-xs mb-1.5">Confirmer le nouveau mot de passe</label>
+                <input type="password" required minLength={8} value={pwdForm.password_confirmation}
+                  onChange={e => setPwdForm(f => ({ ...f, password_confirmation: e.target.value }))}
+                  className="form-input-light"/>
+              </div>
+              <button type="submit" disabled={changingPwd} className="btn-primary w-full text-sm">
+                {changingPwd ? <div className="spinner w-4 h-4 mx-auto"/> : 'Mettre à jour le mot de passe'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="relative z-10 p-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -6,6 +6,7 @@ import {
   Wallet, Search, Plus, Download, LogOut, LayoutDashboard, TrendingUp,
   Clock, CheckCircle, RefreshCw, X, Users, AlertCircle, Filter,
   AlertTriangle, CreditCard, ChevronDown, ChevronRight, Check, BookOpen, FileDown, UserSearch, Pencil, Eye,
+  UserCog,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -14,6 +15,7 @@ import {
   downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob, downloadBrouillardBlob,
   getCashierStudents, getCashierStudentSuivi, getInscriptionDetails,
   demanderModificationPaiement, getStatutDemandeModification,
+  updateMyPassword,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 
@@ -543,7 +545,7 @@ function PdfPreviewModal({ url, label, onClose }) {
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */
 export default function CashierDashboard() {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate   = useNavigate()
   const [active, setActive]       = useState('dashboard')
   const [stats, setStats]         = useState(null)
@@ -776,7 +778,28 @@ export default function CashierDashboard() {
     { id: 'paiements',  label: 'Paiements',         icon: TrendingUp },
     { id: 'saisie',     label: 'Saisir paiement',   icon: Plus },
     { id: 'impayes',    label: 'Impayés du mois',   icon: AlertTriangle },
+    { id: 'profil',     label: 'Mon profil',        icon: UserCog },
   ]
+
+  const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
+  const [changingPwd, setChangingPwd] = useState(false)
+  const handleChangePassword = async (e) => {
+    e.preventDefault()
+    if (pwdForm.password !== pwdForm.password_confirmation) {
+      toast.error('Les mots de passe ne correspondent pas.')
+      return
+    }
+    setChangingPwd(true)
+    try {
+      await updateMyPassword(pwdForm)
+      toast.success('Mot de passe mis à jour !')
+      setPwdForm({ current_password: '', password: '', password_confirmation: '' })
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur — vérifiez votre mot de passe actuel.')
+    } finally {
+      setChangingPwd(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white flex relative">
@@ -1376,6 +1399,54 @@ export default function CashierDashboard() {
                         </tbody>
                       </table>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {active === 'profil' && (
+                <div className="space-y-6 max-w-lg">
+                  <div className="light-card p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-600 to-isigold-500 flex items-center justify-center flex-shrink-0">
+                        {user?.photo_url ? (
+                          <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover"/>
+                        ) : (
+                          <span className="text-white font-bold text-lg">{(user?.name || 'C')[0].toUpperCase()}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-slate-900 text-sm font-semibold">{user?.name}</div>
+                        <div className="text-slate-400 text-xs">{user?.email} · Caisse</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="light-card p-5">
+                    <h3 className="text-isiblue-700 font-semibold mb-4">Modifier le mot de passe</h3>
+                    <form onSubmit={handleChangePassword} className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block text-slate-500">Mot de passe actuel</label>
+                        <input type="password" required value={pwdForm.current_password}
+                          onChange={e => setPwdForm(f => ({ ...f, current_password: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-isiblue-500/30"/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block text-slate-500">Nouveau mot de passe</label>
+                        <input type="password" required minLength={8} value={pwdForm.password}
+                          onChange={e => setPwdForm(f => ({ ...f, password: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-isiblue-500/30"/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1 block text-slate-500">Confirmer le nouveau mot de passe</label>
+                        <input type="password" required minLength={8} value={pwdForm.password_confirmation}
+                          onChange={e => setPwdForm(f => ({ ...f, password_confirmation: e.target.value }))}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-isiblue-500/30"/>
+                      </div>
+                      <button type="submit" disabled={changingPwd}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm text-white bg-isiblue-600 hover:bg-isiblue-700 transition-colors disabled:opacity-50">
+                        {changingPwd ? <div className="spinner w-4 h-4"/> : 'Mettre à jour le mot de passe'}
+                      </button>
+                    </form>
                   </div>
                 </div>
               )}
