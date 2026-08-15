@@ -168,6 +168,7 @@ class StudentController extends Controller
             'student'         => $student,
             'mois_non_payes'  => $student->mois_non_payes,
             'a_jour'          => empty($student->mois_non_payes),
+            'wave_enabled'    => !empty(config('services.wave.api_key')),
         ]);
     }
 

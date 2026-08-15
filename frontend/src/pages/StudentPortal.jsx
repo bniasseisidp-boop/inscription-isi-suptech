@@ -569,12 +569,14 @@ export default function StudentPortal() {
   const [qrDataUrl, setQrDataUrl] = useState(null)
   const [changingPhoto, setChangingPhoto] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [waveEnabled, setWaveEnabled] = useState(true)
 
   const refreshStudent = useCallback(() => {
     return getStudentDashboard()
       .then(({ data }) => {
         setStudent(data.student)
         setSuivi(data.suivi_paiements)
+        setWaveEnabled(data.wave_enabled !== false)
       })
       .catch(() => {})
   }, [])
@@ -797,20 +799,24 @@ export default function StudentPortal() {
               )}
             </p>
             <div className="space-y-3">
-              <button
-                onClick={() => handlePay('inscription')}
-                disabled={initiating}
-                className="btn-primary w-full flex items-center justify-center gap-3 py-3.5 text-base"
-              >
-                {initiating
-                  ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  : <Wallet size={20} />}
-                Payer via Wave
-              </button>
+              {waveEnabled && (
+                <button
+                  onClick={() => handlePay('inscription')}
+                  disabled={initiating}
+                  className="btn-primary w-full flex items-center justify-center gap-3 py-3.5 text-base"
+                >
+                  {initiating
+                    ? <div className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    : <Wallet size={20} />}
+                  Payer via Wave
+                </button>
+              )}
               <div className={`rounded-xl p-4 text-sm flex items-start gap-3 bg-isigold-100/50 border border-isigold-300`}>
                 <AlertTriangle size={16} className="text-isigold-600 flex-shrink-0 mt-0.5" />
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Vous pouvez aussi vous présenter <strong className="text-slate-900">directement à la caisse de l'école</strong> avec les frais en espèces ou par mobile money. Un reçu vous sera remis.
+                  {waveEnabled
+                    ? <>Vous pouvez aussi vous présenter <strong className="text-slate-900">directement à la caisse de l'école</strong> avec les frais en espèces ou par mobile money. Un reçu vous sera remis.</>
+                    : <>Présentez-vous <strong className="text-slate-900">directement à la caisse de l'école</strong> avec les frais en espèces ou par mobile money pour régler votre inscription. Un reçu vous sera remis.</>}
                 </p>
               </div>
             </div>
@@ -992,16 +998,18 @@ export default function StudentPortal() {
                           <h3 className="text-green-700 font-bold text-lg mb-1">🎉 Félicitations ! Votre inscription est acceptée</h3>
                           <p className="text-green-600 text-sm mb-4">
                             Votre matricule étudiant est <strong className="text-slate-900">{student?.matricule}</strong>.
-                            Veuillez procéder au paiement des frais d'inscription pour finaliser votre dossier.
+                            Veuillez procéder au paiement des frais d'inscription pour finaliser votre dossier{waveEnabled ? '' : ' — présentez-vous directement à la caisse de l\'école'}.
                           </p>
-                          <button
-                            onClick={() => handlePay('inscription')}
-                            disabled={initiating}
-                            className="btn-primary flex items-center gap-2"
-                          >
-                            {initiating ? <div className="spinner w-4 h-4" /> : <CreditCard size={16} />}
-                            Payer les frais d'inscription via Wave
-                          </button>
+                          {waveEnabled && (
+                            <button
+                              onClick={() => handlePay('inscription')}
+                              disabled={initiating}
+                              className="btn-primary flex items-center gap-2"
+                            >
+                              {initiating ? <div className="spinner w-4 h-4" /> : <CreditCard size={16} />}
+                              Payer les frais d'inscription via Wave
+                            </button>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -1205,7 +1213,7 @@ export default function StudentPortal() {
               {/* ── PAIEMENTS ──────────────────────────────────────────────── */}
               {activeSection === 'paiements' && (
                 <div className="space-y-6">
-                  {inscriptionPayee && (
+                  {inscriptionPayee && waveEnabled && (
                     <div className="light-card p-5">
                       <h3 className="text-isiblue-700 font-semibold mb-4">Payer une mensualité</h3>
                       <div className="flex flex-wrap gap-3">
@@ -1220,6 +1228,14 @@ export default function StudentPortal() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {inscriptionPayee && !waveEnabled && (
+                    <div className="rounded-xl p-4 text-sm flex items-start gap-3 bg-isigold-100/50 border border-isigold-300">
+                      <AlertTriangle size={16} className="text-isigold-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-slate-600 text-xs leading-relaxed">
+                        Pour régler une mensualité, présentez-vous <strong className="text-slate-900">directement à la caisse de l'école</strong> avec les frais en espèces ou par mobile money. Un reçu vous sera remis.
+                      </p>
                     </div>
                   )}
 
@@ -1276,10 +1292,16 @@ export default function StudentPortal() {
                     <div className="text-center py-16">
                       <AlertCircle size={48} className="text-isigold-500 mx-auto mb-4" />
                       <h3 className="text-isiblue-700 font-bold text-xl mb-2">Inscription non finalisée</h3>
-                      <p className="text-slate-500 mb-6">Payez vos frais d'inscription pour accéder au suivi mensuel.</p>
-                      <button onClick={() => handlePay('inscription')} className="btn-primary">
-                        Payer l'inscription via Wave
-                      </button>
+                      <p className="text-slate-500 mb-6">
+                        {waveEnabled
+                          ? "Payez vos frais d'inscription pour accéder au suivi mensuel."
+                          : "Réglez vos frais d'inscription à la caisse de l'école pour accéder au suivi mensuel."}
+                      </p>
+                      {waveEnabled && (
+                        <button onClick={() => handlePay('inscription')} className="btn-primary">
+                          Payer l'inscription via Wave
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
