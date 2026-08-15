@@ -16,7 +16,7 @@ import {
   getPedagogiquePending, acceptPedagogiqueStudent, getFilieres,
   createPedagogiqueFiliere, updatePedagogiqueFiliere, deletePedagogiqueFiliere,
   createPedagogiqueLicense, updatePedagogiqueLicense, deletePedagogiqueLicense,
-  getPedagogiqueSettings, updateMyPassword,
+  getPedagogiqueSettings, updateMyPassword, updateMyPhoto,
   downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
@@ -438,7 +438,7 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
 
 /* ── Page principale ──────────────────────────────────────────────────────── */
 export default function AccueilPedagogiqueDashboard() {
-  const { logout, user } = useAuth()
+  const { logout, user, updateUser } = useAuth()
   const navigate = useNavigate()
 
   const [classes, setClasses]           = useState([])
@@ -466,6 +466,24 @@ export default function AccueilPedagogiqueDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
   const [changingPwd, setChangingPwd] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const { data } = await updateMyPhoto(formData)
+      updateUser(data.user)
+      toast.success('Photo mise à jour !')
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'envoi de la photo")
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
+    }
+  }
   const handleChangePassword = async (e) => {
     e.preventDefault()
     if (pwdForm.password !== pwdForm.password_confirmation) {
@@ -971,8 +989,23 @@ export default function AccueilPedagogiqueDashboard() {
                 <h2 className="text-isiblue-700 font-bold text-lg flex items-center gap-2"><UserCog size={18} className="text-isigold-600"/> Mon profil</h2>
                 <button onClick={() => setShowMonProfil(false)} className="p-2 rounded-xl text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 transition-all"><X size={18}/></button>
               </div>
-              <div className="text-sm text-slate-700 font-semibold">{user?.name}</div>
-              <div className="text-xs text-slate-400 mb-4">{user?.email} · Accueil Pédagogique</div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-600 to-isigold-500 flex items-center justify-center flex-shrink-0">
+                  {user?.photo_url ? (
+                    <img src={user.photo_url} alt={user.name} className="w-full h-full object-cover"/>
+                  ) : (
+                    <span className="text-white font-bold text-lg">{(user?.name || 'P')[0].toUpperCase()}</span>
+                  )}
+                </div>
+                <div>
+                  <div className="text-sm text-slate-700 font-semibold">{user?.name}</div>
+                  <div className="text-xs text-slate-400 mb-2">{user?.email} · Accueil Pédagogique</div>
+                  <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer bg-isiblue-500/10 text-isiblue-500 hover:bg-isiblue-500/20 transition-colors">
+                    {uploadingPhoto ? 'Envoi...' : 'Changer la photo'}
+                    <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto} onChange={handlePhotoChange}/>
+                  </label>
+                </div>
+              </div>
               <h3 className="text-isiblue-700 font-semibold text-sm mb-3">Modifier le mot de passe</h3>
               <form onSubmit={handleChangePassword} className="space-y-3">
                 <div>

@@ -15,7 +15,7 @@ import {
   downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob, downloadBrouillardBlob,
   getCashierStudents, getCashierStudentSuivi, getInscriptionDetails,
   demanderModificationPaiement, getStatutDemandeModification,
-  updateMyPassword,
+  updateMyPassword, updateMyPhoto,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 
@@ -545,7 +545,7 @@ function PdfPreviewModal({ url, label, onClose }) {
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */
 export default function CashierDashboard() {
-  const { logout, user } = useAuth()
+  const { logout, user, updateUser } = useAuth()
   const navigate   = useNavigate()
   const [active, setActive]       = useState('dashboard')
   const [stats, setStats]         = useState(null)
@@ -784,6 +784,24 @@ export default function CashierDashboard() {
   const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
   const [changingPwd, setChangingPwd] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    try {
+      const formData = new FormData()
+      formData.append('photo', file)
+      const { data } = await updateMyPhoto(formData)
+      updateUser(data.user)
+      toast.success('Photo mise à jour !')
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'envoi de la photo")
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
+    }
+  }
   const handleChangePassword = async (e) => {
     e.preventDefault()
     if (pwdForm.password !== pwdForm.password_confirmation) {
@@ -1431,7 +1449,11 @@ export default function CashierDashboard() {
                       </div>
                       <div>
                         <div className="text-slate-900 text-sm font-semibold">{user?.name}</div>
-                        <div className="text-slate-400 text-xs">{user?.email} · Caisse</div>
+                        <div className="text-slate-400 text-xs mb-2">{user?.email} · Caisse</div>
+                        <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer bg-isiblue-500/10 text-isiblue-500 hover:bg-isiblue-500/20 transition-colors">
+                          {uploadingPhoto ? 'Envoi...' : 'Changer la photo'}
+                          <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto} onChange={handlePhotoChange}/>
+                        </label>
                       </div>
                     </div>
                   </div>
