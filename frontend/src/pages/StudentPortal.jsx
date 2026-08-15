@@ -1262,38 +1262,40 @@ export default function StudentPortal() {
                     <div className="p-4 border-b border-slate-200">
                       <h3 className="text-isiblue-700 font-semibold">Historique des paiements</h3>
                     </div>
-                    <table className="data-table-light">
-                      <thead><tr><th>Type</th><th>Montant</th><th>Méthode</th><th>Date</th><th>Statut</th><th>Reçu</th></tr></thead>
-                      <tbody>
-                        {payments.length === 0 ? (
-                          <tr><td colSpan={6} className="text-center text-slate-400 py-8">Aucun paiement</td></tr>
-                        ) : payments.map((p) => (
-                          <tr key={p.id}>
-                            <td>{p.libelle || p.type}</td>
-                            <td className="font-semibold">{Number(p.montant).toLocaleString()} FCFA</td>
-                            <td>{p.methode?.toUpperCase()}</td>
-                            <td>{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
-                            <td>
-                              <div className="flex items-center gap-2">
-                                <span className={p.statut === 'complete' ? 'badge-accepted' : p.statut === 'annule' ? 'badge-rejected' : 'badge-pending'}>
-                                  {p.statut === 'complete' ? 'Payé' : p.statut === 'annule' ? 'Annulé' : 'En attente'}
-                                </span>
-                                {p.statut === 'en_attente' && p.methode === 'wave' && (
-                                  <button
-                                    onClick={() => handleCancelPayment(p.id)}
-                                    className="text-xs text-red-500 hover:text-red-600 underline transition-colors"
-                                    title="Annuler ce paiement Wave non complété"
-                                  >
-                                    Annuler
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                            <td>{p.recu_pdf_path && <button onClick={() => handleDownloadRecu(p.id)} className="text-isiblue-600 hover:text-isiblue-700 flex items-center gap-1 text-xs transition-colors"><Download size={12} />Reçu</button>}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="data-table-light">
+                        <thead><tr><th>Type</th><th>Montant</th><th>Méthode</th><th>Date</th><th>Statut</th><th>Reçu</th></tr></thead>
+                        <tbody>
+                          {payments.length === 0 ? (
+                            <tr><td colSpan={6} className="text-center text-slate-400 py-8">Aucun paiement</td></tr>
+                          ) : payments.map((p) => (
+                            <tr key={p.id}>
+                              <td className="whitespace-nowrap">{p.libelle || p.type}</td>
+                              <td className="font-semibold whitespace-nowrap">{Number(p.montant).toLocaleString()} FCFA</td>
+                              <td className="whitespace-nowrap">{p.methode?.toUpperCase()}</td>
+                              <td className="whitespace-nowrap">{p.date_paiement ? new Date(p.date_paiement).toLocaleDateString('fr-FR') : '—'}</td>
+                              <td>
+                                <div className="flex items-center gap-2 whitespace-nowrap">
+                                  <span className={p.statut === 'complete' ? 'badge-accepted' : p.statut === 'annule' ? 'badge-rejected' : 'badge-pending'}>
+                                    {p.statut === 'complete' ? 'Payé' : p.statut === 'annule' ? 'Annulé' : 'En attente'}
+                                  </span>
+                                  {p.statut === 'en_attente' && p.methode === 'wave' && (
+                                    <button
+                                      onClick={() => handleCancelPayment(p.id)}
+                                      className="text-xs text-red-500 hover:text-red-600 underline transition-colors"
+                                      title="Annuler ce paiement Wave non complété"
+                                    >
+                                      Annuler
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap">{p.recu_pdf_path && <button onClick={() => handleDownloadRecu(p.id)} className="text-isiblue-600 hover:text-isiblue-700 flex items-center gap-1 text-xs transition-colors"><Download size={12} />Reçu</button>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
