@@ -1,7 +1,7 @@
 import sharp from 'sharp'
 import { existsSync } from 'fs'
 
-const BG = '#0f2352' // isiblue-700
+const BG = '#ffffff'
 const src = 'public/isi-logo.png'
 
 async function makeIcon(size, outPath, logoScale = 0.7) {
