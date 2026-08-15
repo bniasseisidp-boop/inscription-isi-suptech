@@ -966,7 +966,7 @@ export default function StudentPortal() {
               {notifOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-50">
+                  <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-16 sm:top-auto mt-0 sm:mt-2 w-auto sm:w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-50">
                     <div className="sticky top-0 bg-white/95 backdrop-blur-xl px-4 py-3 border-b border-slate-200 flex items-center justify-between">
                       <span className="text-sm font-semibold text-isiblue-700">Notifications</span>
                       {student?.notifications?.filter((n) => !n.lu).length > 0 && (
