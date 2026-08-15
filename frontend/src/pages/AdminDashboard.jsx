@@ -761,7 +761,7 @@ export default function AdminDashboard() {
   const [createAdvanced, setCreateAdvanced] = useState(false)
   const [resetConfirm, setResetConfirm] = useState(false)
   const [resetting, setResetting]     = useState(false)
-  const [newStaff, setNewStaff]       = useState({ name: '', email: '', role: 'cashier', password: '' })
+  const [newStaff, setNewStaff]       = useState({ name: '', email: '', role: 'cashier' })
   const [formateurs, setFormateurs]   = useState([])
   const [membres, setMembres]         = useState([])
   const [partenaires, setPartenaires] = useState([])
@@ -1131,9 +1131,9 @@ export default function AdminDashboard() {
   const submitStaff = async () => {
     try { 
       await createStaff(newStaff)
-      toast.success('Compte créé !'); 
+      toast.success('Compte créé ! Un email avec le mot de passe temporaire a été envoyé.');
       setShowCreateStaff(false)
-      setNewStaff({ name: '', email: '', role: 'cashier', password: '' })
+      setNewStaff({ name: '', email: '', role: 'cashier' })
       getStaff().then(({ data }) => setStaff(data)) 
     }
     catch (e) { 
@@ -1212,7 +1212,7 @@ export default function AdminDashboard() {
   const activeLabel = NAV.find(n => n.id === active)?.label || ''
 
   return (
-    <div className={`min-h-screen flex ${T.page}`}>
+    <div className={`h-screen flex overflow-hidden ${T.page}`}>
 
       {/* Sidebar desktop — statique dans le flex */}
       <aside className={`hidden lg:flex flex-col w-64 flex-shrink-0 border-r backdrop-blur-xl ${isDark ? 'bg-space-900/95 border-white/10' : 'bg-white/95 border-slate-200'}`}>
@@ -1238,7 +1238,7 @@ export default function AdminDashboard() {
       </AnimatePresence>
 
       {/* Contenu principal */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
 
         {/* Topbar */}
         <div className={`sticky top-0 z-30 border-b px-4 sm:px-6 h-16 flex items-center justify-between flex-shrink-0 ${T.topbar}`}>
@@ -1868,7 +1868,7 @@ export default function AdminDashboard() {
                         <div><label className={T.label}>Nom complet</label><input className={T.input} value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})}/></div>
                         <div><label className={T.label}>Email</label><input className={T.input} type="email" value={newStaff.email} onChange={e => setNewStaff({...newStaff, email: e.target.value})}/></div>
                         <div><label className={T.label}>Rôle</label><select className={T.input} value={newStaff.role} onChange={e => setNewStaff({...newStaff, role: e.target.value})}><option value="admin">Administrateur</option><option value="cashier">Caissier</option><option value="accueil">Accueil</option><option value="pedagogique">Accueil Pédagogique</option></select></div>
-                        <div><label className={T.label}>Mot de passe</label><input className={T.input} type="password" value={newStaff.password} onChange={e => setNewStaff({...newStaff, password: e.target.value})}/></div>
+                        <div className="sm:col-span-2 text-xs text-isiblue-500 bg-isiblue-500/10 rounded-lg px-3 py-2">Un mot de passe temporaire sera généré et envoyé par email à la personne — elle le changera à sa première connexion.</div>
                       </div>
                       <div className="flex gap-3 mt-4">
                         <button onClick={() => setShowCreateStaff(false)} className="btn-secondary text-sm">Annuler</button>

@@ -455,15 +455,25 @@ class AdminController extends Controller
     public function createStaff(Request $request)
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:100',
-            'email'    => 'required|email|unique:users',
-            'role'     => 'required|in:admin,cashier,accueil,pedagogique',
-            'password' => 'required|string|min:8',
+            'name'  => 'required|string|max:100',
+            'email' => 'required|email|unique:users',
+            'role'  => 'required|in:admin,cashier,accueil,pedagogique',
         ]);
 
+        // Mot de passe temporaire généré automatiquement — jamais saisi par le
+        // super admin, envoyé uniquement par email ; l'intéressé le change à sa
+        // première connexion.
+        $tempPassword = \Str::random(10);
         $user = User::create(array_merge($validated, [
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($tempPassword),
         ]));
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)
+                ->send(new \App\Mail\StaffInvite($user, $tempPassword));
+        } catch (\Exception $e) {
+            \Log::warning('Email invitation staff: ' . $e->getMessage());
+        }
 
         \App\Services\ActivityLogger::log(
             $request->user(), 'staff.create', "Compte {$user->role} créé pour {$user->name} ({$user->email})", $user

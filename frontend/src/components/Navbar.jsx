@@ -33,13 +33,21 @@ export default function Navbar() {
   }
 
   const scrollTo = (id) => {
+    const wasOpen = open
     setOpen(false)
     if (location.pathname === '/') {
-      const el = document.getElementById(id)
-      if (el) {
-        const y = el.getBoundingClientRect().top + window.scrollY - 72
-        window.scrollTo({ top: y, behavior: 'smooth' })
-      }
+      // Le menu mobile met ~300ms à se refermer (animation de hauteur) — si on
+      // mesure la position de la section pendant qu'il est encore ouvert/en train
+      // de se refermer, la page a encore sa hauteur gonflée par le menu et le
+      // calcul tombe au mauvais endroit (on "scrolle" mais ça semble ne rien faire).
+      const delay = wasOpen ? 320 : 0
+      setTimeout(() => {
+        const el = document.getElementById(id)
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.scrollY - 72
+          window.scrollTo({ top: y, behavior: 'smooth' })
+        }
+      }, delay)
     } else {
       sessionStorage.setItem('isi_scroll_to', id)
       navigate('/')
@@ -54,13 +62,13 @@ export default function Navbar() {
   }[user?.role] || '/'
 
   const navBg = scrolled
-    ? 'bg-white border-b border-slate-200 shadow-lg'
-    : 'bg-white border-b border-slate-100'
+    ? 'bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-lg'
+    : 'bg-white/50 backdrop-blur-sm border-b border-transparent'
 
   const textColor    = 'text-slate-800'
   const textSubColor = 'text-slate-600'
-  const subLabel     = 'text-brand-600'
-  const hoverColor   = 'hover:text-brand-600'
+  const subLabel     = 'text-isiblue-600'
+  const hoverColor   = 'hover:text-isiblue-600'
   const mobileMenuBg = 'bg-white border-slate-200'
   const userPill     = 'bg-slate-100 border-slate-200'
   const logoutColor  = 'text-red-500 hover:text-red-600 hover:bg-red-50'
@@ -85,7 +93,7 @@ export default function Navbar() {
               e.target.nextSibling.style.display = 'flex'
             }}
           />
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-600 to-brand-400 items-center justify-center shadow-lg hidden">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-isiblue-600 to-isiblue-400 items-center justify-center shadow-lg hidden">
             <span className="text-white font-black text-sm">ISI</span>
           </div>
           <div>
@@ -106,7 +114,7 @@ export default function Navbar() {
               </motion.button>
 
               <Link to="/formations"
-                className="px-4 py-2 rounded-lg transition-all text-sm font-medium flex items-center gap-1.5 text-brand-700 hover:text-brand-800 hover:bg-brand-50">
+                className="px-4 py-2 rounded-lg transition-all text-sm font-medium flex items-center gap-1.5 text-isiblue-700 hover:text-isiblue-800 hover:bg-isiblue-50">
                 <BookOpen size={14}/> Nos Formations
               </Link>
 
@@ -130,7 +138,7 @@ export default function Navbar() {
                 <LayoutDashboard size={16} /> Tableau de bord
               </Link>
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${userPill}`}>
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-isiblue-600 to-isiblue-400 flex items-center justify-center">
                   <User size={14} className="text-white" />
                 </div>
                 <span className={`text-sm font-medium ${textColor}`}>{user.name}</span>
@@ -165,7 +173,7 @@ export default function Navbar() {
                     Filières
                   </button>
                   <Link to="/formations" onClick={() => setOpen(false)}
-                    className="py-2.5 px-4 rounded-xl text-sm font-bold flex items-center gap-2 text-brand-700 bg-brand-50">
+                    className="py-2.5 px-4 rounded-xl text-sm font-bold flex items-center gap-2 text-isiblue-700 bg-isiblue-50">
                     <BookOpen size={14}/> Nos Formations
                   </Link>
                   <button onClick={() => scrollTo('campus')}
