@@ -107,7 +107,27 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/permissions-modification/{permission}/approuver', [AdminController::class, 'approuverPermission']);
         Route::post('/permissions-modification/{permission}/refuser', [AdminController::class, 'refuserPermission']);
 
-        // Content management
+        // Content management (accessible admin + super admin)
+        Route::prefix('contenu')->group(function () {
+            // Témoignages
+            Route::get('/temoignages', [ContentController::class, 'adminTemoignages']);
+            Route::post('/temoignages/{id}/approuver', [ContentController::class, 'approuverTemoignage']);
+            Route::delete('/temoignages/{id}', [ContentController::class, 'deleteTemoignage']);
+            // Newsletter
+            Route::get('/newsletter', [ContentController::class, 'newsletterSubscribers']);
+            Route::post('/newsletter/annoncer', [ContentController::class, 'sendNewsletterAnnouncement']);
+        });
+    });
+
+    // ── Super Admin only — journal d'audit + mode maintenance + contenu du site ─
+    Route::middleware('role:super_admin')->prefix('admin')->group(function () {
+        Route::get('/audit', [AdminController::class, 'audit']);
+        Route::post('/maintenance', [AdminController::class, 'toggleMaintenance']);
+        Route::post('/force-2fa', [AdminController::class, 'forceTwoFactor']);
+        Route::get('/force-2fa', [AdminController::class, 'twoFactorStatus']);
+        Route::post('/contenu/stats', [ContentController::class, 'updateStats']);
+        Route::post('/contenu/blocs/texte', [ContentController::class, 'updateContentBlockText']);
+        Route::post('/contenu/blocs/photo', [ContentController::class, 'updateContentBlockImage']);
         Route::prefix('contenu')->group(function () {
             // Formateurs
             Route::get('/formateurs', [ContentController::class, 'adminFormateurs']);
@@ -122,28 +142,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/partenaires', [ContentController::class, 'adminPartenaires']);
             Route::post('/partenaires', [ContentController::class, 'createPartenaire']);
             Route::delete('/partenaires/{id}', [ContentController::class, 'deletePartenaire']);
-            // Témoignages
-            Route::get('/temoignages', [ContentController::class, 'adminTemoignages']);
-            Route::post('/temoignages/{id}/approuver', [ContentController::class, 'approuverTemoignage']);
-            Route::delete('/temoignages/{id}', [ContentController::class, 'deleteTemoignage']);
-            // Newsletter
-            Route::get('/newsletter', [ContentController::class, 'newsletterSubscribers']);
-            Route::post('/newsletter/annoncer', [ContentController::class, 'sendNewsletterAnnouncement']);
             // Social settings
             Route::get('/social', [ContentController::class, 'getSocialSettings']);
             Route::post('/social', [ContentController::class, 'updateSocialSettings']);
         });
-    });
-
-    // ── Super Admin only — journal d'audit + mode maintenance ──────────────────
-    Route::middleware('role:super_admin')->prefix('admin')->group(function () {
-        Route::get('/audit', [AdminController::class, 'audit']);
-        Route::post('/maintenance', [AdminController::class, 'toggleMaintenance']);
-        Route::post('/force-2fa', [AdminController::class, 'forceTwoFactor']);
-        Route::get('/force-2fa', [AdminController::class, 'twoFactorStatus']);
-        Route::post('/contenu/stats', [ContentController::class, 'updateStats']);
-        Route::post('/contenu/blocs/texte', [ContentController::class, 'updateContentBlockText']);
-        Route::post('/contenu/blocs/photo', [ContentController::class, 'updateContentBlockImage']);
     });
 
     // ── Cashier routes ──────────────────────────────────────────────────────
@@ -190,6 +192,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/etudiants/{student}/fiche-inscription',       [AccueilPedagogiqueController::class, 'downloadFicheInscription']);
         Route::post('/etudiants/{student}/verrouiller',       [AccueilPedagogiqueController::class, 'toggleLock']);
         Route::post('/etudiants/{student}/photo',             [AccueilPedagogiqueController::class, 'updatePhoto']);
+        Route::post('/etudiants/{student}/document',          [AdminController::class, 'uploadDocument']);
         Route::get('/candidats',                              [AccueilPedagogiqueController::class, 'pendingStudents']);
         Route::post('/candidats/{student}/accepter',          [AccueilPedagogiqueController::class, 'acceptStudent']);
         // Paramètres pédagogique (lecture seule)

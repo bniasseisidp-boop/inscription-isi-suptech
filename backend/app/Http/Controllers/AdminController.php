@@ -198,10 +198,11 @@ class AdminController extends Controller
             ? $request->file('photo')->store('photos', 'public')
             : null;
 
+        $tempPassword = \Str::random(10);
         $user = User::create([
             'name'     => Student::capitaliserNomPropre($validated['prenom']) . ' ' . Student::capitaliserNomPropre($validated['nom']),
             'email'    => $validated['email'],
-            'password' => Hash::make(\Str::random(12)),
+            'password' => Hash::make($tempPassword),
             'role'     => 'student',
         ]);
 
@@ -219,6 +220,13 @@ class AdminController extends Controller
                 'accepte_par'      => $request->user()->id,
             ]);
             $this->qrService->generateStudentCard($student);
+        }
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)
+                ->send(new \App\Mail\StudentInvite($user, $tempPassword, $student->fresh()));
+        } catch (\Exception $e) {
+            \Log::warning('Email invitation étudiant (admin): ' . $e->getMessage());
         }
 
         return response()->json(['message' => 'Étudiant créé', 'student' => $student->fresh()], 201);

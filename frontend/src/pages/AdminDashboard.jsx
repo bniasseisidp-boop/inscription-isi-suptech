@@ -130,7 +130,7 @@ function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, 
 
       {/* Navigation */}
       <nav className={`flex-1 overflow-y-auto p-3 space-y-1`}>
-        {NAV.filter(item => (item.id !== 'audit' && item.id !== 'contenu') || user?.role === 'super_admin').map((item) => {
+        {NAV.filter(item => !['audit', 'contenu', 'formateurs', 'membres', 'partenaires', 'social'].includes(item.id) || user?.role === 'super_admin').map((item) => {
           const Icon = item.icon
           const isActive = active === item.id
           return (

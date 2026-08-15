@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   getPedagogiqueClasses, getPedagogiqueStudents, addPedagogiqueStudent,
   getPedagogiqueStudentDetail, downloadClassListPdf, generatePedagogiqueCard,
-  downloadPedagogiqueCard, togglePedagogiqueLock, updatePedagogiquePhoto,
+  downloadPedagogiqueCard, togglePedagogiqueLock, updatePedagogiquePhoto, uploadPedagogiqueDocument,
   getPedagogiquePending, acceptPedagogiqueStudent, getFilieres,
   createPedagogiqueFiliere, updatePedagogiqueFiliere, deletePedagogiqueFiliere,
   createPedagogiqueLicense, updatePedagogiqueLicense, deletePedagogiqueLicense,
@@ -120,6 +120,20 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
       onUpdated?.()
     } catch { toast.error('Erreur mise à jour photo') }
     finally { setChangingPhoto(false); e.target.value = '' }
+  }
+
+  const [uploadingDoc, setUploadingDoc] = useState(null)
+  const handleUploadDoc = async (champ, e) => {
+    const file = e.target.files?.[0]; if (!file) return
+    setUploadingDoc(champ)
+    const fd = new FormData(); fd.append('champ', champ); fd.append('fichier', file)
+    try {
+      const { data } = await uploadPedagogiqueDocument(s.id, fd)
+      setDetail(prev => ({ ...prev, student: { ...prev.student, [champ]: data.student[champ] } }))
+      toast.success('Document enregistré !')
+      onUpdated?.()
+    } catch (err) { toast.error(err.response?.data?.message || 'Erreur envoi du document') }
+    finally { setUploadingDoc(null); e.target.value = '' }
   }
 
   return (
@@ -249,6 +263,42 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
                   </button>
                 </>
               )}
+            </div>
+
+            {/* Documents du dossier — dépôt en personne ou scan, tant que le profil n'est pas verrouillé */}
+            <div className="pt-4 border-t border-slate-200">
+              <h4 className="text-slate-700 font-semibold text-sm mb-3 flex items-center gap-2"><FileText size={15}/> Documents du dossier</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { champ: 'doc_bac', label: 'Diplôme du BAC' },
+                  { champ: 'doc_releve_notes', label: 'Relevé de notes' },
+                  { champ: 'doc_cin', label: 'CIN légalisée' },
+                  { champ: 'doc_acte_naissance', label: 'Acte de naissance' },
+                  { champ: 'doc_bulletin_transfert', label: 'Bulletin de transfert' },
+                ].map(({ champ, label }) => (
+                  <div key={champ} className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-sm ${s[champ] ? 'border-green-300 bg-green-50/50' : 'border-slate-200'}`}>
+                    <span className={`flex items-center gap-1.5 ${s[champ] ? 'text-green-700' : 'text-slate-500'}`}>
+                      {s[champ] ? <CheckCircle size={14}/> : <XCircle size={14} className="text-slate-300"/>}
+                      {label}
+                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {s[champ] && (
+                        <a href={`/storage/${s[champ]}`} target="_blank" rel="noopener noreferrer" className="text-isiblue-500 hover:text-isiblue-600">
+                          <ExternalLink size={14}/>
+                        </a>
+                      )}
+                      <label className={`text-xs cursor-pointer flex items-center gap-1 text-isiblue-500 hover:text-isiblue-600 ${uploadingDoc === champ ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {uploadingDoc === champ ? <div className="spinner w-3 h-3"/> : <Upload size={12}/>}
+                        {s[champ] ? 'Remplacer' : 'Ajouter'}
+                        <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => handleUploadDoc(champ, e)}/>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200">
               <button onClick={handleToggleLock} disabled={locking}
                 className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border font-semibold transition-all disabled:opacity-50 ${
                   s.profil_verrouille
@@ -267,6 +317,16 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
 }
 
 /* ── Modal ajouter étudiant ───────────────────────────────────────────────── */
+function AddStudentField({ form, set, label, name, type = 'text', placeholder = '', required = false }) {
+  return (
+    <div>
+      <label className="form-label-light text-xs">{label}{required && <span className="text-red-500"> *</span>}</label>
+      <input className="form-input-light text-sm py-2" type={type} placeholder={placeholder}
+        value={form[name]} onChange={e => set(name, e.target.value)} required={required}/>
+    </div>
+  )
+}
+
 function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
   const [form, setForm] = useState({
     nom: '', prenom: '', email: '', telephone: '', sexe: 'M',
@@ -300,14 +360,6 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
     } finally { setSaving(false) }
   }
 
-  const F = ({ label, name, type = 'text', placeholder = '', required = false }) => (
-    <div>
-      <label className="form-label-light text-xs">{label}{required && <span className="text-red-500"> *</span>}</label>
-      <input className="form-input-light text-sm py-2" type={type} placeholder={placeholder}
-        value={form[name]} onChange={e => set(name, e.target.value)} required={required}/>
-    </div>
-  )
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -335,10 +387,10 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <F label="Nom" name="nom" required placeholder="DIALLO"/>
-            <F label="Prénom" name="prenom" required placeholder="Mamadou"/>
-            <F label="Email" name="email" type="email" required placeholder="email@example.com"/>
-            <F label="Téléphone" name="telephone" required placeholder="77 000 00 00"/>
+            <AddStudentField form={form} set={set} label="Nom" name="nom" required placeholder="DIALLO"/>
+            <AddStudentField form={form} set={set} label="Prénom" name="prenom" required placeholder="Mamadou"/>
+            <AddStudentField form={form} set={set} label="Email" name="email" type="email" required placeholder="email@example.com"/>
+            <AddStudentField form={form} set={set} label="Téléphone" name="telephone" required placeholder="77 000 00 00"/>
             <div>
               <label className="form-label-light text-xs">Sexe <span className="text-red-500">*</span></label>
               <select className="form-input-light text-sm py-2" value={form.sexe} onChange={e => set('sexe', e.target.value)}>
@@ -346,11 +398,11 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
                 <option value="F">Féminin</option>
               </select>
             </div>
-            <F label="Date de naissance" name="date_naissance" type="date" required/>
-            <F label="Lieu de naissance" name="lieu_naissance" required placeholder="Dakar"/>
-            <F label="Adresse" name="adresse" required placeholder="Dakar, Médina..."/>
-            <F label="Nationalité" name="nationalite" placeholder="Sénégalais(e)"/>
-            <F label="Pays de résidence" name="pays_residence" placeholder="Sénégal"/>
+            <AddStudentField form={form} set={set} label="Date de naissance" name="date_naissance" type="date" required/>
+            <AddStudentField form={form} set={set} label="Lieu de naissance" name="lieu_naissance" required placeholder="Dakar"/>
+            <AddStudentField form={form} set={set} label="Adresse" name="adresse" required placeholder="Dakar, Médina..."/>
+            <AddStudentField form={form} set={set} label="Nationalité" name="nationalite" placeholder="Sénégalais(e)"/>
+            <AddStudentField form={form} set={set} label="Pays de résidence" name="pays_residence" placeholder="Sénégal"/>
 
             <div>
               <label className="form-label-light text-xs">Filière <span className="text-red-500">*</span></label>
@@ -697,6 +749,10 @@ export default function AccueilPedagogiqueDashboard() {
               <p className="text-slate-500 max-w-sm">
                 Sélectionnez une filière ou un niveau dans le menu de gauche pour gérer les étudiants.
               </p>
+              <button onClick={() => setShowAddModal(true)}
+                className="btn-primary text-sm flex items-center gap-2 mt-6">
+                <Plus size={16}/> Inscrire un étudiant
+              </button>
               <div className="mt-8 grid grid-cols-3 gap-4 max-w-md">
                 {[
                   { icon: Users, label: 'Gérer les étudiants', color: 'text-isiblue-500' },

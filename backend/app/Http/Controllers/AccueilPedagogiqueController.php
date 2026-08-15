@@ -73,10 +73,11 @@ class AccueilPedagogiqueController extends Controller
             ? $request->file('photo')->store('photos', 'public')
             : null;
 
+        $tempPassword = \Str::random(10);
         $user = User::create([
             'name'     => Student::capitaliserNomPropre($validated['prenom']) . ' ' . Student::capitaliserNomPropre($validated['nom']),
             'email'    => $validated['email'],
-            'password' => Hash::make(\Str::random(12)),
+            'password' => Hash::make($tempPassword),
             'role'     => 'student',
         ]);
 
@@ -100,6 +101,13 @@ class AccueilPedagogiqueController extends Controller
             'message'    => 'Votre inscription a été enregistrée par le service pédagogique. Matricule : ' . $student->matricule,
             'type'       => 'success',
         ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)
+                ->send(new \App\Mail\StudentInvite($user, $tempPassword, $student->fresh()));
+        } catch (\Exception $e) {
+            \Log::warning('Email invitation étudiant (pédagogique): ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Étudiant inscrit avec succès.',

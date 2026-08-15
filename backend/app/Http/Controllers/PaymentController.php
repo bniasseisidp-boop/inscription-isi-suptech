@@ -252,11 +252,13 @@ class PaymentController extends Controller
         $student = Student::with('license')->findOrFail($request->student_id);
         $moisTries = collect($request->mois)->unique()->sort()->values();
 
+        $dejaValides = [];
         foreach ($moisTries as $mois) {
-            $erreur = $student->moisEstPayable($mois);
+            $erreur = $student->moisEstPayable($mois, $dejaValides);
             if ($erreur) {
                 return response()->json(['message' => "$mois : $erreur"], 422);
             }
+            $dejaValides[] = $mois;
         }
 
         $fraisMensuel = floatval($student->license?->frais_mensuel ?? 0);
@@ -516,18 +518,15 @@ class PaymentController extends Controller
         $mois = $request->input('mois', now()->format('Y-m'));
 
         // All active students (inscription paid)
-        $tous = \App\Models\Student::with(['filiere', 'license'])
+        $tous = \App\Models\Student::with(['filiere', 'license', 'payments'])
             ->where('inscription_payee', true)
+            ->where('statut_inscription', 'accepte')
             ->get();
 
-        // Students who paid this month
-        $payeIds = Payment::where('statut', 'complete')
-            ->where('type', 'mensualite')
-            ->where('mois', $mois)
-            ->pluck('student_id')
-            ->unique();
-
-        $impaye = $tous->whereNotIn('id', $payeIds)->values();
+        // Un étudiant n'apparaît que si ce mois fait réellement partie de son cycle de
+        // paiement (ex. hors juillet/août pour un cycle sept-juin) — sinon on obtenait
+        // de faux impayés dès qu'on consultait le rapport pendant les vacances.
+        $impaye = $tous->filter(fn ($s) => in_array($mois, $s->mois_non_payes, true))->values();
 
         return response()->json([
             'mois'   => $mois,
@@ -541,17 +540,12 @@ class PaymentController extends Controller
     {
         $mois = $request->input('mois', now()->format('Y-m'));
 
-        $tous = \App\Models\Student::with(['filiere', 'license', 'user'])
+        $tous = \App\Models\Student::with(['filiere', 'license', 'user', 'payments'])
             ->where('inscription_payee', true)
+            ->where('statut_inscription', 'accepte')
             ->get();
 
-        $payeIds = Payment::where('statut', 'complete')
-            ->where('type', 'mensualite')
-            ->where('mois', $mois)
-            ->pluck('student_id')
-            ->unique();
-
-        $etudiants = $tous->whereNotIn('id', $payeIds)->values()->toArray();
+        $etudiants = $tous->filter(fn ($s) => in_array($mois, $s->mois_non_payes, true))->values()->toArray();
 
         $path     = $this->pdfService->generateImpayesPdf($etudiants, $mois);
         $fullPath = Storage::disk('public')->path($path);

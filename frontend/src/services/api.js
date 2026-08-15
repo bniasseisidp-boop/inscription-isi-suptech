@@ -214,6 +214,7 @@ export const generatePedagogiqueCard      = (id)     => api.post(`/pedagogique/e
 export const downloadPedagogiqueCard      = (id)     => api.get(`/pedagogique/etudiants/${id}/carte/telecharger`, { responseType: 'blob' })
 export const togglePedagogiqueLock        = (id)     => api.post(`/pedagogique/etudiants/${id}/verrouiller`)
 export const updatePedagogiquePhoto       = (id, data) => api.post(`/pedagogique/etudiants/${id}/photo`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const uploadPedagogiqueDocument    = (id, data) => api.post(`/pedagogique/etudiants/${id}/document`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const getPedagogiquePending        = (params) => api.get('/pedagogique/candidats', { params })
 export const acceptPedagogiqueStudent     = (id)     => api.post(`/pedagogique/candidats/${id}/accepter`)
 

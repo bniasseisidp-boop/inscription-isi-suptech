@@ -173,7 +173,9 @@ class Student extends Model
      * Vérifie qu'un mois donné peut faire l'objet d'un nouveau paiement de mensualité.
      * Retourne null si c'est payable, sinon un message d'erreur explicite.
      */
-    public function moisEstPayable(string $moisCle): ?string
+    /** @param array $moisSupposesPayes Mois du même lot (paiement multi-mois) déjà validés
+     *  avant celui-ci — à traiter comme réglés pour ne pas se bloquer soi-même. */
+    public function moisEstPayable(string $moisCle, array $moisSupposesPayes = []): ?string
     {
         if (!$this->inscription_payee || $this->statut_inscription !== 'accepte') {
             return "L'inscription doit être réglée avant de payer une mensualité.";
@@ -204,6 +206,27 @@ class Student extends Model
         $dejaPaye = $this->payments()->where('type', 'mensualite')->where('mois', $moisCle)->exists();
         if ($dejaPaye) {
             return "Ce mois a déjà été payé — impossible de payer deux fois le même mois.";
+        }
+
+        // Interdit de sauter un mois impayé plus ancien pour payer un mois plus récent —
+        // même en paiement anticipé (le mois pas encore "arrivé" dans le calendrier réel
+        // n'est pas dans mois_non_payes, qui s'arrête à aujourd'hui : on doit donc rebalayer
+        // tout le cycle sept-juin, pas seulement jusqu'à maintenant). Le premier mois encore
+        // dû (hors ceux déjà validés dans ce même lot multi-mois) doit toujours être réglé
+        // avant tout mois qui le suit.
+        $paidMonths = $this->payments->where('type', 'mensualite')->pluck('mois')->toArray();
+        $premierNonPaye = null;
+        $cur = \Carbon\Carbon::createFromFormat('Y-m-d', $startCle . '-01');
+        while ($cur->format('Y-m') < $dernierMoisCle) {
+            $cle = $cur->format('Y-m');
+            if (!in_array($cle, $paidMonths, true) && !in_array($cle, $moisSupposesPayes, true)) {
+                $premierNonPaye = $cle;
+                break;
+            }
+            $cur->addMonth();
+        }
+        if ($premierNonPaye && $moisCle > $premierNonPaye) {
+            return "Le mois {$premierNonPaye} n'est pas encore réglé — il doit être payé avant {$moisCle}.";
         }
 
         return null;
