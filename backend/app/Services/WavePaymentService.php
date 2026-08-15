@@ -63,6 +63,12 @@ class WavePaymentService
     public function verifyWebhookSignature(string $payload, string $signature): bool
     {
         $secret = config('services.wave.webhook_secret');
+        if (empty($secret)) {
+            // Aucun secret configuré : impossible de vérifier une signature de façon sûre,
+            // on rejette systématiquement plutôt que de calculer un HMAC avec une clé vide
+            // (ce qui serait trivialement falsifiable par n'importe qui).
+            return false;
+        }
         $expected = hash_hmac('sha256', $payload, $secret);
         return hash_equals($expected, $signature);
     }

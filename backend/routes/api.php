@@ -10,11 +10,15 @@ use App\Http\Controllers\ContentController;
 use App\Http\Controllers\AccueilPedagogiqueController;
 
 // ─── Public routes ──────────────────────────────────────────────────────────
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-Route::post('/verify-2fa', [AuthController::class, 'verifyTwoFactor']);
-Route::post('/resend-2fa', [AuthController::class, 'resendTwoFactor']);
+// Limitées en fréquence — ce sont des cibles classiques pour le bruteforce
+// (mot de passe, code 2FA à 6 chiffres).
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/verify-2fa', [AuthController::class, 'verifyTwoFactor']);
+    Route::post('/resend-2fa', [AuthController::class, 'resendTwoFactor']);
+});
 Route::get('/maintenance-status', function () {
     $actif = \Illuminate\Support\Facades\DB::table('site_settings')->where('cle', 'maintenance_mode')->value('valeur') === '1';
     $msg   = \Illuminate\Support\Facades\DB::table('site_settings')->where('cle', 'maintenance_message')->value('valeur');
