@@ -4,30 +4,30 @@
 <meta charset="UTF-8">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'DejaVu Sans',sans-serif; font-size:12px; color:#1a2744; }
-  .header { background:linear-gradient(135deg,#0a1628,#1e3a5f); color:white; padding:25px 40px; }
-  .header h1 { font-size:24px; font-weight:700; letter-spacing:3px; }
-  .header p { opacity:.8; font-size:11px; margin-top:4px; }
+  body { font-family:'DejaVu Sans',sans-serif; font-size:13.5px; color:#1a2744; }
+  .header { background:linear-gradient(135deg,#0a1628,#1e3a5f); color:white; padding:30px 44px; }
+  .header h1 { font-size:27px; font-weight:700; letter-spacing:3px; }
+  .header p { opacity:.8; font-size:12px; margin-top:5px; }
   .watermark { position:fixed; top:35%; left:15%; font-size:80px; font-weight:900; color:rgba(59,130,246,0.06); transform:rotate(-35deg); white-space:nowrap; z-index:0; }
-  .body { padding:40px; position:relative; z-index:1; }
-  .ref { text-align:right; color:#64748b; font-size:10px; margin-bottom:30px; }
-  .title { text-align:center; margin-bottom:30px; }
-  .title h2 { font-size:20px; color:#1e3a5f; text-transform:uppercase; letter-spacing:3px; border-bottom:3px solid #3b82f6; display:inline-block; padding-bottom:8px; }
-  .student-box { background:linear-gradient(135deg,#eff6ff,#dbeafe); border:2px solid #3b82f6; border-radius:12px; padding:20px 25px; margin:20px 0; }
-  .student-box h3 { font-size:20px; color:#1e3a5f; font-weight:700; }
-  .student-box .info { color:#3b82f6; font-size:12px; margin-top:5px; }
-  .matricule-box { background:#1e3a5f; color:white; border-radius:8px; padding:12px 20px; text-align:center; margin:20px 0; }
-  .matricule-box .label { font-size:10px; opacity:.7; text-transform:uppercase; letter-spacing:2px; }
-  .matricule-box .value { font-size:24px; font-weight:700; letter-spacing:4px; margin-top:4px; }
-  .program { display:grid; grid-template-columns:1fr 1fr; gap:15px; margin:20px 0; }
-  .prog-item { background:#f8faff; border-left:3px solid #3b82f6; padding:10px 15px; }
-  .prog-item .label { font-size:9px; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; }
-  .prog-item .value { font-size:13px; color:#1e3a5f; font-weight:600; margin-top:3px; }
-  p.body-text { line-height:1.7; color:#374151; margin:15px 0; font-size:12px; }
-  .signature { margin-top:40px; text-align:right; }
+  .body { padding:44px; position:relative; z-index:1; }
+  .ref { text-align:right; color:#64748b; font-size:11px; margin-bottom:34px; }
+  .title { text-align:center; margin-bottom:34px; }
+  .title h2 { font-size:23px; color:#1e3a5f; text-transform:uppercase; letter-spacing:3px; border-bottom:3px solid #3b82f6; display:inline-block; padding-bottom:9px; }
+  .student-box { background:linear-gradient(135deg,#eff6ff,#dbeafe); border:2px solid #3b82f6; border-radius:12px; padding:24px 28px; margin:24px 0; }
+  .student-box h3 { font-size:22px; color:#1e3a5f; font-weight:700; }
+  .student-box .info { color:#3b82f6; font-size:13px; margin-top:6px; }
+  .matricule-box { background:#1e3a5f; color:white; border-radius:8px; padding:15px 22px; text-align:center; margin:24px 0; }
+  .matricule-box .label { font-size:11px; opacity:.7; text-transform:uppercase; letter-spacing:2px; }
+  .matricule-box .value { font-size:27px; font-weight:700; letter-spacing:4px; margin-top:5px; }
+  .program { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:24px 0; }
+  .prog-item { background:#f8faff; border-left:3px solid #3b82f6; padding:13px 17px; }
+  .prog-item .label { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; }
+  .prog-item .value { font-size:15px; color:#1e3a5f; font-weight:600; margin-top:4px; }
+  p.body-text { line-height:1.8; color:#374151; margin:18px 0; font-size:13.5px; }
+  .signature { margin-top:46px; text-align:right; }
   .signature .sig-line { border-top:2px solid #1e3a5f; width:200px; display:inline-block; }
-  .signature p { font-size:11px; color:#64748b; margin-top:5px; }
-  .footer { background:#0a1628; color:rgba(255,255,255,0.6); text-align:center; padding:12px; font-size:9px; margin-top:30px; }
+  .signature p { font-size:12px; color:#64748b; margin-top:6px; }
+  .footer { background:#0a1628; color:rgba(255,255,255,0.6); text-align:center; padding:14px; font-size:10px; margin-top:34px; }
   .footer strong { color:#60a5fa; }
 </style>
 </head>

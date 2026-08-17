@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10px; color:#1e293b; background:#fff; }
+body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:11.5px; color:#1e293b; background:#fff; }
 
 .header { background:#ffffff; border-bottom:2px solid #1a3a8f; padding:18px 28px 14px; }
 .header-inner { display:flex; justify-content:space-between; align-items:center; }
@@ -32,11 +32,11 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10px; color:#1e293b
 
 table { width:100%; border-collapse:collapse; }
 thead tr { background:#0d1f3c; }
-thead th { color:#fff; font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:8px 10px; text-align:left; }
+thead th { color:#fff; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:9px 11px; text-align:left; }
 tbody tr:nth-child(even) { background:#f8fafc; }
-tbody td { padding:7px 10px; border-bottom:1px solid #f1f5f9; font-size:9.5px; vertical-align:middle; }
-.mat-badge { background:#dbeafe; color:#1d4ed8; font-family:monospace; font-size:8.5px; font-weight:800; padding:2px 7px; border-radius:4px; display:inline-block; }
-.badge-alert { background:#fee2e2; color:#b91c1c; font-size:7.5px; font-weight:800; padding:2px 7px; border-radius:20px; }
+tbody td { padding:8px 11px; border-bottom:1px solid #f1f5f9; font-size:11px; vertical-align:middle; }
+.mat-badge { background:#dbeafe; color:#1d4ed8; font-family:monospace; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; display:inline-block; }
+.badge-alert { background:#fee2e2; color:#b91c1c; font-size:9px; font-weight:800; padding:2px 7px; border-radius:20px; }
 
 .footer { background:#0d1f3c; padding:10px 28px; display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
 .footer p { color:rgba(255,255,255,.4); font-size:7px; }

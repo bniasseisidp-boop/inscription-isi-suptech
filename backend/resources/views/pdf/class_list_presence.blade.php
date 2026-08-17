@@ -5,25 +5,25 @@
 <title>Liste de présence</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #1a1a2e; padding: 18px; }
+  body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12.5px; color: #1a1a2e; padding: 20px; }
 
-  .header { display: table; width: 100%; border-bottom: 3px solid #1a3a8f; padding-bottom: 12px; margin-bottom: 16px; }
-  .header .logo-cell { display: table-cell; width: 46px; vertical-align: middle; }
-  .header .logo-cell img { width: 40px; height: 40px; }
+  .header { display: table; width: 100%; border-bottom: 3px solid #1a3a8f; padding-bottom: 14px; margin-bottom: 18px; }
+  .header .logo-cell { display: table-cell; width: 50px; vertical-align: middle; }
+  .header .logo-cell img { width: 44px; height: 44px; }
   .header .txt-cell { display: table-cell; vertical-align: middle; text-align: center; }
-  .header h1 { font-size: 18px; color: #1a3a8f; font-weight: bold; margin-bottom: 2px; }
-  .header p { font-size: 10px; color: #666; margin-bottom: 1px; }
+  .header h1 { font-size: 20px; color: #1a3a8f; font-weight: bold; margin-bottom: 3px; }
+  .header p { font-size: 11px; color: #666; margin-bottom: 1px; }
 
-  .meta { margin-bottom: 14px; }
-  .badge { display: inline-block; background: #1a3a8f; color: white; padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-right: 6px; }
+  .meta { margin-bottom: 16px; }
+  .badge { display: inline-block; background: #1a3a8f; color: white; padding: 4px 11px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-right: 6px; }
   .badge-green { background: #0e6e3a; }
-  .nb { font-size: 10px; color: #555; }
+  .nb { font-size: 11px; color: #555; }
 
-  table.liste { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  table.liste { width: 100%; border-collapse: collapse; margin-top: 8px; }
   thead tr { background: #1a3a8f; color: white; }
-  thead th { padding: 6px 5px; text-align: left; font-size: 10px; font-weight: bold; }
+  thead th { padding: 8px 6px; text-align: left; font-size: 11px; font-weight: bold; }
   tbody tr:nth-child(even) { background: #eef2ff; }
-  tbody td { padding: 5px 5px; border-bottom: 1px solid #ddd; font-size: 10px; vertical-align: middle; }
+  tbody td { padding: 7px 6px; border-bottom: 1px solid #ddd; font-size: 11.5px; vertical-align: middle; }
 
   .statut-inscrit   { color: #0e6e3a; font-weight: bold; }
   .statut-attente-p { color: #b45309; }
