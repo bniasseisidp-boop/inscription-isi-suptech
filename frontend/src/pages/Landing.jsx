@@ -46,17 +46,17 @@ const PARTENAIRES = [
 ]
 
 const FORMATEURS = [
-  { nom:'Cissé',  prenom:'Mr', photo:'/cisse.jpeg',     role:'Formateur • Coach Cisco', specialite:'Réseaux & Infrastructure', icon:Network, skills:['Cisco CCNA','VLAN','TCP/IP','Wireless'], desc:'Expert en architecture réseau et protocoles TCP/IP. Coach certifié Cisco CCNA — il accompagne les étudiants jusqu\'à la certification officielle.' },
-  { nom:'Junior', prenom:'Mr', photo:'/junior.jpeg',    role:'Formateur • Pentester',   specialite:'Cybersécurité',            icon:Shield,  skills:['Pentest','CTF','Forensics','SIEM'],    desc:'Spécialiste sécurité offensive et défensive. Anime des CTF, forme au pentesting, forensique numérique et réponse aux incidents.' },
-  { nom:'Robert', prenom:'Mr', photo:'/mr_robert.jpeg', role:'Formateur • Dev Full-Stack',specialite:'Développement Web & Mobile',icon:Code2, skills:['React','Laravel','Flutter','Node.js'],desc:'Développeur full-stack passionné. Enseigne React, Laravel, Flutter et Node.js. Mentor de projets innovants et startups étudiantes.' },
+  { nom:'Cissé',  prenom:'M.', photo:'/cisse.jpeg',     role:'Formateur • Coach Cisco', specialite:'Réseaux & Infrastructure', icon:Network, skills:['Cisco CCNA','VLAN','TCP/IP','Wireless'], desc:'Expert en architecture réseau et protocoles TCP/IP. Coach certifié Cisco CCNA — il accompagne les étudiants jusqu\'à la certification officielle.' },
+  { nom:'Junior', prenom:'M.', photo:'/junior.jpeg',    role:'Formateur • Pentester',   specialite:'Cybersécurité',            icon:Shield,  skills:['Pentest','CTF','Forensics','SIEM'],    desc:'Spécialiste sécurité offensive et défensive. Anime des CTF, forme au pentesting, forensique numérique et réponse aux incidents.' },
+  { nom:'Robert', prenom:'M.', photo:'/mr_robert.jpeg', role:'Formateur • Dev Full-Stack',specialite:'Développement Web & Mobile',icon:Code2, skills:['React','Laravel','Flutter','Node.js'],desc:'Développeur full-stack passionné. Enseigne React, Laravel, Flutter et Node.js. Mentor de projets innovants et startups étudiantes.' },
 ]
 
 const MEMBRES = [
-  { nom:'M. Abdou SAMBE',              photo:'/abdou-sambe.jpg',   poste:'Président du Groupe ISI',  specialite:'Direction Générale', icon:Award,    skills:['Vision stratégique','Gouvernance','Partenariats','Développement'], desc:'Préside le Groupe ISI et porte la vision stratégique de l\'institut depuis sa fondation.', grad:'from-slate-800 to-slate-600' },
-  { nom:'M. Thierno Birahime SAMBE',   photo:'/thierno-sambe-dg.jpg', poste:'Directeur Général',        specialite:'Pilotage & Développement', icon:Building, skills:['Management','Stratégie','Qualité','Croissance'], desc:'Dirige les opérations et le développement du Groupe ISI au quotidien.', grad:'from-indigo-800 to-isiblue-600' },
-  { nom:'M. Kara SAMB',   photo:'/kara_directeur.jpg', poste:'Directeur des Études',   specialite:'Formateur Analyse & BDD', icon:BookOpen,    skills:['Oracle','MySQL','Merise','UML'],         desc:'Dirige les études à l\'ISI SUPTECH avec vision et excellence. Formateur expert en analyse de systèmes d\'information et bases de données.',    grad:'from-violet-700 to-brand-600' },
+  { nom:'M. Abdou SAMBE',              photo:'/abdou-sambe.jpg',   poste:'Président du Groupe ISI',  specialite:'Président du Groupe ISI', icon:Award,    skills:['Vision stratégique','Gouvernance','Partenariats','Développement'], desc:'Préside le Groupe ISI et porte la vision stratégique de l\'institut depuis sa fondation.', grad:'from-slate-800 to-slate-600' },
+  { nom:'M. Thierno Birahime SAMBE',   photo:'/thierno-sambe-dg.jpg', poste:'Directeur Général',        specialite:'Directeur Général', icon:Building, skills:['Management','Stratégie','Qualité','Croissance'], desc:'Dirige les opérations et le développement du Groupe ISI au quotidien.', grad:'from-indigo-800 to-isiblue-600' },
+  { nom:'M. Kara SAMB',   photo:'/kara_directeur.jpg', poste:'Directeur des Études',   specialite:'Directeur des Études', icon:BookOpen,    skills:['Oracle','MySQL','Merise','UML'],         desc:'Dirige les études à l\'ISI SUPTECH avec vision et excellence. Formateur expert en analyse de systèmes d\'information et bases de données.',    grad:'from-violet-700 to-brand-600' },
   { nom:'Mme Oumou Khayri GAYE', photo:'/oumoukhairy.jpg',    poste:'Caissière',           specialite:'Gestion financière',      icon:CreditCard,  skills:['Wave','Orange Money','Reçus PDF','Suivi'],desc:'Gère avec rigueur les paiements et le suivi financier. Disponible et souriante pour faciliter chaque démarche.',                  grad:'from-cyan-700 to-teal-600' },
-  { nom:'Mme Mbène TALL', photo:'/mbene-tall.jpg',     poste:'Agent d\'Accueil',    specialite:'Relations & Orientation', icon:UserCheck,   skills:['Orientation','Dossiers','Planning','Support'],desc:'Premier visage de l\'ISI SUPTECH. Oriente et accompagne chaque étudiant et parent avec bienveillance.',                        grad:'from-blue-700 to-cyan-600' },
+  { nom:'Mme Mbène TALL', photo:'/mbene-tall.jpg',     poste:'Assistante Pédagogique',    specialite:'Relations & Orientation', icon:UserCheck,   skills:['Orientation','Dossiers','Planning','Support'],desc:'Premier visage de l\'ISI SUPTECH. Oriente et accompagne chaque étudiant et parent avec bienveillance.',                        grad:'from-blue-700 to-cyan-600' },
   { nom:'M. Samba NDOUR', photo:'/samba.jpg',           poste:'Technicien IT',       specialite:'Support & Infrastructure', icon:Wrench,      skills:['Maintenance','Réseau LAN','Serveurs','Support'],desc:'Maintient l\'infrastructure du campus. Gère les équipements, le réseau LAN, les serveurs et fournit un support rapide.',       grad:'from-amber-700 to-orange-600' },
 ]
 
@@ -904,7 +904,7 @@ export default function Landing() {
         setForms(list.map(f => ({
           ...f,
           nom: f.nom || f.name || '',
-          prenom: f.prenom || 'Mr',
+          prenom: f.prenom || 'M.',
           photo: photoUrl(f.photo) || `/cisse.jpeg`,
           role: f.role || 'Formateur',
           specialite: f.specialite || f.expertise || '',
