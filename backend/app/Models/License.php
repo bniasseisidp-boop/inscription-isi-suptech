@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class License extends Model
 {
-    protected $fillable = ['filiere_id', 'nom', 'code', 'duree_annees', 'frais_inscription', 'frais_mensuel', 'actif'];
+    protected $fillable = ['filiere_id', 'nom', 'code', 'duree_annees', 'mois_debut', 'mois_fin', 'frais_inscription', 'frais_mensuel', 'actif'];
 
     protected $casts = [
         'frais_inscription' => 'decimal:2',
