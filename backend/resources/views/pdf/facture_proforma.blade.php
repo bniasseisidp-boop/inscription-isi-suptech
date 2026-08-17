@@ -12,9 +12,9 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 .hd-logo-cell img { width:70px; }
 .hd-title-cell { vertical-align:middle; padding-left:16px; }
 .hd-title-cell h1 { font-size:23px; font-weight:900; color:#1a3a8f; letter-spacing:.5px; }
-.hd-cert-cell { text-align:right; vertical-align:middle; width:150px; }
-.hd-cert-cell img { height:34px; margin-left:14px; }
-.hd-rule { border-bottom:2.5px solid #1a3a8f; margin:16px 0 22px; }
+.hd-certs { margin-top:8px; }
+.hd-certs img { height:26px; margin-right:16px; vertical-align:middle; }
+.hd-rule { border-bottom:2.5px solid #1a3a8f; margin:12px 0 22px; }
 
 .doc-title { text-align:right; font-size:19px; font-weight:900; letter-spacing:2px; color:#1a1a2e; margin-bottom:22px; text-transform:uppercase; }
 
@@ -45,27 +45,32 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 
 .mots { font-size:14px; margin-bottom:8px; }
 .mots b { font-weight:700; }
-.compte { font-size:12.5px; color:#334155; margin-bottom:26px; }
+.compte { font-size:12.5px; color:#334155; }
+.compte .ninea { margin-top:2px; }
 
 /* SIGNATURE */
-.sign-table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+.sign-table { width:100%; border-collapse:collapse; margin:22px 0 20px; }
 .sign-table td { text-align:right; font-size:14px; font-weight:900; }
-.sign-space { height:60px; }
+.sign-space { height:55px; }
 
 /* FOOTER */
-.footer-table { width:100%; border-collapse:collapse; border-top:1px solid #94a3b8; margin-top:10px; padding-top:8px; }
-.footer-table td { font-size:10px; color:#475569; vertical-align:middle; }
-.footer-table .fr { text-align:right; }
+.yellow-bar { background:#fde047; padding:7px 16px; text-align:center; font-size:11px; font-weight:700; color:#1a1a2e; margin-top:6px; }
+.footer-addr { text-align:center; font-size:9.5px; color:#475569; margin-top:5px; }
 </style>
 </head>
 <body>
 
 <table class="hd-table"><tr>
   <td class="hd-logo-cell"><img src="{{ public_path('isi-logo.png') }}" alt="ISI"/></td>
-  <td class="hd-title-cell"><h1>Institut Supérieur d'Informatique</h1></td>
-  <td class="hd-cert-cell">
-    <img src="{{ public_path('microsoft.png') }}" alt="Microsoft"/>
-    <img src="{{ public_path('cisco.png') }}" alt="Cisco"/>
+  <td class="hd-title-cell">
+    <h1>Institut Supérieur d'Informatique</h1>
+    <div class="hd-certs">
+      <img src="{{ public_path('microsoft.png') }}" alt="Microsoft"/>
+      <img src="{{ public_path('cisco.png') }}" alt="Cisco"/>
+      <img src="{{ public_path('fnege.png') }}" alt="FNEGE"/>
+      <img src="{{ public_path('sap.png') }}" alt="SAP University"/>
+      <img src="{{ public_path('cames.png') }}" alt="CAMES"/>
+    </div>
   </td>
 </tr></table>
 <div class="hd-rule"></div>
@@ -128,17 +133,18 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 </table>
 
 <div class="mots">Arrêtée la présente facture à la somme de : <b>{{ $montantLettres }}</b></div>
-<div class="compte">Numéro de compte : SN012 01228 036210365801 81 &nbsp;&nbsp; NENEA : 23813252S2</div>
+<div class="compte">
+  <div>Numéro de compte : SN012 01228 036210365801 81</div>
+  <div class="ninea">NENEA : 23813252S2</div>
+</div>
 
 <table class="sign-table"><tr><td>
   La Comptabilité
   <div class="sign-space"></div>
 </td></tr></table>
 
-<table class="footer-table"><tr>
-  <td>ISI SUPTECH — Dakar, Sénégal &nbsp;Tél: 33 825 62 10 &nbsp;E-mail: contact@isisuptech.com &nbsp;Web site: www.isisuptech.com</td>
-  <td class="fr">Document sans valeur comptable — facture définitive émise après inscription</td>
-</tr></table>
+<div class="yellow-bar">TÉL : (+221) 33 825 62 10 &nbsp;—&nbsp; Site web : www.isisuptech.com</div>
+<div class="footer-addr">Allées Khalifa Ababacar SY — Liberté 3 N°1977 — B.P. 47 226 — Dakar, Sénégal</div>
 
 </body>
 </html>
