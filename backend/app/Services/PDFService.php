@@ -487,4 +487,70 @@ class PDFService
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
     }
+
+    /**
+     * Facture proforma — generee par la caisse pour un futur etudiant (pas encore
+     * inscrit) dont la scolarite serait prise en charge par une entreprise, qui
+     * decide sur la base de ce document. Les montants viennent toujours de la
+     * license choisie, donc restent corrects meme si les tarifs changent plus tard.
+     */
+    public function generateFactureProforma(
+        \App\Models\License $license,
+        string $entreprise,
+        string $beneficiaire,
+        \App\Models\User $creePar
+    ): array {
+        $license->loadMissing('filiere');
+        $filiere = $license->filiere;
+
+        $moisDebut = intval($license->mois_debut ?? 9);
+        $moisFin   = intval($license->mois_fin ?? 6);
+        $nbMois    = ($moisFin >= $moisDebut) ? ($moisFin - $moisDebut + 1) : (12 - $moisDebut + $moisFin + 1);
+
+        $fraisInscription   = floatval($license->frais_inscription ?? 0);
+        $fraisMensuel       = floatval($license->frais_mensuel ?? 0);
+        $moisRestants       = max(0, $nbMois - 1);
+        $montantMensualites = $fraisMensuel * $moisRestants;
+        $montantTotal       = $fraisInscription + $montantMensualites;
+
+        $anneeDebut      = now()->month >= $moisDebut ? now()->year : now()->year - 1;
+        $anneeAcademique = $anneeDebut . '-' . ($anneeDebut + 1);
+
+        $facture = \App\Models\FactureProforma::create([
+            'reference'     => 'TEMP',
+            'entreprise'    => $entreprise,
+            'beneficiaire'  => $beneficiaire,
+            'license_id'    => $license->id,
+            'montant_total' => $montantTotal,
+            'created_by'    => $creePar->id,
+        ]);
+        $reference = str_pad((string) $facture->id, 5, '0', STR_PAD_LEFT);
+        $facture->update(['reference' => $reference]);
+
+        $data = [
+            'reference'          => $reference,
+            'entreprise'         => $entreprise,
+            'beneficiaire'       => $beneficiaire,
+            'license'            => $license,
+            'filiere'            => $filiere,
+            'anneeAcademique'    => $anneeAcademique,
+            'nbMois'             => $nbMois,
+            'fraisInscription'   => $fraisInscription,
+            'fraisMensuel'       => $fraisMensuel,
+            'moisRestants'       => $moisRestants,
+            'montantMensualites' => $montantMensualites,
+            'montantTotal'       => $montantTotal,
+            'montantLettres'     => $this->montantEnLettres($montantTotal),
+            'suiviPar'           => $creePar->name,
+        ];
+
+        $pdf = Pdf::loadView('pdf.facture_proforma', $data)->setPaper('a4', 'portrait');
+
+        $filename = 'facture_proforma_' . $reference . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'factures/' . $filename;
+
+        Storage::disk('public')->put($path, $pdf->output());
+
+        return ['path' => $path, 'reference' => $reference];
+    }
 }

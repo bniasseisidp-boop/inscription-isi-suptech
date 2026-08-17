@@ -578,6 +578,40 @@ class PaymentController extends Controller
         ]);
     }
 
+    /**
+     * Facture proforma — pour un futur candidat pas encore inscrit dont une
+     * entreprise doit decider de la prise en charge sur la base de ce document.
+     */
+    public function factureProforma(Request $request)
+    {
+        $validated = $request->validate([
+            'license_id'   => 'required|exists:licenses,id',
+            'entreprise'   => 'required|string|max:150',
+            'beneficiaire' => 'required|string|max:150',
+        ]);
+
+        $license = \App\Models\License::findOrFail($validated['license_id']);
+
+        $result   = $this->pdfService->generateFactureProforma(
+            $license, $validated['entreprise'], $validated['beneficiaire'], $request->user()
+        );
+        $fullPath = Storage::disk('public')->path($result['path']);
+
+        if (!file_exists($fullPath)) {
+            return response()->json(['message' => 'Erreur génération PDF'], 500);
+        }
+
+        ActivityLogger::log(
+            $request->user(), 'facture_proforma.create',
+            "Facture proforma #{$result['reference']} generee pour {$validated['beneficiaire']} ({$validated['entreprise']})"
+        );
+
+        return response()->file($fullPath, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="facture_proforma_' . $result['reference'] . '.pdf"',
+        ]);
+    }
+
     /** List students for cashier browser — inclut en_attente pour que le caissier trouve tout étudiant pré-inscrit */
     public function etudiantsList(Request $request)
     {

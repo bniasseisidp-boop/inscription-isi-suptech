@@ -6,7 +6,7 @@ import {
   Wallet, Search, Plus, Download, LogOut, LayoutDashboard, TrendingUp,
   Clock, CheckCircle, RefreshCw, X, Users, AlertCircle, Filter,
   AlertTriangle, CreditCard, ChevronDown, ChevronRight, Check, BookOpen, FileDown, UserSearch, Pencil, Eye,
-  UserCog, Menu,
+  UserCog, Menu, FileText, Building2,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -15,7 +15,7 @@ import {
   downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob, downloadBrouillardBlob,
   getCashierStudents, getCashierStudentSuivi, getInscriptionDetails,
   demanderModificationPaiement, getStatutDemandeModification,
-  updateMyPassword, updateMyPhoto,
+  updateMyPassword, updateMyPhoto, downloadFactureProformaBlob,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 
@@ -778,6 +778,7 @@ export default function CashierDashboard() {
     { id: 'paiements',  label: 'Paiements',         icon: TrendingUp },
     { id: 'saisie',     label: 'Saisir paiement',   icon: Plus },
     { id: 'impayes',    label: 'Impayés du mois',   icon: AlertTriangle },
+    { id: 'proforma',   label: 'Facture Proforma',  icon: FileText },
     { id: 'profil',     label: 'Mon profil',        icon: UserCog },
   ]
 
@@ -785,6 +786,27 @@ export default function CashierDashboard() {
   const [changingPwd, setChangingPwd] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [proformaForm, setProformaForm] = useState({ license_id: '', entreprise: '', beneficiaire: '' })
+  const [generatingProforma, setGeneratingProforma] = useState(false)
+  const handleGenerateProforma = async (e) => {
+    e.preventDefault()
+    setGeneratingProforma(true)
+    try {
+      const { data } = await downloadFactureProformaBlob(proformaForm)
+      const url = URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `facture_proforma_${proformaForm.beneficiaire.replace(/\s+/g, '_')}.pdf`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60000)
+      toast.success('Facture proforma générée !')
+      setProformaForm({ license_id: '', entreprise: '', beneficiaire: '' })
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de la génération')
+    } finally {
+      setGeneratingProforma(false)
+    }
+  }
   const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -1433,6 +1455,50 @@ export default function CashierDashboard() {
                       </table>
                     )}
                   </div>
+                </div>
+              )}
+
+              {active === 'proforma' && (
+                <div className="max-w-xl space-y-5">
+                  <div className="light-card p-4 border border-isiblue-200 bg-isiblue-500/5">
+                    <p className="text-slate-600 text-sm flex items-start gap-2">
+                      <Building2 size={16} className="text-isiblue-500 flex-shrink-0 mt-0.5"/>
+                      Pour un candidat pas encore inscrit, dont une entreprise doit décider de la prise en charge. Les montants viennent automatiquement de la filière/niveau choisi.
+                    </p>
+                  </div>
+                  <form onSubmit={handleGenerateProforma} className="light-card p-5 space-y-4">
+                    <div>
+                      <label className="form-label-light">Filière / Niveau *</label>
+                      <select required className="form-input-light" value={proformaForm.license_id}
+                        onChange={e => setProformaForm(f => ({ ...f, license_id: e.target.value }))}>
+                        <option value="">-- Choisir --</option>
+                        {filieres.map(fil => (
+                          <optgroup key={fil.id} label={fil.nom}>
+                            {fil.licenses?.map(lic => (
+                              <option key={lic.id} value={lic.id}>{lic.nom}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label-light">Nom du candidat (bénéficiaire) *</label>
+                      <input required className="form-input-light" placeholder="Ex : Ousmane Babouna"
+                        value={proformaForm.beneficiaire}
+                        onChange={e => setProformaForm(f => ({ ...f, beneficiaire: e.target.value }))}/>
+                    </div>
+                    <div>
+                      <label className="form-label-light">Entreprise / organisme destinataire *</label>
+                      <input required className="form-input-light" placeholder="Ex : AUCHAN RETAIL SENEGAL"
+                        value={proformaForm.entreprise}
+                        onChange={e => setProformaForm(f => ({ ...f, entreprise: e.target.value }))}/>
+                    </div>
+                    <button type="submit" disabled={generatingProforma}
+                      className="btn-primary flex items-center gap-2 disabled:opacity-50">
+                      {generatingProforma ? <div className="spinner w-4 h-4"/> : <FileText size={16}/>}
+                      {generatingProforma ? 'Génération...' : 'Générer la facture proforma'}
+                    </button>
+                  </form>
                 </div>
               )}
 

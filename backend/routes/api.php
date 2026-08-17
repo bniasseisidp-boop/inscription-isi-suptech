@@ -170,6 +170,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/impayes-mois', [PaymentController::class, 'impayesMois']);
         Route::get('/impayes-mois/pdf', [PaymentController::class, 'impayesMoisPdf']);
         Route::get('/brouillard', [PaymentController::class, 'downloadBrouillard']);
+        Route::post('/facture-proforma', [PaymentController::class, 'factureProforma']);
     });
 
     // ── Super Admin — reset données test ────────────────────────────────────

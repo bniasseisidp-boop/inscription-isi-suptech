@@ -188,6 +188,7 @@ export const downloadStudentReceiptBlob = (id) => api.get(`/etudiant/paiement/${
 // Cashier — impayés PDF
 export const downloadImpayesPdfBlob = (mois) => api.get(`/caisse/impayes-mois/pdf`, { params: { mois }, responseType: 'blob' })
 export const downloadBrouillardBlob = (date) => api.get(`/caisse/brouillard`, { params: { date }, responseType: 'blob' })
+export const downloadFactureProformaBlob = (data) => api.post('/caisse/facture-proforma', data, { responseType: 'blob' })
 
 // Cashier — student browser
 export const getCashierStudents = (params) => api.get('/caisse/etudiants', { params })
