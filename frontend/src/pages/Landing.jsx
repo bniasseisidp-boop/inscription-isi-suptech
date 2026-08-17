@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence, useInView } from 'framer-motion'
 import {
@@ -51,12 +51,12 @@ const FORMATEURS = [
 ]
 
 const MEMBRES = [
-  { nom:'Abdou SAMBE',           photo:'/abdou-sambe.jpg',   poste:'Président du Groupe ISI',  specialite:'Direction Générale', icon:Award,    skills:['Vision stratégique','Gouvernance','Partenariats','Développement'], desc:'Préside le Groupe ISI et porte la vision stratégique de l\'institut depuis sa fondation.', grad:'from-slate-800 to-slate-600' },
-  { nom:'Thierno Birahime SAMBE',photo:'/thierno-sambe.jpg', poste:'Directeur Général',        specialite:'Pilotage & Développement', icon:Building, skills:['Management','Stratégie','Qualité','Croissance'], desc:'Dirige les opérations et le développement du Groupe ISI au quotidien.', grad:'from-indigo-800 to-isiblue-600' },
-  { nom:'Kara',        photo:'/kara_directeur.jpg', poste:'Directeur des Études',   specialite:'Formateur Analyse & BDD', icon:BookOpen,    skills:['Oracle','MySQL','Merise','UML'],         desc:'Dirige les études à l\'ISI SUPTECH avec vision et excellence. Formateur expert en analyse de systèmes d\'information et bases de données.',    grad:'from-violet-700 to-brand-600' },
-  { nom:'Oumoukhairy', photo:'/oumoukhairy.jpg',    poste:'Caissière',           specialite:'Gestion financière',      icon:CreditCard,  skills:['Wave','Orange Money','Reçus PDF','Suivi'],desc:'Gère avec rigueur les paiements et le suivi financier. Disponible et souriante pour faciliter chaque démarche.',                  grad:'from-cyan-700 to-teal-600' },
-  { nom:'Mbetne Tall', photo:'/mbene-tall.jpg',     poste:'Agent d\'Accueil',    specialite:'Relations & Orientation', icon:UserCheck,   skills:['Orientation','Dossiers','Planning','Support'],desc:'Premier visage de l\'ISI SUPTECH. Oriente et accompagne chaque étudiant et parent avec bienveillance.',                        grad:'from-blue-700 to-cyan-600' },
-  { nom:'Samba',       photo:'/samba.jpg',           poste:'Technicien IT',       specialite:'Support & Infrastructure', icon:Wrench,      skills:['Maintenance','Réseau LAN','Serveurs','Support'],desc:'Maintient l\'infrastructure du campus. Gère les équipements, le réseau LAN, les serveurs et fournit un support rapide.',       grad:'from-amber-700 to-orange-600' },
+  { nom:'M. Abdou SAMBE',              photo:'/abdou-sambe.jpg',   poste:'Président du Groupe ISI',  specialite:'Direction Générale', icon:Award,    skills:['Vision stratégique','Gouvernance','Partenariats','Développement'], desc:'Préside le Groupe ISI et porte la vision stratégique de l\'institut depuis sa fondation.', grad:'from-slate-800 to-slate-600' },
+  { nom:'M. Thierno Birahime SAMBE',   photo:'/thierno-sambe.jpg', poste:'Directeur Général',        specialite:'Pilotage & Développement', icon:Building, skills:['Management','Stratégie','Qualité','Croissance'], desc:'Dirige les opérations et le développement du Groupe ISI au quotidien.', grad:'from-indigo-800 to-isiblue-600' },
+  { nom:'M. Kara SAMB',   photo:'/kara_directeur.jpg', poste:'Directeur des Études',   specialite:'Formateur Analyse & BDD', icon:BookOpen,    skills:['Oracle','MySQL','Merise','UML'],         desc:'Dirige les études à l\'ISI SUPTECH avec vision et excellence. Formateur expert en analyse de systèmes d\'information et bases de données.',    grad:'from-violet-700 to-brand-600' },
+  { nom:'Mme Oumou Khayri GAYE', photo:'/oumoukhairy.jpg',    poste:'Caissière',           specialite:'Gestion financière',      icon:CreditCard,  skills:['Wave','Orange Money','Reçus PDF','Suivi'],desc:'Gère avec rigueur les paiements et le suivi financier. Disponible et souriante pour faciliter chaque démarche.',                  grad:'from-cyan-700 to-teal-600' },
+  { nom:'Mme Mbène TALL', photo:'/mbene-tall.jpg',     poste:'Agent d\'Accueil',    specialite:'Relations & Orientation', icon:UserCheck,   skills:['Orientation','Dossiers','Planning','Support'],desc:'Premier visage de l\'ISI SUPTECH. Oriente et accompagne chaque étudiant et parent avec bienveillance.',                        grad:'from-blue-700 to-cyan-600' },
+  { nom:'M. Samba NDOUR', photo:'/samba.jpg',           poste:'Technicien IT',       specialite:'Support & Infrastructure', icon:Wrench,      skills:['Maintenance','Réseau LAN','Serveurs','Support'],desc:'Maintient l\'infrastructure du campus. Gère les équipements, le réseau LAN, les serveurs et fournit un support rapide.',       grad:'from-amber-700 to-orange-600' },
 ]
 
 const FILIERES = [
@@ -1008,6 +1008,58 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── ÉQUIPE DIRECTION ──────────────────────────────────────────────── */}
+      <section className={`relative z-10 overflow-hidden ${D?'bg-[#050510]':'bg-white'}`}>
+        {D && <MembresBg isDark={D}/>}
+        {/* Header */}
+        <div className="max-w-6xl mx-auto px-4 pt-20 pb-12 text-center relative z-10">
+          <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}}>
+            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-cyan-400':'text-cyan-700'}`}><Users size={14}/> Notre équipe</span>
+            <h2 className={`text-4xl md:text-5xl font-black mb-4 ${tx}`}>L'équipe <span className={D?'gradient-text':'gradient-text-light'}>ISI SUPTECH</span></h2>
+            <p className={`max-w-xl mx-auto text-sm ${txs}`}>L'équipe dédiée à votre réussite et à la bonne marche du campus.</p>
+          </motion.div>
+        </div>
+        {/* Full-width photo cards like formateurs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 lg:px-12 pb-20 relative z-10">
+          {membres.map((m, i) => {
+            const Icon = m.icon
+            return (
+              <motion.div key={i}
+                initial={{opacity:0,y:40}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.12}}
+                whileHover={{y:-6,transition:{type:'spring',stiffness:200,damping:20}}}
+                className={`relative h-[400px] lg:h-[460px] overflow-hidden group rounded-3xl shadow-2xl shadow-black/25 border-2 transition-all duration-500 ${D
+                  ?'border-white/8 hover:border-cyan-500/50 hover:shadow-cyan-500/15'
+                  :'border-slate-200/60 hover:border-cyan-300 hover:shadow-cyan-200/40'}`}>
+                <img src={m.photo} alt={m.nom}
+                  className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"/>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-black/5"/>
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"/>
+
+                {/* Top role badge */}
+                <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-3 py-1.5">
+                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${m.grad} flex items-center justify-center flex-shrink-0`}>
+                    <Icon size={12} className="text-white"/>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/70">{m.poste}</span>
+                </div>
+
+                {/* Bottom content */}
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h4 className="text-xl font-black text-white mb-1">{m.nom}</h4>
+                  <p className="text-cyan-300 text-sm font-bold mb-0 group-hover:mb-3 transition-all duration-300">{m.specialite}</p>
+                  <div className="max-h-0 overflow-hidden group-hover:max-h-44 transition-all duration-500">
+                    <p className="text-white/55 text-xs leading-relaxed mb-3 pt-1">{m.desc}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(m.skills||[]).map((s,si)=><span key={si} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-white">{s}</span>)}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      </section>
+
       {/* ── PARTENAIRES ───────────────────────────────────────────────────── */}
       <section className={`relative z-10 py-20 px-4 ${sec}`}>
         <div className="max-w-6xl mx-auto">
@@ -1111,58 +1163,6 @@ export default function Landing() {
                     <p className="text-white/65 text-xs leading-relaxed mb-3 pt-1">{f.desc}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {f.skills.map((s,si)=><span key={si} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-white">{s}</span>)}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* ── ÉQUIPE DIRECTION ──────────────────────────────────────────────── */}
-      <section className={`relative z-10 overflow-hidden ${D?'bg-[#050510]':'bg-white'}`}>
-        {D && <MembresBg isDark={D}/>}
-        {/* Header */}
-        <div className="max-w-6xl mx-auto px-4 pt-20 pb-12 text-center relative z-10">
-          <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}}>
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-cyan-400':'text-cyan-700'}`}><Users size={14}/> Notre équipe</span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-4 ${tx}`}>L'équipe <span className={D?'gradient-text':'gradient-text-light'}>ISI SUPTECH</span></h2>
-            <p className={`max-w-xl mx-auto text-sm ${txs}`}>L'équipe dédiée à votre réussite et à la bonne marche du campus.</p>
-          </motion.div>
-        </div>
-        {/* Full-width photo cards like formateurs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 sm:px-8 lg:px-12 pb-20 relative z-10">
-          {membres.map((m, i) => {
-            const Icon = m.icon
-            return (
-              <motion.div key={i}
-                initial={{opacity:0,y:40}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.12}}
-                whileHover={{y:-6,transition:{type:'spring',stiffness:200,damping:20}}}
-                className={`relative h-[400px] lg:h-[460px] overflow-hidden group rounded-3xl shadow-2xl shadow-black/25 border-2 transition-all duration-500 ${D
-                  ?'border-white/8 hover:border-cyan-500/50 hover:shadow-cyan-500/15'
-                  :'border-slate-200/60 hover:border-cyan-300 hover:shadow-cyan-200/40'}`}>
-                <img src={m.photo} alt={m.nom}
-                  className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"/>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-black/5"/>
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"/>
-
-                {/* Top role badge */}
-                <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/40 backdrop-blur-sm border border-white/15 rounded-full px-3 py-1.5">
-                  <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${m.grad} flex items-center justify-center flex-shrink-0`}>
-                    <Icon size={12} className="text-white"/>
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/70">{m.poste}</span>
-                </div>
-
-                {/* Bottom content */}
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h4 className="text-xl font-black text-white mb-1">{m.nom}</h4>
-                  <p className="text-cyan-300 text-sm font-bold mb-0 group-hover:mb-3 transition-all duration-300">{m.specialite}</p>
-                  <div className="max-h-0 overflow-hidden group-hover:max-h-44 transition-all duration-500">
-                    <p className="text-white/55 text-xs leading-relaxed mb-3 pt-1">{m.desc}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(m.skills||[]).map((s,si)=><span key={si} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/15 border border-white/25 text-white">{s}</span>)}
                     </div>
                   </div>
                 </div>
