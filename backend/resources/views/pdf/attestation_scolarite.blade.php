@@ -20,38 +20,38 @@ $civilite = $student->civilite ?: ($student->sexe === 'F' ? 'Mlle' : 'M.');
 <meta charset="UTF-8">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:10px; color:#1a1a2e; background:#fff; padding:24px 30px; }
+body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:13px; color:#1a1a2e; background:#fff; padding:34px 42px; }
 
 .hd-table { width:100%; border-collapse:collapse; }
-.hd-logo-cell { width:90px; vertical-align:top; }
-.hd-logo-cell img { width:78px; }
+.hd-logo-cell { width:110px; vertical-align:top; }
+.hd-logo-cell img { width:96px; }
 .hd-center-cell { text-align:center; vertical-align:middle; }
-.hd-center-cell h1 { font-size:15px; font-weight:900; color:#1a1a2e; font-family:'DejaVu Serif',serif; }
-.hd-sub { text-align:center; font-size:8px; color:#475569; font-style:italic; margin-top:2px; }
+.hd-center-cell h1 { font-size:19px; font-weight:900; color:#1a1a2e; font-family:'DejaVu Serif',serif; }
+.hd-sub { text-align:center; font-size:10.5px; color:#475569; font-style:italic; margin-top:4px; }
 
-.shell { width:100%; border-collapse:collapse; margin-top:14px; }
-.sidebar { width:88px; vertical-align:top; border-right:1.5px solid #1a1a2e; padding-right:8px; }
-.sidebar .item { font-size:7px; font-weight:700; color:#1a1a2e; text-transform:uppercase; line-height:1.3; margin-bottom:30px; }
-.content { vertical-align:top; padding-left:18px; }
+.shell { width:100%; border-collapse:collapse; margin-top:26px; }
+.sidebar { width:108px; vertical-align:top; border-right:1.5px solid #1a1a2e; padding-right:12px; }
+.sidebar .item { font-size:9px; font-weight:700; color:#1a1a2e; text-transform:uppercase; line-height:1.35; margin-bottom:46px; }
+.content { vertical-align:top; padding-left:26px; }
 
-.title { text-align:center; font-family:'DejaVu Serif',serif; font-style:italic; font-weight:700; font-size:26px; color:#1a1a2e; margin-bottom:4px; }
-.annee { text-align:center; font-size:10px; margin-bottom:22px; }
+.title { text-align:center; font-family:'DejaVu Serif',serif; font-style:italic; font-weight:700; font-size:34px; color:#1a1a2e; margin-bottom:6px; }
+.annee { text-align:center; font-size:13px; margin-bottom:36px; }
 .annee b { font-weight:700; }
 
-.dropcap { font-family:'DejaVu Serif',serif; font-size:34px; font-weight:700; float:left; line-height:0.8; margin-right:4px; }
-.p { font-size:10px; line-height:1.9; margin-bottom:14px; }
-.p.indent { padding-left:14px; }
-.field { font-size:10px; margin-bottom:14px; padding-left:14px; }
+.dropcap { font-family:'DejaVu Serif',serif; font-size:44px; font-weight:700; float:left; line-height:0.8; margin-right:6px; }
+.p { font-size:13px; line-height:2.4; margin-bottom:22px; }
+.p.indent { padding-left:18px; }
+.field { font-size:13px; margin-bottom:22px; padding-left:18px; }
 .field b { font-weight:700; }
 
-.foi { font-size:10px; line-height:1.7; margin-top:8px; }
+.foi { font-size:13px; line-height:2.1; margin-top:14px; margin-bottom:20px; }
 
-.sign-table { width:100%; border-collapse:collapse; margin-top:26px; }
-.sign-table td { font-size:10px; text-align:right; }
-.sign-table .dir { margin-top:34px; font-weight:700; }
+.sign-table { width:100%; border-collapse:collapse; margin-top:40px; }
+.sign-table td { font-size:13px; text-align:right; }
+.sign-table .dir { margin-top:50px; font-weight:700; font-size:14px; }
 
-.footer-table { width:100%; border-collapse:collapse; border-top:1px solid #94a3b8; margin-top:34px; padding-top:5px; }
-.footer-table td { font-size:6.5px; color:#475569; vertical-align:middle; }
+.footer-table { width:100%; border-collapse:collapse; border-top:1px solid #94a3b8; margin-top:56px; padding-top:8px; }
+.footer-table td { font-size:9.5px; color:#475569; vertical-align:middle; }
 .footer-table .left  { font-weight:700; }
 .footer-table .right { text-align:right; }
 </style>
