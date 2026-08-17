@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, LogOut, User, LayoutDashboard, BookOpen } from 'lucide-react'
+import { FilieresMenuDesktop, FilieresMenuMobile } from './FilieresMenu'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -10,6 +11,7 @@ export default function Navbar() {
   const location = useLocation()
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
+  const [mobileFilieresOpen, setMobileFilieresOpen] = useState(false)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('isi_theme') === 'dark')
 
   useEffect(() => {
@@ -106,12 +108,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-1">
           {!user ? (
             <>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => scrollTo('filieres')}
-                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${textSubColor} ${hoverColor} hover:bg-white/8`}>
-                Filières
-              </motion.button>
+              <FilieresMenuDesktop triggerClassName={`px-4 py-2 rounded-lg transition-all text-sm font-medium flex items-center gap-1 ${textSubColor} ${hoverColor} hover:bg-white/8`}/>
 
               <Link to="/formations"
                 className="px-4 py-2 rounded-lg transition-all text-sm font-medium flex items-center gap-1.5 text-isiblue-700 hover:text-isiblue-800 hover:bg-isiblue-50">
@@ -168,10 +165,14 @@ export default function Navbar() {
             <div className="px-4 py-4 flex flex-col gap-2">
               {!user ? (
                 <>
-                  <button onClick={() => scrollTo('filieres')}
-                    className="py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-all text-slate-600 hover:bg-slate-100">
+                  <button onClick={() => setMobileFilieresOpen(o => !o)}
+                    className="py-2.5 px-4 rounded-xl text-sm font-medium text-left transition-all text-slate-600 hover:bg-slate-100 flex items-center justify-between">
                     Filières
+                    <span className={`text-xs transition-transform ${mobileFilieresOpen ? 'rotate-180' : ''}`}>▾</span>
                   </button>
+                  {mobileFilieresOpen && (
+                    <FilieresMenuMobile onNavigate={() => { setOpen(false); setMobileFilieresOpen(false) }}/>
+                  )}
                   <Link to="/formations" onClick={() => setOpen(false)}
                     className="py-2.5 px-4 rounded-xl text-sm font-bold flex items-center gap-2 text-isiblue-700 bg-isiblue-50">
                     <BookOpen size={14}/> Nos Formations

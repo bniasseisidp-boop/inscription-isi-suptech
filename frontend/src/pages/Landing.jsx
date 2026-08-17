@@ -51,7 +51,7 @@ const FORMATEURS = [
 ]
 
 const MEMBRES = [
-  { nom:'Kara',        photo:'/kara_directeur.jpg', poste:'Directeur Général',   specialite:'Formateur Analyse & BDD', icon:Building,    skills:['Oracle','MySQL','Merise','UML'],         desc:'Dirige l\'ISI SUPTECH avec vision et excellence. Formateur expert en analyse de systèmes d\'information et bases de données.',    grad:'from-violet-700 to-brand-600' },
+  { nom:'Kara',        photo:'/kara_directeur.jpg', poste:'Directeur des Études',   specialite:'Formateur Analyse & BDD', icon:Building,    skills:['Oracle','MySQL','Merise','UML'],         desc:'Dirige les études à l\'ISI SUPTECH avec vision et excellence. Formateur expert en analyse de systèmes d\'information et bases de données.',    grad:'from-violet-700 to-brand-600' },
   { nom:'Oumoukhairy', photo:'/oumoukhairy.jpg',    poste:'Caissière',           specialite:'Gestion financière',      icon:CreditCard,  skills:['Wave','Orange Money','Reçus PDF','Suivi'],desc:'Gère avec rigueur les paiements et le suivi financier. Disponible et souriante pour faciliter chaque démarche.',                  grad:'from-cyan-700 to-teal-600' },
   { nom:'Mbetne Tall', photo:'/mbene-tall.jpg',     poste:'Agent d\'Accueil',    specialite:'Relations & Orientation', icon:UserCheck,   skills:['Orientation','Dossiers','Planning','Support'],desc:'Premier visage de l\'ISI SUPTECH. Oriente et accompagne chaque étudiant et parent avec bienveillance.',                        grad:'from-blue-700 to-cyan-600' },
   { nom:'Samba',       photo:'/samba.jpg',           poste:'Technicien IT',       specialite:'Support & Infrastructure', icon:Wrench,      skills:['Maintenance','Réseau LAN','Serveurs','Support'],desc:'Maintient l\'infrastructure du campus. Gère les équipements, le réseau LAN, les serveurs et fournit un support rapide.',       grad:'from-amber-700 to-orange-600' },
@@ -1766,7 +1766,7 @@ export default function Landing() {
                 <span className="text-slate-300">·</span>
                 <Link to="/connexion" className="text-xs transition-colors text-slate-400 hover:text-brand-600">Connexion</Link>
               </div>
-              <p className="text-xs text-slate-400">Développé par <span className="text-brand-600">Multi Brain Tech</span></p>
+              <p className="text-xs text-slate-400">Développé par : <span className="text-brand-600">@isisuptech.com</span></p>
             </div>
           </div>
         </div>
