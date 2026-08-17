@@ -21,7 +21,7 @@ import {
   downloadClassListPdf,
   updateAdminFiliere, deleteAdminFiliere, createLicense, updateAdminLicense, deleteAdminLicense,
   getAdminSettings, updateAdminSettings,
-  getStaff, createStaff, deleteStaff, resetDonneesTest, deleteAllAccounts,
+  getStaff, createStaff, deleteStaff, updateStaffRole, resetDonneesTest, deleteAllAccounts,
   adminGetMoisDesactives, adminToggleMoisDesactive, lockStudentProfile,
   getPermissionsModification, approuverPermission, refuserPermission,
   getAuditLog, toggleMaintenance, getMaintenanceStatus,
@@ -763,6 +763,18 @@ export default function AdminDashboard() {
   const [resetting, setResetting]     = useState(false)
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
   const [deletingAll, setDeletingAll]           = useState(false)
+  const [changingRoleId, setChangingRoleId]     = useState(null)
+  const handleChangeStaffRole = (staffMember, newRole) => {
+    if (newRole === staffMember.role) return
+    setChangingRoleId(staffMember.id)
+    updateStaffRole(staffMember.id, newRole)
+      .then(({ data }) => {
+        setStaff(prev => prev.map(s => s.id === staffMember.id ? data : s))
+        toast.success(`Rôle mis à jour : ${staffMember.name} est maintenant ${{admin:'Admin',cashier:'Caissier',accueil:'Accueil',pedagogique:'Accueil Pédagogique'}[newRole]}.`)
+      })
+      .catch(e => toast.error(e.response?.data?.message || 'Erreur lors du changement de rôle'))
+      .finally(() => setChangingRoleId(null))
+  }
   const [newStaff, setNewStaff]       = useState({ name: '', email: '', role: 'cashier' })
   const [formateurs, setFormateurs]   = useState([])
   const [membres, setMembres]         = useState([])
@@ -1887,9 +1899,23 @@ export default function AdminDashboard() {
                             <td className={`font-medium ${T.title} ${isDark?'':T.td}`}>{s.name}</td>
                             <td className={`text-sm ${isDark?'text-white/60':T.td}`}>{s.email}</td>
                             <td className={isDark?'':T.td}>
-                              <span className={`text-xs px-2 py-0.5 rounded font-semibold ${s.role==='admin'?'bg-red-500/20 text-red-300':s.role==='cashier'?'bg-isiblue-500/20 text-isiblue-300':'bg-blue-500/20 text-blue-300'}`}>
-                                {s.role==='admin'?'Admin':s.role==='cashier'?'Caissier':s.role==='pedagogique'?'Pédagogique':'Accueil'}
-                              </span>
+                              {user?.role === 'super_admin' ? (
+                                <select
+                                  value={s.role}
+                                  disabled={changingRoleId === s.id}
+                                  onChange={e => handleChangeStaffRole(s, e.target.value)}
+                                  className={`text-xs px-2 py-1 rounded font-semibold border disabled:opacity-50 ${s.role==='admin'?'bg-red-500/20 text-red-300 border-red-500/30':s.role==='cashier'?'bg-isiblue-500/20 text-isiblue-300 border-isiblue-500/30':'bg-blue-500/20 text-blue-300 border-blue-500/30'}`}
+                                >
+                                  <option value="admin">Admin</option>
+                                  <option value="cashier">Caissier</option>
+                                  <option value="accueil">Accueil</option>
+                                  <option value="pedagogique">Accueil Pédagogique</option>
+                                </select>
+                              ) : (
+                                <span className={`text-xs px-2 py-0.5 rounded font-semibold ${s.role==='admin'?'bg-red-500/20 text-red-300':s.role==='cashier'?'bg-isiblue-500/20 text-isiblue-300':'bg-blue-500/20 text-blue-300'}`}>
+                                  {s.role==='admin'?'Admin':s.role==='cashier'?'Caissier':s.role==='pedagogique'?'Pédagogique':'Accueil'}
+                                </span>
+                              )}
                             </td>
                             <td className={isDark?'':T.td}><span className={s.actif ? 'badge-accepted' : 'badge-rejected'}>{s.actif ? 'Actif' : 'Inactif'}</span></td>
                             <td className={`${isDark?'':T.td} flex gap-2 justify-center`}>

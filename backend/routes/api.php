@@ -175,6 +175,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Super Admin — reset données test ────────────────────────────────────
     Route::middleware('role:super_admin')->post('/admin/reset-donnees-test', [AdminController::class, 'resetDonneesTest']);
     Route::middleware('role:super_admin')->post('/admin/delete-all-accounts', [AdminController::class, 'deleteAllAccounts']);
+    // Changer le rôle d'un membre du staff — reservé au super admin (un admin
+    // simple ne doit pas pouvoir se promouvoir lui-même ou promouvoir un autre admin).
+    Route::middleware('role:super_admin')->put('/admin/staff/{user}/role', [AdminController::class, 'updateStaffRole']);
 
     // ── Accueil routes ──────────────────────────────────────────────────────
     Route::middleware('role:accueil,admin')->prefix('accueil')->group(function () {

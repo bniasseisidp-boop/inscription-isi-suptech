@@ -531,6 +531,28 @@ class AdminController extends Controller
         return response()->json(['message' => 'Membre supprimé.']);
     }
 
+    /** Change a staff member's role — super admin only (voir route). */
+    public function updateStaffRole(Request $request, User $user)
+    {
+        if (!in_array($user->role, ['admin', 'cashier', 'accueil', 'pedagogique'], true)) {
+            return response()->json(['message' => "Ce compte n'est pas un compte staff."], 422);
+        }
+
+        $validated = $request->validate([
+            'role' => 'required|in:admin,cashier,accueil,pedagogique',
+        ]);
+
+        $ancienRole = $user->role;
+        $user->update(['role' => $validated['role']]);
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'staff.role_update',
+            "Rôle changé pour {$user->name} ({$user->email}) : {$ancienRole} → {$validated['role']}", $user
+        );
+
+        return response()->json($user);
+    }
+
     /** All payments report */
     public function payments(Request $request)
     {
