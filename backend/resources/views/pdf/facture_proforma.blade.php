@@ -37,7 +37,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 .pricing { width:100%; border-collapse:collapse; margin-bottom:20px; border:1.5px solid #1a1a2e; }
 .pricing th { background:#eef2f7; border:1px solid #1a1a2e; font-size:12.5px; font-weight:900; text-transform:uppercase; padding:11px 12px; text-align:left; }
 .pricing td { border:1px solid #94a3b8; padding:13px 12px; font-size:14px; vertical-align:top; }
-.pricing .duree { font-style:italic; font-weight:700; text-align:center; }
+.pricing .duree { font-style:italic; font-weight:700; text-align:left; }
 .pricing .designation-head { font-weight:900; text-decoration:underline; font-size:15px; }
 .pricing .num { text-align:right; }
 .pricing .tot td { font-weight:900; background:#f8fafc; font-size:16px; padding:14px 12px; }
@@ -103,7 +103,9 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
       <td class="duree" rowspan="3">
         Année académique<br/>({{ $anneeAcademique }})<br/><br/>{{ $nbMois }} mois
       </td>
-      <td class="designation-head" colspan="3">{{ $license->nom }}</td>
+      <td class="designation-head">{{ $license->nom }}</td>
+      <td class="num"></td>
+      <td class="num"></td>
     </tr>
     <tr>
       <td>Droit d'inscription (dernier mois inclus)</td>
