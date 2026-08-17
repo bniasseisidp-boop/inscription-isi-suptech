@@ -12,8 +12,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 .hd-logo-cell img { width:70px; }
 .hd-title-cell { vertical-align:middle; padding-left:16px; }
 .hd-title-cell h1 { font-size:23px; font-weight:900; color:#1a3a8f; letter-spacing:.5px; }
-.hd-cert-cell { text-align:right; vertical-align:middle; width:90px; }
-.hd-cert-cell img { width:60px; }
 .hd-rule { border-bottom:2.5px solid #1a3a8f; margin:16px 0 22px; }
 
 .doc-title { text-align:right; font-size:19px; font-weight:900; letter-spacing:2px; color:#1a1a2e; margin-bottom:22px; text-transform:uppercase; }
@@ -63,7 +61,6 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 <table class="hd-table"><tr>
   <td class="hd-logo-cell"><img src="{{ public_path('isi-logo.png') }}" alt="ISI"/></td>
   <td class="hd-title-cell"><h1>Institut Supérieur d'Informatique</h1></td>
-  <td class="hd-cert-cell"><img src="{{ public_path('cisco.png') }}" alt="Cisco"/></td>
 </tr></table>
 <div class="hd-rule"></div>
 
