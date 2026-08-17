@@ -10,6 +10,7 @@ import {
   TrendingUp, Clock, CheckCircle2, Camera, Image as ImageIcon,
 } from 'lucide-react'
 import Navbar from '../components/Navbar'
+import { DEPARTEMENTS } from '../data/departements'
 import {
   getPublicStudents, getFilieres, getFormateurs, getMembresAdmins,
   getPartenaires, getTemoignages, submitTemoignage, subscribeNewsletter,
@@ -693,6 +694,78 @@ function CircleCarousel({ items, renderItem, radius=420, duration=22, cardW=268,
 }
 
 // ─── Filière card for marquee (no whileInView) ────────────────────────────────
+// ─── Explorateur de départements (BT/BTS/Licences/Masters/Cycle Ingénieur) ────
+const DEPT_GROUPES = [
+  { key: 'bt', label: 'BT' },
+  { key: 'bts', label: 'BTS' },
+  { key: 'licences', label: 'Licences' },
+  { key: 'masters', label: 'Masters' },
+]
+function DepartementsBrowser({ isDark: D }) {
+  const [activeDept, setActiveDept] = useState(DEPARTEMENTS[0].id)
+  const dept = DEPARTEMENTS.find(d => d.id === activeDept)
+  const groupesActifs = DEPT_GROUPES.filter(g => (dept[g.key] || []).length > 0)
+
+  return (
+    <div className="mt-16 max-w-5xl mx-auto">
+      {/* Onglets départements */}
+      <div className="flex flex-wrap justify-center gap-2 mb-8">
+        {DEPARTEMENTS.map(d => (
+          <button key={d.id} onClick={() => setActiveDept(d.id)}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              activeDept === d.id
+                ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-500/25'
+                : D ? 'bg-white/5 text-white/60 hover:bg-white/10 border border-white/10' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+            }`}>
+            {d.nom.replace('Département ', '')}
+          </button>
+        ))}
+      </div>
+
+      {/* Programmes du département actif */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeDept}
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.25 }}
+          className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 p-6 rounded-3xl border ${
+            D ? 'bg-white/[0.03] border-white/10' : 'bg-white border-slate-200 shadow-sm'
+          }`}
+        >
+          {groupesActifs.map(g => (
+            <div key={g.key}>
+              <div className={`text-xs font-black uppercase tracking-wider mb-2.5 ${D ? 'text-brand-400' : 'text-brand-600'}`}>{g.label}</div>
+              <ul className="space-y-2">
+                {dept[g.key].map(nom => (
+                  <li key={nom}>
+                    <Link to="/pre-inscription"
+                      className={`text-sm flex items-center gap-1.5 group ${D ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-brand-700'}`}>
+                      <ChevronRight size={13} className="flex-shrink-0 opacity-50 group-hover:translate-x-0.5 transition-transform"/>
+                      {nom}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {dept.ingenieur && (
+            <div>
+              <div className={`text-xs font-black uppercase tracking-wider mb-2.5 ${D ? 'text-brand-400' : 'text-brand-600'}`}>Cycle Ingénieur</div>
+              <Link to="/pre-inscription"
+                className={`text-sm flex items-start gap-1.5 ${D ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-brand-700'}`}>
+                <GraduationCap size={14} className="flex-shrink-0 mt-0.5"/> {dept.ingenieur}
+              </Link>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+      <p className={`text-center text-xs mt-5 ${D ? 'text-white/40' : 'text-slate-400'}`}>
+        Les inscriptions démarrent selon le programme — septembre, octobre ou novembre.
+      </p>
+    </div>
+  )
+}
+
 function FCardM({ f, openF, D }) {
   const [hovered, setHovered] = useState(false)
   const c = CM[f.color] || CM.blue
@@ -1005,6 +1078,9 @@ export default function Landing() {
             radius={420} duration={22} cardW={268} cardH={260} height={540}
             renderItem={f => <FCardM f={f} openF={openF} D={D}/>}
           />
+
+          {/* ── Explorateur par département (BT / BTS / Licences / Masters / Ingénieur) ── */}
+          <DepartementsBrowser isDark={D}/>
         </div>
       </section>
 

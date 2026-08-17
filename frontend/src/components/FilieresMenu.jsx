@@ -37,11 +37,17 @@ export function FilieresMenuDesktop({ triggerClassName }) {
 
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-16 left-1/2 -translate-x-1/2 w-[820px] max-w-[94vw] max-h-[80vh] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-2xl z-50"
-          >
+          // Conteneur pleine largeur qui centre son enfant par flexbox — évite
+          // d'utiliser left-1/2 + -translate-x-1/2 pour le centrage : Framer
+          // Motion écrit son propre style "transform" inline pour animer "y",
+          // ce qui écrasait silencieusement la classe Tailwind -translate-x-1/2
+          // (même propriété CSS) et faisait dériver le panneau vers la droite.
+          <div className="fixed top-16 left-0 right-0 z-50 flex justify-center px-3 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="pointer-events-auto w-[820px] max-w-full max-h-[80vh] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-2xl"
+            >
             <div className="flex" style={{ minHeight: 280 }}>
               {/* Colonne départements */}
               <div className="w-56 flex-shrink-0 bg-slate-50 border-r border-slate-200 py-3">
@@ -92,7 +98,8 @@ export function FilieresMenuDesktop({ triggerClassName }) {
               Les inscriptions démarrent selon le programme — septembre, octobre ou novembre.
               <Link to="/pre-inscription" onClick={() => setOpen(false)} className="text-isiblue-600 font-semibold ml-1">Pré-inscrivez-vous →</Link>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
