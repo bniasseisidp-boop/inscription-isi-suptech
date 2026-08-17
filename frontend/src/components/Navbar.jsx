@@ -160,7 +160,7 @@ export default function Navbar() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className={`md:hidden backdrop-blur-xl border-t ${mobileMenuBg}`}
+            className={`md:hidden backdrop-blur-xl border-t max-h-[calc(100vh-4rem)] overflow-y-auto ${mobileMenuBg}`}
           >
             <div className="px-4 py-4 flex flex-col gap-2">
               {!user ? (
