@@ -12,6 +12,8 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 .hd-logo-cell img { width:70px; }
 .hd-title-cell { vertical-align:middle; padding-left:16px; }
 .hd-title-cell h1 { font-size:23px; font-weight:900; color:#1a3a8f; letter-spacing:.5px; }
+.hd-cert-cell { text-align:right; vertical-align:middle; width:150px; }
+.hd-cert-cell img { height:34px; margin-left:14px; }
 .hd-rule { border-bottom:2.5px solid #1a3a8f; margin:16px 0 22px; }
 
 .doc-title { text-align:right; font-size:19px; font-weight:900; letter-spacing:2px; color:#1a1a2e; margin-bottom:22px; text-transform:uppercase; }
@@ -34,11 +36,11 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 /* PRICING TABLE */
 .pricing { width:100%; border-collapse:collapse; margin-bottom:20px; border:1.5px solid #1a1a2e; }
 .pricing th { background:#eef2f7; border:1px solid #1a1a2e; font-size:12.5px; font-weight:900; text-transform:uppercase; padding:11px 12px; text-align:left; }
-.pricing td { border:1px solid #94a3b8; padding:13px 12px; font-size:14px; vertical-align:top; }
+.pricing td { border-left:1px solid #94a3b8; border-right:1px solid #94a3b8; border-top:none; border-bottom:none; padding:13px 12px; font-size:14px; vertical-align:top; }
 .pricing .duree { font-style:italic; font-weight:700; text-align:left; }
 .pricing .designation-head { font-weight:900; text-decoration:underline; font-size:15px; }
 .pricing .num { text-align:right; }
-.pricing .tot td { font-weight:900; background:#f8fafc; font-size:16px; padding:14px 12px; }
+.pricing .tot td { font-weight:900; background:#f8fafc; font-size:16px; padding:14px 12px; border-top:1.5px solid #1a1a2e; }
 .pricing .tot .lbl { font-style:italic; }
 
 .mots { font-size:14px; margin-bottom:8px; }
@@ -61,6 +63,10 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 <table class="hd-table"><tr>
   <td class="hd-logo-cell"><img src="{{ public_path('isi-logo.png') }}" alt="ISI"/></td>
   <td class="hd-title-cell"><h1>Institut Supérieur d'Informatique</h1></td>
+  <td class="hd-cert-cell">
+    <img src="{{ public_path('microsoft.png') }}" alt="Microsoft"/>
+    <img src="{{ public_path('cisco.png') }}" alt="Cisco"/>
+  </td>
 </tr></table>
 <div class="hd-rule"></div>
 
