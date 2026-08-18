@@ -28,27 +28,46 @@ class CurriculumReseauxInformatiquesSeeder extends Seeder
             return;
         }
 
-        // Le nom exact du niveau "cycle de base" (DTS-BTS-Licence, Licence 1...) varie
-        // selon l'environnement — on prend celui qui n'est PAS une "Licence Professionnelle"
-        // (cycle court d'1 an, différent du cycle long de 3 ans qu'on cherche ici).
-        $license = License::where('filiere_id', $filiere->id)
+        // Chaque année (L1, L2, L3) est un niveau/tarif séparé dans le catalogue — pas un
+        // seul niveau de 3 ans. Le niveau "année 1" existe déjà sous un nom variable selon
+        // l'environnement (ex: "Licence 1", "DTS - BTS - Licence") ; on le réutilise pour
+        // l'année 1 et on crée "Licence 2" / "Licence 3" s'ils n'existent pas encore, en
+        // reprenant les mêmes tarifs/mois que l'année 1 (à ajuster ensuite si besoin).
+        $licenceAnnee1 = License::where('filiere_id', $filiere->id)
             ->where('nom', 'NOT LIKE', '%Professionnelle%')
             ->orderBy('id')
             ->first();
 
-        if (!$license) {
-            $this->command->error('Niveau "cycle de base" introuvable pour Réseaux Informatiques.');
+        if (!$licenceAnnee1) {
+            $this->command->error('Niveau "année 1" introuvable pour Réseaux Informatiques.');
             return;
         }
 
-        // Le cursus va jusqu'à L3 (semestre 6) — on aligne la durée du niveau.
-        if ($license->duree_annees != 3) {
-            $license->update(['duree_annees' => 3]);
+        if ($licenceAnnee1->duree_annees != 1) {
+            $licenceAnnee1->update(['duree_annees' => 1]);
         }
+
+        $licencesParAnnee = [1 => $licenceAnnee1];
+        for ($a = 2; $a <= 3; $a++) {
+            $licencesParAnnee[$a] = License::firstOrCreate(
+                ['filiere_id' => $filiere->id, 'nom' => "Licence {$a}"],
+                [
+                    'code'              => $licenceAnnee1->code . '-L' . $a,
+                    'duree_annees'      => 1,
+                    'mois_debut'        => $licenceAnnee1->mois_debut,
+                    'mois_fin'          => $licenceAnnee1->mois_fin,
+                    'frais_inscription' => $licenceAnnee1->frais_inscription,
+                    'frais_mensuel'     => $licenceAnnee1->frais_mensuel,
+                    'actif'             => true,
+                ]
+            );
+        }
+        $this->command->info('Niveaux : ' . collect($licencesParAnnee)->map(fn ($l, $a) => "L{$a}=\"{$l->nom}\"")->implode(', '));
 
         $data = $this->cursus();
 
         foreach ($data as $annee => $semestres) {
+            $license = $licencesParAnnee[$annee];
             foreach ($semestres as $numeroGlobal => $modules) {
                 // Les clés du tableau sont deja les numeros de semestre absolus (1 a 6).
                 $numero = (($numeroGlobal - 1) % 2) + 1;
