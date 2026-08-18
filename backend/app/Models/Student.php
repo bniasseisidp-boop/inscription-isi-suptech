@@ -84,6 +84,11 @@ class Student extends Model
         return $this->belongsTo(License::class);
     }
 
+    public function notes()
+    {
+        return $this->hasMany(Note::class);
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);

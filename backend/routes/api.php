@@ -8,6 +8,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\AccueilPedagogiqueController;
+use App\Http\Controllers\CurriculumController;
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 // Limitées en fréquence — ce sont des cibles classiques pour le bruteforce
@@ -233,4 +234,28 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/licenses/{license}',                     [AdminController::class, 'updateLicense']);
         Route::delete('/licenses/{license}',                  [AdminController::class, 'deleteLicense']);
     });
+
+    // ── Curriculum académique (semestres, modules, matières, profs, emploi du temps) ──
+    // Admin + Accueil Pédagogique : gestion complète. Super admin passe toujours (CheckRole).
+    Route::middleware('role:admin,pedagogique')->prefix('curriculum')->group(function () {
+        Route::get('/licenses/{license}/semestres',              [CurriculumController::class, 'semestres']);
+        Route::post('/licenses/{license}/semestres',             [CurriculumController::class, 'createSemestre']);
+        Route::post('/semestres/{semestre}/modules',             [CurriculumController::class, 'createModule']);
+        Route::put('/modules/{module}',                          [CurriculumController::class, 'updateModule']);
+        Route::delete('/modules/{module}',                       [CurriculumController::class, 'deleteModule']);
+        Route::post('/modules/{module}/matieres',                [CurriculumController::class, 'createMatiere']);
+        Route::put('/matieres/{matiere}',                        [CurriculumController::class, 'updateMatiere']);
+        Route::delete('/matieres/{matiere}',                     [CurriculumController::class, 'deleteMatiere']);
+        Route::get('/professeurs',                               [CurriculumController::class, 'professeurs']);
+        Route::post('/professeurs',                              [CurriculumController::class, 'createProfesseur']);
+        Route::put('/professeurs/{professeur}',                  [CurriculumController::class, 'updateProfesseur']);
+        Route::delete('/professeurs/{professeur}',                [CurriculumController::class, 'deleteProfesseur']);
+        Route::post('/matieres/{matiere}/creneaux',              [CurriculumController::class, 'createCreneau']);
+        Route::delete('/creneaux/{creneau}',                     [CurriculumController::class, 'deleteCreneau']);
+        Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
+        Route::get('/semestres/{semestre}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
+    });
+
+    // ── Étudiant — emploi du temps ──────────────────────────────────────────
+    Route::get('/etudiant/emploi-du-temps', [CurriculumController::class, 'monEmploiDuTemps']);
 });

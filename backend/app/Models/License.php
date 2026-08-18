@@ -23,4 +23,9 @@ class License extends Model
     {
         return $this->hasMany(Student::class);
     }
+
+    public function semestres()
+    {
+        return $this->hasMany(Semestre::class)->orderBy('numero_global');
+    }
 }
