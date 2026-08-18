@@ -13,6 +13,7 @@ import {
   KeyRound, Activity, Power, ShieldCheck, UserCog, Camera, Image as ImageIcon
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import CurriculumManager from '../components/CurriculumManager'
 import {
   getAdminStats, getAdminStudents, acceptStudent, rejectStudent,
   deleteStudent, getTrashedStudents, restoreStudent, forceDeleteStudent,
@@ -61,6 +62,7 @@ const NAV = [
   { id: 'etudiants',   label: 'Étudiants',          icon: Users,           color: 'text-isiblue-400',  badge: null },
   { id: 'paiements',   label: 'Paiements',           icon: CreditCard,      color: 'text-isigold-500',  badge: null },
   { id: 'filieres',    label: 'Filières & Niveaux',  icon: BookOpen,        color: 'text-isiblue-400',  badge: null },
+  { id: 'programme',   label: 'Programme & Notes',   icon: GraduationCap,   color: 'text-isigold-500',  badge: null },
   { id: 'staff',       label: 'Équipe staff',        icon: Shield,          color: 'text-isiblue-400',  badge: null },
   { id: 'mois',        label: 'Mois désactivés',     icon: Calendar,        color: 'text-isigold-500',  badge: null },
   { id: 'permissions', label: 'Permissions caisse',  icon: KeyRound,        color: 'text-isigold-500',  badge: null },
@@ -2017,6 +2019,14 @@ export default function AdminDashboard() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* PROGRAMME & NOTES */}
+              {active === 'programme' && (
+                <CurriculumManager searchStudents={async (q) => {
+                  const { data } = await getAdminStudents({ search: q, statut: 'accepte' })
+                  return data.data || []
+                }}/>
+              )}
 
               {/* STAFF */}
               {active === 'staff' && (

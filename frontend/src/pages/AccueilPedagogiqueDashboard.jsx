@@ -23,6 +23,7 @@ import {
   updatePedagogiqueStudent,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
+import CurriculumManager from '../components/CurriculumManager'
 
 const STATUT_COLORS = {
   accepte:             'text-green-700 bg-green-500/10 border-green-300',
@@ -638,6 +639,7 @@ export default function AccueilPedagogiqueDashboard() {
   const [acceptingId, setAcceptingId]   = useState(null)
 
   const [showFilieresManagement, setShowFilieresManagement] = useState(false)
+  const [showProgramme, setShowProgramme] = useState(false)
   const [showMonProfil, setShowMonProfil] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [pwdForm, setPwdForm] = useState({ current_password: '', password: '', password_confirmation: '' })
@@ -898,6 +900,10 @@ export default function AccueilPedagogiqueDashboard() {
           <button onClick={openFilieresManagement}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-500 hover:text-isigold-600 hover:bg-isigold-100/40 transition-all">
             <Settings size={17}/> Gérer les filières
+          </button>
+          <button onClick={() => setShowProgramme(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-500 hover:text-isigold-600 hover:bg-isigold-100/40 transition-all">
+            <GraduationCap size={17}/> Programme & Notes
           </button>
           <button onClick={() => setShowMonProfil(true)}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-slate-500 hover:text-isiblue-600 hover:bg-isiblue-50 transition-all">
@@ -1207,6 +1213,24 @@ export default function AccueilPedagogiqueDashboard() {
                 </button>
               </form>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Programme & Notes */}
+      <AnimatePresence>
+        {showProgramme && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-white/95 backdrop-blur-xl overflow-y-auto">
+            <div className="relative z-10 max-w-6xl mx-auto p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-isiblue-700 font-bold text-xl flex items-center gap-2"><GraduationCap size={20} className="text-isigold-600"/> Programme & Notes</h2>
+                <button onClick={() => setShowProgramme(false)} className="p-2 rounded-xl text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 transition-all"><X size={20}/></button>
+              </div>
+              <CurriculumManager searchStudents={async (q) => {
+                const { data } = await getPedagogiqueStudents({ search: q })
+                return data.data || data || []
+              }}/>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

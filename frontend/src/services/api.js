@@ -230,4 +230,23 @@ export const uploadPedagogiqueDocument    = (id, data) => api.post(`/pedagogique
 export const getPedagogiquePending        = (params) => api.get('/pedagogique/candidats', { params })
 export const acceptPedagogiqueStudent     = (id)     => api.post(`/pedagogique/candidats/${id}/accepter`)
 
+// ── Curriculum académique (semestres / modules / matières / profs / notes) ──
+export const getLicenseSemestres  = (licenseId) => api.get(`/curriculum/licenses/${licenseId}/semestres`)
+export const createSemestre       = (licenseId, data) => api.post(`/curriculum/licenses/${licenseId}/semestres`, data)
+export const createModule         = (semestreId, data) => api.post(`/curriculum/semestres/${semestreId}/modules`, data)
+export const updateModule         = (moduleId, data) => api.put(`/curriculum/modules/${moduleId}`, data)
+export const deleteModule         = (moduleId) => api.delete(`/curriculum/modules/${moduleId}`)
+export const createMatiere        = (moduleId, data) => api.post(`/curriculum/modules/${moduleId}/matieres`, data)
+export const updateMatiere        = (matiereId, data) => api.put(`/curriculum/matieres/${matiereId}`, data)
+export const deleteMatiere        = (matiereId) => api.delete(`/curriculum/matieres/${matiereId}`)
+export const getProfesseurs       = () => api.get('/curriculum/professeurs')
+export const createProfesseur     = (data) => api.post('/curriculum/professeurs', data)
+export const updateProfesseur     = (id, data) => api.put(`/curriculum/professeurs/${id}`, data)
+export const deleteProfesseur     = (id) => api.delete(`/curriculum/professeurs/${id}`)
+export const createCreneau        = (matiereId, data) => api.post(`/curriculum/matieres/${matiereId}/creneaux`, data)
+export const deleteCreneau        = (id) => api.delete(`/curriculum/creneaux/${id}`)
+export const saisirNotesEtudiant  = (studentId, data) => api.post(`/curriculum/etudiants/${studentId}/notes`, data)
+export const getBulletin          = (semestreId, studentId, params) => api.get(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin`, { params })
+export const getMonEmploiDuTemps  = () => api.get('/etudiant/emploi-du-temps')
+
 export default api
