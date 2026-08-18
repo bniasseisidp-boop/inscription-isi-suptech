@@ -262,6 +262,94 @@ class AdminController extends Controller
         return response()->json(['message' => 'Carte générée', 'card' => $card]);
     }
 
+    // ── Documents étudiant (attestations, certificats, diplôme) — Admin ────────
+
+    private function checkAccepte(Student $student): ?\Illuminate\Http\JsonResponse
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        return null;
+    }
+
+    public function downloadAttestationScolarite(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $path = $this->pdfService->generateAttestationScolarite($student);
+        return response()->download(Storage::disk('public')->path($path),
+            'attestation_scolarite_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    public function downloadAttestationInscription(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $path = $this->pdfService->generateAttestationInscription($student);
+        return response()->download(Storage::disk('public')->path($path),
+            'attestation_inscription_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    public function downloadFicheInscription(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $path = $this->pdfService->generateFicheInscription($student);
+        return response()->download(Storage::disk('public')->path($path),
+            'fiche_inscription_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    public function downloadCertificatScolarite(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $path = $this->pdfService->generateCertificatScolarite($student);
+        return response()->download(Storage::disk('public')->path($path),
+            'certificat_scolarite_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    public function downloadAttestationFormation(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $path = $this->pdfService->generateAttestationFormation($student);
+        return response()->download(Storage::disk('public')->path($path),
+            'attestation_formation_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    public function downloadAttestationNonSoutenance(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $path = $this->pdfService->generateAttestationNonSoutenance($student);
+        return response()->download(Storage::disk('public')->path($path),
+            'attestation_non_soutenance_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    /** Mention saisie manuellement — pas encore de module bulletin/notes en base. */
+    public function downloadAttestationReussite(Request $request, Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $validated = $request->validate(['mention' => 'required|string|max:50']);
+        $path = $this->pdfService->generateAttestationReussite($student, $validated['mention']);
+        return response()->download(Storage::disk('public')->path($path),
+            'attestation_reussite_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    /** Moyenne saisie manuellement — pas encore de module bulletin/notes en base. */
+    public function downloadAttestationEncouragement(Request $request, Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $validated = $request->validate(['moyenne' => 'required|string|max:10', 'periode' => 'required|string|max:50']);
+        $path = $this->pdfService->generateAttestationEncouragement($student, $validated['moyenne'], $validated['periode']);
+        return response()->download(Storage::disk('public')->path($path),
+            'attestation_encouragement_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    /** Mention saisie manuellement — pas encore de module bulletin/notes en base. */
+    public function downloadDiplomeLicence(Request $request, Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $validated = $request->validate(['mention' => 'required|string|max:50']);
+        $path = $this->pdfService->generateDiplomeLicence($student, $validated['mention']);
+        return response()->download(Storage::disk('public')->path($path),
+            'diplome_licence_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
     /** Manage filieres and licenses */
     public function filieres()
     {

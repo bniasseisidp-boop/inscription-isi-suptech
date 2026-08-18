@@ -18,6 +18,8 @@ import {
   deleteStudent, getTrashedStudents, restoreStudent, forceDeleteStudent,
   generateStudentCard, downloadAdminCard, getAdminPayments, getFilieres, createAdminStudent, createFiliere,
   downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription, uploadStudentDocument,
+  downloadCertificatScolarite, downloadAttestationFormation, downloadAttestationNonSoutenance,
+  downloadAttestationReussite, downloadAttestationEncouragement, downloadDiplomeLicence,
   downloadClassListPdf,
   updateAdminFiliere, deleteAdminFiliere, createLicense, updateAdminLicense, deleteAdminLicense,
   getAdminSettings, updateAdminSettings,
@@ -420,9 +422,12 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
   }
 
   const DOC_FETCHERS = {
-    scolarite:    downloadAttestationScolarite,
-    inscription:  downloadAttestationInscription,
-    fiche:        downloadFicheInscription,
+    scolarite:      downloadAttestationScolarite,
+    inscription:    downloadAttestationInscription,
+    fiche:          downloadFicheInscription,
+    certificat:     downloadCertificatScolarite,
+    formation:      downloadAttestationFormation,
+    nonsoutenance:  downloadAttestationNonSoutenance,
   }
   const openDoc = async (type) => {
     setDocBusy(type)
@@ -430,6 +435,36 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
       const { data } = await DOC_FETCHERS[type](student.id)
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
       window.open(url, '_blank')
+    } catch { toast.error('Erreur ouverture du document') } finally { setDocBusy(null) }
+  }
+
+  const openDocReussite = async () => {
+    const mention = window.prompt("Mention à afficher (ex : Assez Bien, Bien, Très Bien) :")
+    if (!mention) return
+    setDocBusy('reussite')
+    try {
+      const { data } = await downloadAttestationReussite(student.id, { mention })
+      window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
+    } catch { toast.error('Erreur ouverture du document') } finally { setDocBusy(null) }
+  }
+  const openDocEncouragement = async () => {
+    const moyenne = window.prompt('Moyenne obtenue (ex : 13.49) :')
+    if (!moyenne) return
+    const periode = window.prompt('Période concernée (ex : premier semestre) :', 'premier semestre')
+    if (!periode) return
+    setDocBusy('encouragement')
+    try {
+      const { data } = await downloadAttestationEncouragement(student.id, { moyenne, periode })
+      window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
+    } catch { toast.error('Erreur ouverture du document') } finally { setDocBusy(null) }
+  }
+  const openDocDiplome = async () => {
+    const mention = window.prompt('Mention du diplôme (ex : Assez Bien, Bien, Très Bien) :')
+    if (!mention) return
+    setDocBusy('diplome')
+    try {
+      const { data } = await downloadDiplomeLicence(student.id, { mention })
+      window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
     } catch { toast.error('Erreur ouverture du document') } finally { setDocBusy(null) }
   }
 
@@ -715,6 +750,36 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                   className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
                   {docBusy === 'fiche' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
                   Fiche d'inscription
+                </button>
+                <button onClick={() => openDoc('certificat')} disabled={docBusy === 'certificat'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'certificat' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
+                  Certificat scolarité
+                </button>
+                <button onClick={() => openDoc('formation')} disabled={docBusy === 'formation'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'formation' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
+                  Attestation formation
+                </button>
+                <button onClick={() => openDoc('nonsoutenance')} disabled={docBusy === 'nonsoutenance'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-slate-500/30 text-slate-400 hover:bg-slate-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'nonsoutenance' ? <div className="spinner w-4 h-4"/> : <FileText size={14}/>}
+                  Non soutenance
+                </button>
+                <button onClick={openDocReussite} disabled={docBusy === 'reussite'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-isigold-500/30 text-isigold-600 hover:bg-isigold-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'reussite' ? <div className="spinner w-4 h-4"/> : <GraduationCap size={14}/>}
+                  Attestation réussite
+                </button>
+                <button onClick={openDocEncouragement} disabled={docBusy === 'encouragement'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-isigold-500/30 text-isigold-600 hover:bg-isigold-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'encouragement' ? <div className="spinner w-4 h-4"/> : <GraduationCap size={14}/>}
+                  Encouragement
+                </button>
+                <button onClick={openDocDiplome} disabled={docBusy === 'diplome'}
+                  className="flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-semibold border border-isigold-500/30 text-isigold-600 hover:bg-isigold-500/10 transition-all disabled:opacity-50">
+                  {docBusy === 'diplome' ? <div className="spinner w-4 h-4"/> : <GraduationCap size={14}/>}
+                  Diplôme de Licence
                 </button>
               </div>
             </div>

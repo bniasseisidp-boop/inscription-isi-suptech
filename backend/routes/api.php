@@ -82,6 +82,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/carte', [AdminController::class, 'generateCard']);
         Route::post('/etudiants/{student}/document', [AdminController::class, 'uploadDocument']);
         Route::delete('/etudiants/{student}', [AdminController::class, 'deleteStudent']);
+        // Documents étudiant (attestations, certificats, diplôme)
+        Route::get('/etudiants/{student}/attestation-scolarite',    [AdminController::class, 'downloadAttestationScolarite']);
+        Route::get('/etudiants/{student}/attestation-inscription',  [AdminController::class, 'downloadAttestationInscription']);
+        Route::get('/etudiants/{student}/fiche-inscription',        [AdminController::class, 'downloadFicheInscription']);
+        Route::get('/etudiants/{student}/certificat-scolarite',     [AdminController::class, 'downloadCertificatScolarite']);
+        Route::get('/etudiants/{student}/attestation-formation',    [AdminController::class, 'downloadAttestationFormation']);
+        Route::get('/etudiants/{student}/attestation-non-soutenance', [AdminController::class, 'downloadAttestationNonSoutenance']);
+        Route::post('/etudiants/{student}/attestation-reussite',      [AdminController::class, 'downloadAttestationReussite']);
+        Route::post('/etudiants/{student}/attestation-encouragement', [AdminController::class, 'downloadAttestationEncouragement']);
+        Route::post('/etudiants/{student}/diplome-licence',           [AdminController::class, 'downloadDiplomeLicence']);
         // Corbeille
         Route::get('/etudiants/corbeille', [AdminController::class, 'trashedStudents']);
         Route::post('/etudiants/{id}/restaurer', [AdminController::class, 'restoreStudent']);
@@ -199,6 +209,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/etudiants/{student}/attestation-scolarite',   [AccueilPedagogiqueController::class, 'downloadAttestationScolarite']);
         Route::get('/etudiants/{student}/attestation-inscription', [AccueilPedagogiqueController::class, 'downloadAttestationInscription']);
         Route::get('/etudiants/{student}/fiche-inscription',       [AccueilPedagogiqueController::class, 'downloadFicheInscription']);
+        Route::get('/etudiants/{student}/certificat-scolarite',     [AccueilPedagogiqueController::class, 'downloadCertificatScolarite']);
+        Route::get('/etudiants/{student}/attestation-formation',    [AccueilPedagogiqueController::class, 'downloadAttestationFormation']);
+        Route::get('/etudiants/{student}/attestation-non-soutenance', [AccueilPedagogiqueController::class, 'downloadAttestationNonSoutenance']);
+        Route::post('/etudiants/{student}/attestation-reussite',      [AccueilPedagogiqueController::class, 'downloadAttestationReussite']);
+        Route::post('/etudiants/{student}/attestation-encouragement', [AccueilPedagogiqueController::class, 'downloadAttestationEncouragement']);
+        Route::post('/etudiants/{student}/diplome-licence',           [AccueilPedagogiqueController::class, 'downloadDiplomeLicence']);
         Route::post('/etudiants/{student}/verrouiller',       [AccueilPedagogiqueController::class, 'toggleLock']);
         Route::post('/etudiants/{student}/photo',             [AccueilPedagogiqueController::class, 'updatePhoto']);
         Route::post('/etudiants/{student}/document',          [AdminController::class, 'uploadDocument']);

@@ -18,6 +18,8 @@ import {
   createPedagogiqueLicense, updatePedagogiqueLicense, deletePedagogiqueLicense,
   getPedagogiqueSettings, updateMyPassword, updateMyPhoto,
   downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription,
+  downloadCertificatScolarite, downloadAttestationFormation, downloadAttestationNonSoutenance,
+  downloadAttestationReussite, downloadAttestationEncouragement, downloadDiplomeLicence,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 
@@ -95,9 +97,12 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
 
   const [docBusy, setDocBusy] = useState(null)
   const DOC_FETCHERS = {
-    scolarite:   downloadAttestationScolarite,
-    inscription: downloadAttestationInscription,
-    fiche:       downloadFicheInscription,
+    scolarite:      downloadAttestationScolarite,
+    inscription:    downloadAttestationInscription,
+    fiche:          downloadFicheInscription,
+    certificat:     downloadCertificatScolarite,
+    formation:      downloadAttestationFormation,
+    nonsoutenance:  downloadAttestationNonSoutenance,
   }
   const handleOpenDoc = async (type) => {
     setDocBusy(type)
@@ -105,6 +110,40 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
       const { data } = await DOC_FETCHERS[type](s.id)
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
       window.open(url, '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur ouverture du document') }
+    finally { setDocBusy(null) }
+  }
+
+  // Documents nécessitant une moyenne/mention saisie à la main (pas encore de module bulletin/notes)
+  const handleOpenDocReussite = async () => {
+    const mention = window.prompt("Mention à afficher sur l'attestation de réussite (ex : Assez Bien, Bien, Très Bien) :")
+    if (!mention) return
+    setDocBusy('reussite')
+    try {
+      const { data } = await downloadAttestationReussite(s.id, { mention })
+      window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur ouverture du document') }
+    finally { setDocBusy(null) }
+  }
+  const handleOpenDocEncouragement = async () => {
+    const moyenne = window.prompt('Moyenne obtenue (ex : 13.49) :')
+    if (!moyenne) return
+    const periode = window.prompt('Période concernée (ex : premier semestre) :', 'premier semestre')
+    if (!periode) return
+    setDocBusy('encouragement')
+    try {
+      const { data } = await downloadAttestationEncouragement(s.id, { moyenne, periode })
+      window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur ouverture du document') }
+    finally { setDocBusy(null) }
+  }
+  const handleOpenDocDiplome = async () => {
+    const mention = window.prompt('Mention du diplôme (ex : Assez Bien, Bien, Très Bien) :')
+    if (!mention) return
+    setDocBusy('diplome')
+    try {
+      const { data } = await downloadDiplomeLicence(s.id, { mention })
+      window.open(URL.createObjectURL(new Blob([data], { type: 'application/pdf' })), '_blank')
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur ouverture du document') }
     finally { setDocBusy(null) }
   }
@@ -260,6 +299,36 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
                     className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition-all font-semibold disabled:opacity-50">
                     {docBusy === 'inscription' ? <div className="spinner w-4 h-4"/> : <FileText size={15}/>}
                     Attestation inscription
+                  </button>
+                  <button onClick={() => handleOpenDoc('certificat')} disabled={docBusy === 'certificat'}
+                    className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition-all font-semibold disabled:opacity-50">
+                    {docBusy === 'certificat' ? <div className="spinner w-4 h-4"/> : <FileText size={15}/>}
+                    Certificat de scolarité
+                  </button>
+                  <button onClick={() => handleOpenDoc('formation')} disabled={docBusy === 'formation'}
+                    className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition-all font-semibold disabled:opacity-50">
+                    {docBusy === 'formation' ? <div className="spinner w-4 h-4"/> : <FileText size={15}/>}
+                    Attestation de formation
+                  </button>
+                  <button onClick={() => handleOpenDoc('nonsoutenance')} disabled={docBusy === 'nonsoutenance'}
+                    className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 transition-all font-semibold disabled:opacity-50">
+                    {docBusy === 'nonsoutenance' ? <div className="spinner w-4 h-4"/> : <FileText size={15}/>}
+                    Attestation de non soutenance
+                  </button>
+                  <button onClick={handleOpenDocReussite} disabled={docBusy === 'reussite'}
+                    className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-isigold-300 text-isigold-700 hover:bg-isigold-50 transition-all font-semibold disabled:opacity-50">
+                    {docBusy === 'reussite' ? <div className="spinner w-4 h-4"/> : <GraduationCap size={15}/>}
+                    Attestation de réussite
+                  </button>
+                  <button onClick={handleOpenDocEncouragement} disabled={docBusy === 'encouragement'}
+                    className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-isigold-300 text-isigold-700 hover:bg-isigold-50 transition-all font-semibold disabled:opacity-50">
+                    {docBusy === 'encouragement' ? <div className="spinner w-4 h-4"/> : <GraduationCap size={15}/>}
+                    Attestation d'encouragement
+                  </button>
+                  <button onClick={handleOpenDocDiplome} disabled={docBusy === 'diplome'}
+                    className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-isigold-300 text-isigold-700 hover:bg-isigold-50 transition-all font-semibold disabled:opacity-50">
+                    {docBusy === 'diplome' ? <div className="spinner w-4 h-4"/> : <GraduationCap size={15}/>}
+                    Diplôme de Licence
                   </button>
                 </>
               )}

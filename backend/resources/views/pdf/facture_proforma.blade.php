@@ -18,7 +18,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:14px; line-height:1
 
 .doc-title { text-align:right; font-size:19px; font-weight:900; letter-spacing:2px; color:#1a1a2e; margin-bottom:22px; text-transform:uppercase; }
 
-.ref-box { display:inline-block; border:1.5px solid #1a3a8f; border-radius:6px; padding:8px 18px; font-size:14px; font-weight:900; color:#1a3a8f; margin-bottom:24px; }
+.ref-box { display:inline-block; min-width:160px; border:1.5px solid #1a3a8f; border-radius:6px; padding:8px 18px; font-size:14px; font-weight:900; color:#1a3a8f; margin-bottom:24px; }
 
 /* TWO-COL INFO BOXES */
 .info-table { width:100%; border-collapse:collapse; margin-bottom:28px; }

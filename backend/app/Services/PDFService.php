@@ -553,4 +553,127 @@ class PDFService
 
         return ['path' => $path, 'reference' => $reference];
     }
+
+    /** Année académique "2026-2027" pour un étudiant, en tenant compte du mois de début de son niveau. */
+    private function anneeAcademiqueDe(Student $student): string
+    {
+        $moisDebut = intval($student->license?->mois_debut ?? 9);
+        $now       = \Carbon\Carbon::now();
+        if ($student->annee_scolaire && preg_match('/^(\d{4})-\d{4}$/', $student->annee_scolaire, $m)) {
+            $anneeDebut = (int) $m[1];
+        } else {
+            $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+        }
+        return $student->annee_scolaire ?? ($anneeDebut . '-' . ($anneeDebut + 1));
+    }
+
+    /** Domaine académique déduit du nom de la filière (pas de champ dédié en base). */
+    private function inferDomaine(Student $student): string
+    {
+        $nom = mb_strtolower($student->filiere?->nom ?? '', 'UTF-8');
+        foreach (['comptab', 'finance', 'commerce', 'marketing', 'banque', 'gestion'] as $mot) {
+            if (str_contains($nom, $mot)) return 'Sciences Economiques et de Gestion';
+        }
+        return "Sciences et Technologies de l'Information et de la Communication";
+    }
+
+    /** Attestation de Réussite (fin de cycle) — mention/domaine saisis manuellement tant qu'il n'y a pas de bulletin de notes. */
+    public function generateAttestationReussite(Student $student, string $mention): string
+    {
+        $student->load(['filiere', 'license']);
+        $anneeAcademique = $this->anneeAcademiqueDe($student);
+        $domaine         = $this->inferDomaine($student);
+        $qrBase64        = $this->generateQrPngBase64('ISI-REUSSITE-' . ($student->matricule ?? $student->id), 100);
+
+        $pdf = Pdf::loadView('pdf.attestation_reussite', compact('student', 'anneeAcademique', 'domaine', 'mention', 'qrBase64'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'attestation_reussite_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'attestations/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
+    /** Attestation de Formation (modules validés sur plusieurs années). */
+    public function generateAttestationFormation(Student $student): string
+    {
+        $student->load(['filiere', 'license']);
+        $anneeAcademique = $this->anneeAcademiqueDe($student);
+
+        $anneeFin   = intval(explode('-', $anneeAcademique)[0]);
+        $dureeAnnee = intval($student->license?->duree_annees ?? 1);
+        $anneesListe = collect(range($anneeFin - $dureeAnnee + 1, $anneeFin))
+            ->map(fn ($y) => $y . '/' . ($y + 1))
+            ->implode(' , ');
+
+        $pdf = Pdf::loadView('pdf.attestation_formation', compact('student', 'anneeAcademique', 'anneesListe'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'attestation_formation_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'attestations/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
+    /** Certificat de scolarité (variante avec QR + case référence, en plus de l'attestation de scolarité existante). */
+    public function generateCertificatScolarite(Student $student): string
+    {
+        $student->load(['filiere', 'license']);
+        $anneeAcademique = $this->anneeAcademiqueDe($student);
+        $qrBase64        = $this->generateQrPngBase64('ISI-SCOLARITE-' . ($student->matricule ?? $student->id), 100);
+
+        $pdf = Pdf::loadView('pdf.certificat_scolarite', compact('student', 'anneeAcademique', 'qrBase64'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'certificat_scolarite_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'attestations/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
+    /** Attestation de non soutenance (admissible à l'examen, avant soutenance). */
+    public function generateAttestationNonSoutenance(Student $student): string
+    {
+        $student->load(['filiere', 'license']);
+        $anneeAcademique = $this->anneeAcademiqueDe($student);
+
+        $pdf = Pdf::loadView('pdf.attestation_non_soutenance', compact('student', 'anneeAcademique'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'attestation_non_soutenance_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'attestations/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
+    /** Attestation d'Encouragement — moyenne saisie manuellement tant qu'il n'y a pas de bulletin de notes. */
+    public function generateAttestationEncouragement(Student $student, string $moyenne, string $periode): string
+    {
+        $student->load(['filiere', 'license']);
+        $anneeAcademique = $this->anneeAcademiqueDe($student);
+        $classeLabel     = trim(($student->license?->nom ?? '') . ' ' . ($student->filiere?->nom ?? ''));
+
+        $pdf = Pdf::loadView('pdf.attestation_encouragement', compact('student', 'anneeAcademique', 'moyenne', 'periode', 'classeLabel'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'attestation_encouragement_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'attestations/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
+    /** Diplôme de Licence — mention saisie manuellement tant qu'il n'y a pas de bulletin de notes. */
+    public function generateDiplomeLicence(Student $student, string $mention): string
+    {
+        $student->load(['filiere', 'license']);
+        $anneeAcademique = $this->anneeAcademiqueDe($student);
+
+        $pdf = Pdf::loadView('pdf.diplome_licence', compact('student', 'anneeAcademique', 'mention'))
+            ->setPaper('a4', 'portrait');
+
+        $filename = 'diplome_licence_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $path     = 'diplomes/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
 }

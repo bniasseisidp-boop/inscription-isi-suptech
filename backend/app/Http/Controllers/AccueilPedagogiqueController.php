@@ -252,6 +252,105 @@ class AccueilPedagogiqueController extends Controller
         );
     }
 
+    /** Télécharger le certificat de scolarité (variante avec QR + case référence) */
+    public function downloadCertificatScolarite(Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        $path = $this->pdfService->generateCertificatScolarite($student);
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'certificat_scolarite_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /** Télécharger l'attestation de formation (modules validés) */
+    public function downloadAttestationFormation(Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        $path = $this->pdfService->generateAttestationFormation($student);
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'attestation_formation_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /** Télécharger l'attestation de non soutenance (admissible à l'examen) */
+    public function downloadAttestationNonSoutenance(Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        $path = $this->pdfService->generateAttestationNonSoutenance($student);
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'attestation_non_soutenance_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /**
+     * Télécharger l'attestation de réussite (fin de cycle).
+     * Mention saisie manuellement — pas encore de module bulletin/notes en base.
+     */
+    public function downloadAttestationReussite(Request $request, Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        $validated = $request->validate(['mention' => 'required|string|max:50']);
+        $path = $this->pdfService->generateAttestationReussite($student, $validated['mention']);
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'attestation_reussite_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /**
+     * Télécharger l'attestation d'encouragement.
+     * Moyenne saisie manuellement — pas encore de module bulletin/notes en base.
+     */
+    public function downloadAttestationEncouragement(Request $request, Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        $validated = $request->validate([
+            'moyenne' => 'required|string|max:10',
+            'periode' => 'required|string|max:50',
+        ]);
+        $path = $this->pdfService->generateAttestationEncouragement($student, $validated['moyenne'], $validated['periode']);
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'attestation_encouragement_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    /**
+     * Télécharger le diplôme de licence.
+     * Mention saisie manuellement — pas encore de module bulletin/notes en base.
+     */
+    public function downloadDiplomeLicence(Request $request, Student $student)
+    {
+        if ($student->statut_inscription !== 'accepte') {
+            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
+        }
+        $validated = $request->validate(['mention' => 'required|string|max:50']);
+        $path = $this->pdfService->generateDiplomeLicence($student, $validated['mention']);
+        return response()->download(
+            Storage::disk('public')->path($path),
+            'diplome_licence_' . ($student->matricule ?? $student->id) . '.pdf',
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
     /** Basculer le verrouillage du profil */
     public function toggleLock(Request $request, Student $student)
     {
