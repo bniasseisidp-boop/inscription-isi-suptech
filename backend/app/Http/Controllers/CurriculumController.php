@@ -243,19 +243,24 @@ class CurriculumController extends Controller
     /** Emploi du temps de l'étudiant connecté (semestre en cours déduit de son niveau). */
     public function monEmploiDuTemps(Request $request)
     {
-        $student = Student::where('user_id', $request->user()->id)->with('license')->firstOrFail();
-        $semestre = $student->license
-            ? Semestre::where('license_id', $student->license_id)->orderByDesc('numero_global')->first()
-            : null;
+        $student = Student::where('user_id', $request->user()->id)->first();
+        if (!$student || !$student->license_id) return response()->json(['creneaux' => []]);
 
-        if (!$semestre) return response()->json(['creneaux' => []]);
+        // Un niveau (License) = une seule annee scolaire = 2 semestres (S1+S2). On ne sait
+        // pas toujours quel semestre precis est "en cours" pour l'etudiant (pas de champ
+        // dedie), donc on remonte les creneaux des DEUX semestres de son niveau plutot que
+        // de deviner lequel — sinon un emploi du temps saisi sur l'autre semestre restait
+        // invisible pour l'etudiant (bug corrige ici).
+        $semestreIds = Semestre::where('license_id', $student->license_id)->pluck('id');
 
-        $creneaux = EmploiDuTemps::whereHas('matiere', fn ($q) => $q->whereHas('module', fn ($q2) => $q2->where('semestre_id', $semestre->id)))
-            ->with(['matiere.module', 'matiere.professeur'])
+        if ($semestreIds->isEmpty()) return response()->json(['creneaux' => []]);
+
+        $creneaux = EmploiDuTemps::whereHas('matiere', fn ($q) => $q->whereHas('module', fn ($q2) => $q2->whereIn('semestre_id', $semestreIds)))
+            ->with(['matiere.module.semestre', 'matiere.professeur'])
             ->orderBy('jour')->orderBy('heure_debut')
             ->get();
 
-        return response()->json(['semestre' => $semestre, 'creneaux' => $creneaux]);
+        return response()->json(['creneaux' => $creneaux]);
     }
 
     /** Liste des bulletins (calculés à la volée) de l'étudiant connecté, un par semestre de son niveau. */
