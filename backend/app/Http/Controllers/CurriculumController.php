@@ -292,6 +292,18 @@ class CurriculumController extends Controller
         ]);
     }
 
+    /** PDF de l'emploi du temps complet d'une classe (filière + niveau + semestre). */
+    public function downloadEmploiDuTemps(Semestre $semestre, \App\Services\PDFService $pdfService)
+    {
+        $path = $pdfService->generateEmploiDuTempsClasse($semestre);
+        $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+
+        return response()->file($full, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="emploi_du_temps_S' . $semestre->numero_global . '.pdf"',
+        ])->deleteFileAfterSend(true);
+    }
+
     // ── Notes ────────────────────────────────────────────────────────────────
 
     /** Saisie/mise à jour en masse des notes d'un étudiant pour un semestre donné. */

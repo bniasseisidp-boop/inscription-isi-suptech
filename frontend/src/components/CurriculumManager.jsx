@@ -5,7 +5,7 @@ import {
   getFilieres, getLicenseSemestres, createSemestre, createModule, updateModule, deleteModule,
   createMatiere, updateMatiere, deleteMatiere, getProfesseurs, createProfesseur, deleteProfesseur,
   createCreneau, deleteCreneau, saisirNotesEtudiant, getBulletin, downloadBulletinPdf,
-  createProfesseurAccount, getVerrouStatus, toggleVerrouNotes,
+  createProfesseurAccount, getVerrouStatus, toggleVerrouNotes, downloadEmploiDuTempsPdf,
 } from '../services/api'
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -104,23 +104,44 @@ export default function CurriculumManager({ searchStudents }) {
 
 /* ── Onglet Programme ─────────────────────────────────────────────────────── */
 function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, loading, onCreateSemestre, onRefresh, professeurs }) {
+  const [downloadingEdt, setDownloadingEdt] = useState(false)
+
   if (!licenseId) return <div className="light-card p-8 text-center text-slate-400 text-sm">Choisis une filière et un niveau pour voir le programme.</div>
   if (loading) return <div className="py-10 flex justify-center"><div className="spinner"/></div>
 
+  const handleDownloadEdt = async () => {
+    if (!sem) return
+    setDownloadingEdt(true)
+    try {
+      const { data } = await downloadEmploiDuTempsPdf(sem.id)
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      window.open(url, '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
+    finally { setDownloadingEdt(false) }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 items-center">
-        {semestres.map(s => (
-          <button key={s.id} onClick={() => setActiveSem(s.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeSem === s.id ? 'bg-isiblue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}>
-            {s.libelle}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex flex-wrap gap-2 items-center">
+          {semestres.map(s => (
+            <button key={s.id} onClick={() => setActiveSem(s.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                activeSem === s.id ? 'bg-isiblue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}>
+              {s.libelle}
+            </button>
+          ))}
+          <button onClick={onCreateSemestre} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-isigold-100 text-isigold-700 hover:bg-isigold-200 flex items-center gap-1">
+            <Plus size={13}/> Semestre
           </button>
-        ))}
-        <button onClick={onCreateSemestre} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-isigold-100 text-isigold-700 hover:bg-isigold-200 flex items-center gap-1">
-          <Plus size={13}/> Semestre
-        </button>
+        </div>
+        {sem && (
+          <button onClick={handleDownloadEdt} disabled={downloadingEdt}
+            className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
+            <Download size={13}/> {downloadingEdt ? 'Génération...' : "Télécharger l'emploi du temps (PDF)"}
+          </button>
+        )}
       </div>
 
       {sem && <SemestrePanel sem={sem} onRefresh={onRefresh} professeurs={professeurs}/>}

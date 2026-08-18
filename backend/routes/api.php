@@ -259,6 +259,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/semestres/{semestre}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
         Route::get('/semestres/{semestre}/verrou',                [CurriculumController::class, 'verrouStatus']);
         Route::post('/semestres/{semestre}/verrou',               [CurriculumController::class, 'verrouToggle']);
+        Route::get('/semestres/{semestre}/emploi-du-temps-pdf',   [CurriculumController::class, 'downloadEmploiDuTemps']);
     });
 
     // ── Espace professeur ────────────────────────────────────────────────────

@@ -252,6 +252,7 @@ export const getMonEmploiDuTemps  = () => api.get('/etudiant/emploi-du-temps')
 export const createProfesseurAccount = (id, data) => api.post(`/curriculum/professeurs/${id}/compte`, data)
 export const getVerrouStatus      = (semestreId, params) => api.get(`/curriculum/semestres/${semestreId}/verrou`, { params })
 export const toggleVerrouNotes    = (semestreId, data) => api.post(`/curriculum/semestres/${semestreId}/verrou`, data)
+export const downloadEmploiDuTempsPdf = (semestreId) => api.get(`/curriculum/semestres/${semestreId}/emploi-du-temps-pdf`, { responseType: 'blob' })
 
 // ── Étudiant — bulletins ─────────────────────────────────────────────────────
 export const getMesBulletins        = () => api.get('/etudiant/bulletins')

@@ -127,6 +127,44 @@ class PDFService
         return $path;
     }
 
+    /** Emploi du temps PDF d'une classe (filière + niveau + semestre) — un créneau
+     *  par matière/jour/heure, groupé par jour. Généré par Admin ou Accueil Pédagogique. */
+    public function generateEmploiDuTempsClasse(\App\Models\Semestre $semestre): string
+    {
+        $semestre->loadMissing('license.filiere', 'modules.matieres.creneaux', 'modules.matieres.professeur');
+
+        $creneaux = collect();
+        foreach ($semestre->modules as $module) {
+            foreach ($module->matieres as $matiere) {
+                foreach ($matiere->creneaux as $creneau) {
+                    $creneaux->push((object) [
+                        'jour' => $creneau->jour,
+                        'heure_debut' => $creneau->heure_debut,
+                        'heure_fin' => $creneau->heure_fin,
+                        'salle' => $creneau->salle,
+                        'matiere' => $matiere->nom,
+                        'professeur' => $matiere->professeur ? trim($matiere->professeur->prenom . ' ' . $matiere->professeur->nom) : null,
+                    ]);
+                }
+            }
+        }
+
+        $joursOrdre = ['lundi' => 1, 'mardi' => 2, 'mercredi' => 3, 'jeudi' => 4, 'vendredi' => 5, 'samedi' => 6];
+        $creneaux = $creneaux->sortBy(fn ($c) => $joursOrdre[$c->jour] . $c->heure_debut)->values();
+
+        $filiere = $semestre->license?->filiere;
+        $license = $semestre->license;
+
+        $pdf = Pdf::loadView('pdf.emploi_du_temps', compact('semestre', 'filiere', 'license', 'creneaux'))
+            ->setPaper('a4', 'landscape');
+
+        $filename = 'emploi_du_temps_' . ($filiere?->code ?? 'classe') . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
+        $path = 'emplois_du_temps/' . $filename;
+
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
     /** Generate PDF of unpaid students for a given month */
     public function generateImpayesPdf(array $etudiants, string $mois): string
     {
