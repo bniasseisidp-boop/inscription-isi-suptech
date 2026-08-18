@@ -81,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/verrouiller-profil', [AdminController::class, 'lockProfile']);
         Route::post('/etudiants/{student}/carte', [AdminController::class, 'generateCard']);
         Route::post('/etudiants/{student}/document', [AdminController::class, 'uploadDocument']);
+        Route::put('/etudiants/{student}', [AdminController::class, 'updateStudentProfile']);
         Route::delete('/etudiants/{student}', [AdminController::class, 'deleteStudent']);
         // Documents étudiant (attestations, certificats, diplôme)
         Route::get('/etudiants/{student}/attestation-scolarite',    [AdminController::class, 'downloadAttestationScolarite']);
@@ -218,6 +219,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/verrouiller',       [AccueilPedagogiqueController::class, 'toggleLock']);
         Route::post('/etudiants/{student}/photo',             [AccueilPedagogiqueController::class, 'updatePhoto']);
         Route::post('/etudiants/{student}/document',          [AdminController::class, 'uploadDocument']);
+        Route::put('/etudiants/{student}',                    [AdminController::class, 'updateStudentProfile']);
         Route::get('/candidats',                              [AccueilPedagogiqueController::class, 'pendingStudents']);
         Route::post('/candidats/{student}/accepter',          [AccueilPedagogiqueController::class, 'acceptStudent']);
         // Paramètres pédagogique (lecture seule)

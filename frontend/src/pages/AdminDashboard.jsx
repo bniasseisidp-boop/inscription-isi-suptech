@@ -388,6 +388,31 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
         license_id: student.license_id || '',
         statut_inscription: student.statut_inscription || 'en_attente',
         photo: null,
+        // Académique
+        annee_bac: student.annee_bac || '',
+        numero_pv_bac: student.numero_pv_bac || '',
+        serie_college: student.serie_college || '',
+        region_bac: student.region_bac || '',
+        dernier_diplome: student.dernier_diplome || '',
+        annee_dernier_diplome: student.annee_dernier_diplome || '',
+        dernier_etablissement: student.dernier_etablissement || '',
+        numero_ine: student.numero_ine || '',
+        // Tuteur 1
+        tuteur_nom: student.tuteur_nom || '',
+        tuteur_profession: student.tuteur_profession || '',
+        tuteur_telephone: student.tuteur_telephone || '',
+        tuteur_email: student.tuteur_email || '',
+        // Tuteur 2
+        tuteur2_nom: student.tuteur2_nom || '',
+        tuteur2_telephone: student.tuteur2_telephone || '',
+        // Urgence
+        contact_urgence1: student.contact_urgence1 || '',
+        tel_urgence1: student.tel_urgence1 || '',
+        contact_urgence2: student.contact_urgence2 || '',
+        tel_urgence2: student.tel_urgence2 || '',
+        // Médical
+        traitement_medical: student.traitement_medical || '',
+        allergies: student.allergies || '',
       })
     }
   }, [student])
@@ -585,6 +610,63 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                   </div>
                 ))}
               </div>
+
+              <h5 className={`text-xs font-black uppercase tracking-wider mb-3 ${text}`}>Infos académiques</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                {[
+                  ['Année du bac', 'annee_bac'],
+                  ['N° PV bac', 'numero_pv_bac'],
+                  ['Série', 'serie_college'],
+                  ['Région du bac', 'region_bac'],
+                  ['Dernier diplôme', 'dernier_diplome'],
+                  ['Année du dernier diplôme', 'annee_dernier_diplome'],
+                  ['Dernier établissement', 'dernier_etablissement'],
+                  ['Numéro INE', 'numero_ine'],
+                ].map(([label, key]) => (
+                  <div key={key}>
+                    <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
+                    <input className="form-input" value={formData[key]}
+                      onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}/>
+                  </div>
+                ))}
+              </div>
+
+              <h5 className={`text-xs font-black uppercase tracking-wider mb-3 ${text}`}>Tuteur(s)</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                {[
+                  ['Tuteur 1 — Nom', 'tuteur_nom'],
+                  ['Tuteur 1 — Profession', 'tuteur_profession'],
+                  ['Tuteur 1 — Téléphone', 'tuteur_telephone'],
+                  ['Tuteur 1 — Email', 'tuteur_email'],
+                  ['Tuteur 2 — Nom', 'tuteur2_nom'],
+                  ['Tuteur 2 — Téléphone', 'tuteur2_telephone'],
+                ].map(([label, key]) => (
+                  <div key={key}>
+                    <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
+                    <input className="form-input" value={formData[key]}
+                      onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}/>
+                  </div>
+                ))}
+              </div>
+
+              <h5 className={`text-xs font-black uppercase tracking-wider mb-3 ${text}`}>Urgence & médical</h5>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                {[
+                  ['Contact urgence 1', 'contact_urgence1'],
+                  ['Téléphone urgence 1', 'tel_urgence1'],
+                  ['Contact urgence 2', 'contact_urgence2'],
+                  ['Téléphone urgence 2', 'tel_urgence2'],
+                  ['Traitement médical', 'traitement_medical'],
+                  ['Allergies', 'allergies'],
+                ].map(([label, key]) => (
+                  <div key={key}>
+                    <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
+                    <input className="form-input" value={formData[key]}
+                      onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}/>
+                  </div>
+                ))}
+              </div>
+
               <div className="flex flex-col gap-4 sm:flex-row">
                 <button onClick={handleStudentSave} disabled={saving} className="btn-primary">
                   {saving ? 'Enregistrement...' : 'Enregistrer'}

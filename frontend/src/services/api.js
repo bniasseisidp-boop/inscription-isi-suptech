@@ -86,6 +86,9 @@ export const getAdminStudents = (params) => api.get('/admin/etudiants', { params
 export const createAdminStudent = (data) => api.post('/admin/etudiants', data, {
   headers: { 'Content-Type': 'multipart/form-data' },
 })
+export const updatePedagogiqueStudent = (id, data) => api.put(`/pedagogique/etudiants/${id}`, data, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
 export const updateAdminStudent = (id, data) => api.put(`/admin/etudiants/${id}`, data, {
   headers: { 'Content-Type': 'multipart/form-data' },
 })

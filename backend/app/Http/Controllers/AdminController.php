@@ -63,6 +63,98 @@ class AdminController extends Controller
         return response()->json($query->paginate(20));
     }
 
+    /**
+     * Completer/corriger le profil complet d'un etudiant (infos academiques,
+     * tuteur, contacts d'urgence, medical...) — utilise par Admin et Accueil
+     * Pedagogique, notamment pour les etudiants inscrits directement au guichet
+     * (formulaire d'inscription rapide) dont le profil est incomplet.
+     */
+    public function updateStudentProfile(Request $request, Student $student)
+    {
+        $validated = $request->validate([
+            // Identité
+            'nom'                => 'sometimes|string|max:100',
+            'prenom'             => 'sometimes|string|max:100',
+            'email'              => 'sometimes|email|max:150',
+            'telephone'          => 'sometimes|string|max:30',
+            'sexe'               => 'sometimes|in:M,F',
+            'date_naissance'     => 'sometimes|date',
+            'lieu_naissance'     => 'sometimes|string|max:150',
+            'adresse'            => 'sometimes|string|max:255',
+            'nationalite'        => 'sometimes|string|max:100',
+            'pays_residence'     => 'sometimes|string|max:100',
+            'filiere_id'         => 'sometimes|exists:filieres,id',
+            'license_id'         => 'sometimes|exists:licenses,id',
+            'statut_inscription' => 'sometimes|in:en_attente,en_attente_paiement,accepte,rejete',
+            'photo'              => 'nullable|image|max:3072',
+            // Académique
+            'annee_bac'             => 'nullable|string|max:20',
+            'numero_pv_bac'         => 'nullable|string|max:50',
+            'serie_college'         => 'nullable|string|max:50',
+            'region_bac'            => 'nullable|string|max:100',
+            'dernier_diplome'       => 'nullable|string|max:150',
+            'annee_dernier_diplome' => 'nullable|string|max:20',
+            'dernier_etablissement' => 'nullable|string|max:150',
+            'numero_ine'            => 'nullable|string|max:50',
+            'choix_specialites'     => 'nullable|string',
+            'decouverte'            => 'nullable|string|max:150',
+            // Personnel
+            'civilite'              => 'nullable|string|max:20',
+            'numero_cni'            => 'nullable|string|max:50',
+            'date_delivrance_cni'   => 'nullable|date',
+            'notes_personnelles'    => 'nullable|string',
+            // Tuteur 1
+            'tuteur_nom'            => 'nullable|string|max:150',
+            'tuteur_profession'     => 'nullable|string|max:150',
+            'tuteur_telephone'      => 'nullable|string|max:30',
+            'tuteur_email'          => 'nullable|email|max:150',
+            'tuteur_identite'       => 'nullable|string|max:50',
+            // Tuteur 2
+            'tuteur2_nom'           => 'nullable|string|max:150',
+            'tuteur2_profession'    => 'nullable|string|max:150',
+            'tuteur2_telephone'     => 'nullable|string|max:30',
+            'tuteur2_email'         => 'nullable|email|max:150',
+            // Surveillance
+            'surveillance_mail'     => 'nullable|boolean',
+            'surveillance_telephone'=> 'nullable|boolean',
+            // Autres
+            'cursus_deux_ans'       => 'nullable|string',
+            'langues'               => 'nullable|string',
+            'logiciels'             => 'nullable|string',
+            'experiences'           => 'nullable|string',
+            'traitement_medical'    => 'nullable|string|max:255',
+            'allergies'             => 'nullable|string|max:255',
+            'vaccinations'          => 'nullable|string|max:255',
+            'contact_urgence1'      => 'nullable|string|max:150',
+            'tel_urgence1'          => 'nullable|string|max:30',
+            'contact_urgence2'      => 'nullable|string|max:150',
+            'tel_urgence2'          => 'nullable|string|max:30',
+            'medecin_famille'       => 'nullable|string|max:150',
+            'tel_medecin'           => 'nullable|string|max:30',
+        ]);
+
+        if (array_key_exists('email', $validated)) {
+            $email = $validated['email'];
+            unset($validated['email']);
+            if ($student->user && $student->user->email !== $email) {
+                $student->user->update(['email' => $email]);
+            }
+        }
+
+        if ($request->hasFile('photo')) {
+            $validated['photo'] = $request->file('photo')->store('photos', 'public');
+        }
+
+        $student->update($validated);
+
+        \App\Services\ActivityLogger::log(
+            $request->user(), 'student.profile_update',
+            "Profil complete/modifie pour {$student->prenom} {$student->nom} ({$student->matricule})", $student
+        );
+
+        return response()->json($student->fresh(['filiere', 'license', 'user']));
+    }
+
     /** Accept student inscription → en_attente_paiement */
     public function acceptStudent(Request $request, Student $student)
     {

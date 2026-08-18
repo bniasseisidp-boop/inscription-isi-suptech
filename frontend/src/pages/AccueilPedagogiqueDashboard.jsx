@@ -20,6 +20,7 @@ import {
   downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription,
   downloadCertificatScolarite, downloadAttestationFormation, downloadAttestationNonSoutenance,
   downloadAttestationReussite, downloadAttestationEncouragement, downloadDiplomeLicence,
+  updatePedagogiqueStudent,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 
@@ -43,6 +44,49 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
   const [downloadingCard, setDownloadingCard] = useState(false)
   const [changingPhoto, setChangingPhoto] = useState(false)
   const photoRef = useRef(null)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileForm, setProfileForm] = useState(null)
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  const openProfileEdit = () => {
+    setProfileForm({
+      annee_bac: s.annee_bac || '',
+      numero_pv_bac: s.numero_pv_bac || '',
+      serie_college: s.serie_college || '',
+      region_bac: s.region_bac || '',
+      dernier_diplome: s.dernier_diplome || '',
+      annee_dernier_diplome: s.annee_dernier_diplome || '',
+      dernier_etablissement: s.dernier_etablissement || '',
+      numero_ine: s.numero_ine || '',
+      tuteur_nom: s.tuteur_nom || '',
+      tuteur_profession: s.tuteur_profession || '',
+      tuteur_telephone: s.tuteur_telephone || '',
+      tuteur_email: s.tuteur_email || '',
+      tuteur2_nom: s.tuteur2_nom || '',
+      tuteur2_telephone: s.tuteur2_telephone || '',
+      contact_urgence1: s.contact_urgence1 || '',
+      tel_urgence1: s.tel_urgence1 || '',
+      contact_urgence2: s.contact_urgence2 || '',
+      tel_urgence2: s.tel_urgence2 || '',
+      traitement_medical: s.traitement_medical || '',
+      allergies: s.allergies || '',
+    })
+    setEditingProfile(true)
+  }
+
+  const handleProfileSave = async () => {
+    setSavingProfile(true)
+    try {
+      const payload = new FormData()
+      Object.entries(profileForm).forEach(([k, v]) => payload.append(k, v ?? ''))
+      const { data } = await updatePedagogiqueStudent(s.id, payload)
+      setDetail(prev => ({ ...prev, student: { ...prev.student, ...data } }))
+      toast.success('Profil complété !')
+      setEditingProfile(false)
+      onUpdated?.()
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur mise à jour du profil') }
+    finally { setSavingProfile(false) }
+  }
 
   useEffect(() => {
     getPedagogiqueStudentDetail(studentId)
@@ -367,7 +411,70 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
               </div>
             </div>
 
+            {editingProfile && profileForm && (
+              <div className="border-t border-slate-200 pt-4">
+                <h4 className="font-semibold text-isiblue-700 mb-3 text-sm">Compléter le profil</h4>
+
+                <h5 className="text-[11px] font-black uppercase tracking-wider text-isigold-600 mb-2">Infos académiques</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {[
+                    ['Année du bac', 'annee_bac'], ['N° PV bac', 'numero_pv_bac'],
+                    ['Série', 'serie_college'], ['Région du bac', 'region_bac'],
+                    ['Dernier diplôme', 'dernier_diplome'], ['Année du dernier diplôme', 'annee_dernier_diplome'],
+                    ['Dernier établissement', 'dernier_etablissement'], ['Numéro INE', 'numero_ine'],
+                  ].map(([label, key]) => (
+                    <div key={key}>
+                      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+                      <input className="form-input-light" value={profileForm[key]}
+                        onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}/>
+                    </div>
+                  ))}
+                </div>
+
+                <h5 className="text-[11px] font-black uppercase tracking-wider text-isigold-600 mb-2">Tuteur(s)</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {[
+                    ['Tuteur 1 — Nom', 'tuteur_nom'], ['Tuteur 1 — Profession', 'tuteur_profession'],
+                    ['Tuteur 1 — Téléphone', 'tuteur_telephone'], ['Tuteur 1 — Email', 'tuteur_email'],
+                    ['Tuteur 2 — Nom', 'tuteur2_nom'], ['Tuteur 2 — Téléphone', 'tuteur2_telephone'],
+                  ].map(([label, key]) => (
+                    <div key={key}>
+                      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+                      <input className="form-input-light" value={profileForm[key]}
+                        onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}/>
+                    </div>
+                  ))}
+                </div>
+
+                <h5 className="text-[11px] font-black uppercase tracking-wider text-isigold-600 mb-2">Urgence & médical</h5>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {[
+                    ['Contact urgence 1', 'contact_urgence1'], ['Téléphone urgence 1', 'tel_urgence1'],
+                    ['Contact urgence 2', 'contact_urgence2'], ['Téléphone urgence 2', 'tel_urgence2'],
+                    ['Traitement médical', 'traitement_medical'], ['Allergies', 'allergies'],
+                  ].map(([label, key]) => (
+                    <div key={key}>
+                      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+                      <input className="form-input-light" value={profileForm[key]}
+                        onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}/>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={() => setEditingProfile(false)} className="btn-secondary-light text-sm">Annuler</button>
+                  <button onClick={handleProfileSave} disabled={savingProfile} className="btn-primary text-sm disabled:opacity-50">
+                    {savingProfile ? 'Enregistrement...' : 'Enregistrer'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-200">
+              <button onClick={openProfileEdit}
+                className="text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border border-isiblue-300 text-isiblue-700 hover:bg-isiblue-50 font-semibold transition-all">
+                <Pencil size={15}/> Compléter le profil
+              </button>
               <button onClick={handleToggleLock} disabled={locking}
                 className={`text-sm flex items-center gap-1.5 px-4 py-2 rounded-xl border font-semibold transition-all disabled:opacity-50 ${
                   s.profil_verrouille
