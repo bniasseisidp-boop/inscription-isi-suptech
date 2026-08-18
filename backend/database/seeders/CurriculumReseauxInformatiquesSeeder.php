@@ -28,12 +28,16 @@ class CurriculumReseauxInformatiquesSeeder extends Seeder
             return;
         }
 
+        // Le nom exact du niveau "cycle de base" (DTS-BTS-Licence, Licence 1...) varie
+        // selon l'environnement — on prend celui qui n'est PAS une "Licence Professionnelle"
+        // (cycle court d'1 an, différent du cycle long de 3 ans qu'on cherche ici).
         $license = License::where('filiere_id', $filiere->id)
-            ->where('nom', 'LIKE', '%DTS%')
+            ->where('nom', 'NOT LIKE', '%Professionnelle%')
+            ->orderBy('id')
             ->first();
 
         if (!$license) {
-            $this->command->error('Niveau "DTS - BTS - Licence" introuvable pour Réseaux Informatiques.');
+            $this->command->error('Niveau "cycle de base" introuvable pour Réseaux Informatiques.');
             return;
         }
 
