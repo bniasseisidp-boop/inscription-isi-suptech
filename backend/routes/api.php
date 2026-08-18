@@ -254,6 +254,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/creneaux/{creneau}',                     [CurriculumController::class, 'deleteCreneau']);
         Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
         Route::get('/semestres/{semestre}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
+        Route::post('/semestres/{semestre}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
     });
 
     // ── Étudiant — emploi du temps ──────────────────────────────────────────

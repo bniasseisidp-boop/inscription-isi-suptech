@@ -676,4 +676,41 @@ class PDFService
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
     }
+
+    /** Grade (BT/BTS/Licence/Master) déduit du nom du niveau — pas de champ dédié en base. */
+    private function inferGrade(\App\Models\Student $student): string
+    {
+        $nom = mb_strtolower($student->license?->nom ?? '', 'UTF-8');
+        return match (true) {
+            str_contains($nom, 'master') => 'Master',
+            str_contains($nom, 'licence') => 'Licence', // priorité : "DTS - BTS - Licence" reste un niveau Licence
+            str_contains($nom, 'bts') => 'BTS',
+            str_contains($nom, 'bt') => 'BT',
+            default => 'Licence',
+        };
+    }
+
+    /** Bulletin de notes officiel (format ISI SUPTECH) — MCC 40% + Examen 60%, par UE. */
+    public function generateBulletin(\App\Models\Student $student, \App\Models\Semestre $semestre, string $anneeScolaire, ?string $appreciationConseil = null): string
+    {
+        $student->load(['filiere', 'license']);
+        $bulletinService = app(\App\Services\BulletinService::class);
+        $bulletin = $bulletinService->detailSemestre($student, $semestre, $anneeScolaire);
+
+        $domaine = str_contains($this->inferDomaine($student), 'Gestion') ? 'Sciences Économiques et de Gestion' : 'NTIC';
+        $mentionFiliere = str_contains($this->inferDomaine($student), 'Gestion') ? 'Gestion' : 'Informatique';
+        $grade = $this->inferGrade($student);
+        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . ($student->matricule ?? $student->id) . '-S' . $semestre->numero_global, 100);
+
+        $pdf = Pdf::loadView('pdf.bulletin_notes', [
+            'student' => $student, 'semestre' => $semestre, 'anneeScolaire' => $anneeScolaire,
+            'bulletin' => $bulletin, 'domaine' => $domaine, 'mentionFiliere' => $mentionFiliere,
+            'grade' => $grade, 'appreciationConseil' => $appreciationConseil, 'qrBase64' => $qrBase64,
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'bulletin_' . ($student->matricule ?? $student->id) . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
+        $path = 'bulletins/' . $filename;
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
 }

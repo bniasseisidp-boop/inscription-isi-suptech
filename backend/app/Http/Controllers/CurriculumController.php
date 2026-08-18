@@ -204,13 +204,18 @@ class CurriculumController extends Controller
             'annee_scolaire' => 'required|string|max:20',
             'notes'          => 'required|array|min:1',
             'notes.*.matiere_id' => 'required|exists:matieres,id',
-            'notes.*.note'        => 'required|numeric|min:0|max:20',
+            'notes.*.mcc'         => 'nullable|numeric|min:0|max:20',
+            'notes.*.examen'      => 'nullable|numeric|min:0|max:20',
         ]);
 
         foreach ($validated['notes'] as $entry) {
             Note::updateOrCreate(
                 ['student_id' => $student->id, 'matiere_id' => $entry['matiere_id'], 'annee_scolaire' => $validated['annee_scolaire']],
-                ['note' => $entry['note'], 'saisi_par' => $request->user()->id]
+                array_filter([
+                    'mcc'       => $entry['mcc'] ?? null,
+                    'examen'    => $entry['examen'] ?? null,
+                    'saisi_par' => $request->user()->id,
+                ], fn ($v) => $v !== null)
             );
         }
 
@@ -222,5 +227,27 @@ class CurriculumController extends Controller
     {
         $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? date('Y') . '-' . (date('Y') + 1));
         return response()->json($bulletinService->detailSemestre($student, $semestre, $anneeScolaire));
+    }
+
+    /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
+    public function downloadBulletin(Semestre $semestre, Student $student, Request $request, \App\Services\PDFService $pdfService)
+    {
+        $validated = $request->validate([
+            'annee_scolaire'    => 'nullable|string|max:20',
+            'appreciation'      => 'nullable|string|max:150',
+        ]);
+        $anneeScolaire = $validated['annee_scolaire'] ?? ($student->annee_scolaire ?? date('Y') . '-' . (date('Y') + 1));
+
+        $path = $pdfService->generateBulletin($student, $semestre, $anneeScolaire, $validated['appreciation'] ?? null);
+        $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+
+        if (!file_exists($full)) {
+            return response()->json(['message' => 'Erreur génération PDF'], 500);
+        }
+
+        return response()->file($full, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="bulletin_' . ($student->matricule ?? $student->id) . '_S' . $semestre->numero_global . '.pdf"',
+        ]);
     }
 }
