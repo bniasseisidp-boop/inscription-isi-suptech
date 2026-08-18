@@ -247,6 +247,7 @@ export const createCreneau        = (matiereId, data) => api.post(`/curriculum/m
 export const deleteCreneau        = (id) => api.delete(`/curriculum/creneaux/${id}`)
 export const saisirNotesEtudiant  = (studentId, data) => api.post(`/curriculum/etudiants/${studentId}/notes`, data)
 export const getBulletin          = (semestreId, studentId, params) => api.get(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin`, { params })
+export const downloadBulletinPdf  = (semestreId, studentId, data) => api.post(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin-pdf`, data, { responseType: 'blob' })
 export const getMonEmploiDuTemps  = () => api.get('/etudiant/emploi-du-temps')
 
 export default api

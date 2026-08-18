@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download } from 'lucide-react'
 import {
   getFilieres, getLicenseSemestres, createSemestre, createModule, updateModule, deleteModule,
   createMatiere, updateMatiere, deleteMatiere, getProfesseurs, createProfesseur, deleteProfesseur,
-  saisirNotesEtudiant, getBulletin,
+  createCreneau, deleteCreneau, saisirNotesEtudiant, getBulletin, downloadBulletinPdf,
 } from '../services/api'
+
+const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
 
 /** Gestion du cursus academique (semestres/UE/matieres/profs) + saisie des notes.
  *  Partage entre Admin et Accueil Pedagogique — reçoit la fonction de recherche
@@ -18,8 +20,10 @@ export default function CurriculumManager({ searchStudents }) {
   const [semestres, setSemestres] = useState([])
   const [activeSem, setActiveSem] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [professeurs, setProfesseurs] = useState([])
 
   useEffect(() => { getFilieres().then(({ data }) => setFilieres(data)).catch(() => {}) }, [])
+  useEffect(() => { getProfesseurs().then(({ data }) => setProfesseurs(data)).catch(() => {}) }, [])
 
   const filiere = filieres.find(f => String(f.id) === String(filiereId))
   const licenses = filiere?.licenses || []
@@ -86,9 +90,10 @@ export default function CurriculumManager({ searchStudents }) {
         <ProgrammeTab
           licenseId={licenseId} semestres={semestres} activeSem={activeSem} setActiveSem={setActiveSem}
           sem={sem} loading={loading} onCreateSemestre={handleCreateSemestre} onRefresh={refreshSemestres}
+          professeurs={professeurs}
         />
       )}
-      {tab === 'profs' && <ProfesseursTab/>}
+      {tab === 'profs' && <ProfesseursTab onChange={() => getProfesseurs().then(({ data }) => setProfesseurs(data)).catch(() => {})}/>}
       {tab === 'notes' && (
         <NotesTab licenseId={licenseId} semestres={semestres} activeSem={activeSem} setActiveSem={setActiveSem} sem={sem} searchStudents={searchStudents}/>
       )}
@@ -97,7 +102,7 @@ export default function CurriculumManager({ searchStudents }) {
 }
 
 /* ── Onglet Programme ─────────────────────────────────────────────────────── */
-function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, loading, onCreateSemestre, onRefresh }) {
+function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, loading, onCreateSemestre, onRefresh, professeurs }) {
   if (!licenseId) return <div className="light-card p-8 text-center text-slate-400 text-sm">Choisis une filière et un niveau pour voir le programme.</div>
   if (loading) return <div className="py-10 flex justify-center"><div className="spinner"/></div>
 
@@ -117,12 +122,12 @@ function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, load
         </button>
       </div>
 
-      {sem && <SemestrePanel sem={sem} onRefresh={onRefresh}/>}
+      {sem && <SemestrePanel sem={sem} onRefresh={onRefresh} professeurs={professeurs}/>}
     </div>
   )
 }
 
-function SemestrePanel({ sem, onRefresh }) {
+function SemestrePanel({ sem, onRefresh, professeurs }) {
   const [showAddModule, setShowAddModule] = useState(false)
   const [newModule, setNewModule] = useState({ code: '', nom: '', credits: '' })
   const totalCredits = (sem.modules || []).reduce((acc, m) => acc + Number(m.credits), 0)
@@ -154,12 +159,12 @@ function SemestrePanel({ sem, onRefresh }) {
         </div>
       )}
 
-      {(sem.modules || []).map(mod => <ModulePanel key={mod.id} mod={mod} onRefresh={onRefresh}/>)}
+      {(sem.modules || []).map(mod => <ModulePanel key={mod.id} mod={mod} onRefresh={onRefresh} professeurs={professeurs}/>)}
     </div>
   )
 }
 
-function ModulePanel({ mod, onRefresh }) {
+function ModulePanel({ mod, onRefresh, professeurs }) {
   const [showAddMatiere, setShowAddMatiere] = useState(false)
   const [newMatiere, setNewMatiere] = useState({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1 })
   const [editingModule, setEditingModule] = useState(false)
@@ -227,7 +232,7 @@ function ModulePanel({ mod, onRefresh }) {
       <table className="data-table-light">
         <thead><tr><th>Code</th><th>Matière</th><th>CM</th><th>TP</th><th>TD</th><th>TPE</th><th>VHT</th><th>Coef</th><th>Prof</th><th></th></tr></thead>
         <tbody>
-          {(mod.matieres || []).map(mat => <MatiereRow key={mat.id} mat={mat} onRefresh={onRefresh}/>)}
+          {(mod.matieres || []).map(mat => <MatiereRow key={mat.id} mat={mat} onRefresh={onRefresh} professeurs={professeurs}/>)}
           {(mod.matieres || []).length === 0 && <tr><td colSpan={10} className="text-center text-slate-400 py-4 text-xs">Aucune matière</td></tr>}
         </tbody>
       </table>
@@ -235,12 +240,13 @@ function ModulePanel({ mod, onRefresh }) {
   )
 }
 
-function MatiereRow({ mat, onRefresh }) {
+function MatiereRow({ mat, onRefresh, professeurs }) {
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ code: mat.code, nom: mat.nom, cm: mat.cm, tp: mat.tp, td: mat.td, tpe: mat.tpe, vht: mat.vht, coef: mat.coef })
+  const [showCreneaux, setShowCreneaux] = useState(false)
+  const [form, setForm] = useState({ code: mat.code, nom: mat.nom, cm: mat.cm, tp: mat.tp, td: mat.td, tpe: mat.tpe, vht: mat.vht, coef: mat.coef, professeur_id: mat.professeur_id ?? '' })
 
   const handleSave = async () => {
-    try { await updateMatiere(mat.id, form); toast.success('Matière mise à jour'); setEditing(false); onRefresh() }
+    try { await updateMatiere(mat.id, { ...form, professeur_id: form.professeur_id || null }); toast.success('Matière mise à jour'); setEditing(false); onRefresh() }
     catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
   }
   const handleDelete = async () => {
@@ -258,7 +264,12 @@ function MatiereRow({ mat, onRefresh }) {
           <td key={k}><input type="number" className="form-input-light !py-1 !px-2 text-xs w-14" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}/></td>
         ))}
         <td><input type="number" step="0.25" className="form-input-light !py-1 !px-2 text-xs w-14" value={form.coef} onChange={e => setForm(f => ({ ...f, coef: e.target.value }))}/></td>
-        <td className="text-xs text-slate-400">—</td>
+        <td>
+          <select className="form-input-light !py-1 !px-2 text-xs w-32" value={form.professeur_id} onChange={e => setForm(f => ({ ...f, professeur_id: e.target.value }))}>
+            <option value="">-- Aucun --</option>
+            {professeurs?.map(p => <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>)}
+          </select>
+        </td>
         <td className="flex gap-1">
           <button onClick={handleSave} className="text-emerald-600 p-1"><Save size={13}/></button>
           <button onClick={() => setEditing(false)} className="text-slate-400 p-1"><X size={13}/></button>
@@ -268,26 +279,96 @@ function MatiereRow({ mat, onRefresh }) {
   }
 
   return (
-    <tr>
-      <td className="font-mono text-xs">{mat.code}</td>
-      <td className="text-sm">{mat.nom}</td>
-      <td className="text-xs">{mat.cm}</td>
-      <td className="text-xs">{mat.tp}</td>
-      <td className="text-xs">{mat.td}</td>
-      <td className="text-xs">{mat.tpe}</td>
-      <td className="text-xs">{mat.vht}</td>
-      <td className="text-xs font-bold">{mat.coef}</td>
-      <td className="text-xs text-slate-500">{mat.professeur ? `${mat.professeur.prenom} ${mat.professeur.nom}` : '—'}</td>
-      <td className="flex gap-1">
-        <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-isiblue-600 p-1"><Pencil size={12}/></button>
-        <button onClick={handleDelete} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={12}/></button>
-      </td>
-    </tr>
+    <>
+      <tr>
+        <td className="font-mono text-xs">{mat.code}</td>
+        <td className="text-sm">{mat.nom}</td>
+        <td className="text-xs">{mat.cm}</td>
+        <td className="text-xs">{mat.tp}</td>
+        <td className="text-xs">{mat.td}</td>
+        <td className="text-xs">{mat.tpe}</td>
+        <td className="text-xs">{mat.vht}</td>
+        <td className="text-xs font-bold">{mat.coef}</td>
+        <td className="text-xs text-slate-500">{mat.professeur ? `${mat.professeur.prenom} ${mat.professeur.nom}` : '—'}</td>
+        <td className="flex gap-1">
+          <button onClick={() => setShowCreneaux(o => !o)} className={`p-1 ${showCreneaux ? 'text-isiblue-600' : 'text-slate-400 hover:text-isiblue-600'}`} title="Emploi du temps"><Clock size={12}/></button>
+          <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-isiblue-600 p-1"><Pencil size={12}/></button>
+          <button onClick={handleDelete} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={12}/></button>
+        </td>
+      </tr>
+      {showCreneaux && (
+        <tr>
+          <td colSpan={10} className="bg-isiblue-50/30 p-0">
+            <CreneauxPanel mat={mat} onRefresh={onRefresh}/>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+function CreneauxPanel({ mat, onRefresh }) {
+  const [form, setForm] = useState({ jour: 'lundi', heure_debut: '08:00', heure_fin: '10:00', salle: '' })
+  const [saving, setSaving] = useState(false)
+  const creneaux = mat.creneaux || []
+
+  const handleAdd = async () => {
+    setSaving(true)
+    try {
+      await createCreneau(mat.id, form)
+      toast.success('Créneau ajouté')
+      setForm(f => ({ ...f, salle: '' }))
+      onRefresh()
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+    finally { setSaving(false) }
+  }
+  const handleDelete = async (id) => {
+    try { await deleteCreneau(id); toast.success('Créneau supprimé'); onRefresh() }
+    catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+  }
+
+  return (
+    <div className="p-3 space-y-2">
+      <div className="text-xs font-semibold text-isiblue-700 flex items-center gap-1"><Clock size={12}/> Emploi du temps — {mat.nom}</div>
+      {creneaux.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {creneaux.map(c => (
+            <div key={c.id} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+              <span className="font-semibold capitalize">{c.jour}</span>
+              <span className="text-slate-500">{c.heure_debut?.slice(0, 5)}–{c.heure_fin?.slice(0, 5)}</span>
+              {c.salle && <span className="text-slate-400">· {c.salle}</span>}
+              <button onClick={() => handleDelete(c.id)} className="text-slate-300 hover:text-red-500"><X size={12}/></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-2 items-end">
+        <div>
+          <label className="text-[10px] text-slate-400 block mb-0.5">Jour</label>
+          <select className="form-input-light !py-1 !px-2 text-xs" value={form.jour} onChange={e => setForm(f => ({ ...f, jour: e.target.value }))}>
+            {JOURS.map(j => <option key={j} value={j}>{j}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-400 block mb-0.5">Début</label>
+          <input type="time" className="form-input-light !py-1 !px-2 text-xs" value={form.heure_debut} onChange={e => setForm(f => ({ ...f, heure_debut: e.target.value }))}/>
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-400 block mb-0.5">Fin</label>
+          <input type="time" className="form-input-light !py-1 !px-2 text-xs" value={form.heure_fin} onChange={e => setForm(f => ({ ...f, heure_fin: e.target.value }))}/>
+        </div>
+        <div>
+          <label className="text-[10px] text-slate-400 block mb-0.5">Salle</label>
+          <input className="form-input-light !py-1 !px-2 text-xs w-24" placeholder="Salle" value={form.salle} onChange={e => setForm(f => ({ ...f, salle: e.target.value }))}/>
+        </div>
+        <button onClick={handleAdd} disabled={saving} className="btn-primary text-xs !py-1.5 disabled:opacity-50">Ajouter</button>
+      </div>
+    </div>
   )
 }
 
 /* ── Onglet Professeurs ───────────────────────────────────────────────────── */
-function ProfesseursTab() {
+function ProfesseursTab({ onChange }) {
   const [profs, setProfs] = useState([])
   const [form, setForm] = useState({ nom: '', prenom: '', email: '', telephone: '', specialite: '' })
   const [showForm, setShowForm] = useState(false)
@@ -303,11 +384,12 @@ function ProfesseursTab() {
       setForm({ nom: '', prenom: '', email: '', telephone: '', specialite: '' })
       setShowForm(false)
       load()
+      onChange?.()
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
   }
   const handleDelete = async (id, nom) => {
     if (!window.confirm(`Supprimer ${nom} ?`)) return
-    try { await deleteProfesseur(id); toast.success('Supprimé'); load() }
+    try { await deleteProfesseur(id); toast.success('Supprimé'); load(); onChange?.() }
     catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
   }
 
@@ -354,6 +436,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
   const [anneeScolaire, setAnneeScolaire] = useState(`${new Date().getFullYear()}-${new Date().getFullYear() + 1}`)
   const [saving, setSaving] = useState(false)
   const [bulletin, setBulletin] = useState(null)
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (search.length < 2 || !searchStudents) { setResults([]); return }
@@ -376,8 +459,12 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   const handleSave = async () => {
     const notes = Object.entries(notesForm)
-      .filter(([, v]) => v !== '' && v !== null && v !== undefined)
-      .map(([matiere_id, note]) => ({ matiere_id: Number(matiere_id), note: Number(note) }))
+      .filter(([, v]) => (v?.mcc ?? '') !== '' || (v?.examen ?? '') !== '')
+      .map(([matiere_id, v]) => ({
+        matiere_id: Number(matiere_id),
+        mcc: v.mcc !== '' && v.mcc !== undefined ? Number(v.mcc) : null,
+        examen: v.examen !== '' && v.examen !== undefined ? Number(v.examen) : null,
+      }))
     if (notes.length === 0) { toast.error('Saisis au moins une note'); return }
     setSaving(true)
     try {
@@ -386,6 +473,18 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
       loadBulletin()
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
     finally { setSaving(false) }
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!student || !sem) return
+    const appreciation = window.prompt('Appréciation du conseil de classe (optionnel) :', '') ?? ''
+    setDownloading(true)
+    try {
+      const { data } = await downloadBulletinPdf(sem.id, student.id, { annee_scolaire: anneeScolaire, appreciation: appreciation || null })
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      window.open(url, '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
+    finally { setDownloading(false) }
   }
 
   if (!licenseId) return <div className="light-card p-8 text-center text-slate-400 text-sm">Choisis une filière et un niveau.</div>
@@ -435,7 +534,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
         <div className="light-card overflow-hidden">
           <div className="p-3 border-b border-slate-100 bg-slate-50/60 text-sm font-semibold text-slate-700">{sem.libelle} — Saisie des notes</div>
           <table className="data-table-light">
-            <thead><tr><th>Matière</th><th>Coef</th><th>Note / 20</th></tr></thead>
+            <thead><tr><th>Matière</th><th>Coef</th><th>MCC / 20 (40%)</th><th>Examen / 20 (60%)</th></tr></thead>
             <tbody>
               {allMatieres.map(mat => (
                 <tr key={mat.id}>
@@ -443,16 +542,24 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
                   <td className="text-xs font-bold">{mat.coef}</td>
                   <td>
                     <input type="number" min="0" max="20" step="0.25" className="form-input-light w-24 !py-1"
-                      value={notesForm[mat.id] ?? ''}
-                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: e.target.value }))}/>
+                      value={notesForm[mat.id]?.mcc ?? ''}
+                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], mcc: e.target.value } }))}/>
+                  </td>
+                  <td>
+                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-24 !py-1"
+                      value={notesForm[mat.id]?.examen ?? ''}
+                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], examen: e.target.value } }))}/>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="p-3 border-t border-slate-100">
+          <div className="p-3 border-t border-slate-100 flex flex-wrap gap-2">
             <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
               {saving ? 'Enregistrement...' : 'Enregistrer les notes'}
+            </button>
+            <button onClick={handleDownloadPdf} disabled={downloading || !bulletin} className="btn-secondary-light text-sm flex items-center gap-1.5 disabled:opacity-50">
+              <Download size={14}/> {downloading ? 'Génération...' : 'Télécharger le bulletin PDF'}
             </button>
           </div>
         </div>
@@ -475,7 +582,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
               {bulletin.modules.map((m, i) => (
                 <tr key={i}>
                   <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
-                  <td className="text-sm font-bold">{m.moyenne ?? '—'}</td>
+                  <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
                   <td>{m.valide ? <span className="badge-accepted">Validé</span> : <span className="badge-pending">Non validé</span>}</td>
                 </tr>
               ))}
