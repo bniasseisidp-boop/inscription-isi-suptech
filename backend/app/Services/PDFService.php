@@ -654,7 +654,7 @@ class PDFService
         $classeLabel     = trim(($student->license?->nom ?? '') . ' ' . ($student->filiere?->nom ?? ''));
 
         $pdf = Pdf::loadView('pdf.attestation_encouragement', compact('student', 'anneeAcademique', 'moyenne', 'periode', 'classeLabel'))
-            ->setPaper('a4', 'portrait');
+            ->setPaper('a4', 'landscape');
 
         $filename = 'attestation_encouragement_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
@@ -669,7 +669,7 @@ class PDFService
         $anneeAcademique = $this->anneeAcademiqueDe($student);
 
         $pdf = Pdf::loadView('pdf.diplome_licence', compact('student', 'anneeAcademique', 'mention'))
-            ->setPaper('a4', 'portrait');
+            ->setPaper('a4', 'landscape');
 
         $filename = 'diplome_licence_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'diplomes/' . $filename;
