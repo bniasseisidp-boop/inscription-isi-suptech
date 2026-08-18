@@ -14,8 +14,14 @@ class BulletinService
     /**
      * Détail des matières d'un module pour un étudiant : MCC, Examen, Moy EC,
      * Coef EC, Moyenne Coef (= Moy EC × Coef) — sert de base à generateBulletin().
+     *
+     * @param bool $strict Mode "génération officielle" : une matière sans note
+     *  saisie compte pour 0/20 dans le calcul (règle ISI SUPTECH — une note non
+     *  renseignée au moment de la génération du bulletin est considérée comme 0).
+     *  En mode aperçu (false), une matière pas encore notée reste "—" pour que
+     *  l'admin/le prof voie ce qu'il reste à saisir.
      */
-    public function detailModule(Student $student, Module $module, string $anneeScolaire): array
+    public function detailModule(Student $student, Module $module, string $anneeScolaire, bool $strict = false): array
     {
         $module->loadMissing('matieres');
         $notes = $student->notes()
@@ -30,6 +36,7 @@ class BulletinService
         foreach ($module->matieres as $matiere) {
             $note = $notes->get($matiere->id);
             $moyEc = $note?->moyenne; // null si mcc/examen pas encore saisis
+            if ($moyEc === null && $strict) $moyEc = 0.0;
             $moyenneCoef = $moyEc !== null ? round($moyEc * (float) $matiere->coef, 2) : null;
 
             if ($moyEc !== null) {
@@ -70,7 +77,7 @@ class BulletinService
     }
 
     /** Détail complet du bulletin d'un semestre pour un étudiant (UE par UE). */
-    public function detailSemestre(Student $student, Semestre $semestre, string $anneeScolaire): array
+    public function detailSemestre(Student $student, Semestre $semestre, string $anneeScolaire, bool $strict = false): array
     {
         $semestre->loadMissing('modules.matieres');
         $modules = [];
@@ -79,7 +86,7 @@ class BulletinService
         $sommeCredits = 0;
 
         foreach ($semestre->modules as $module) {
-            $detail = $this->detailModule($student, $module, $anneeScolaire);
+            $detail = $this->detailModule($student, $module, $anneeScolaire, $strict);
             if ($detail['valide']) $creditsObtenus += $module->credits;
             if ($detail['moyenne_ue'] !== null) {
                 $sommePonderee += $detail['moyenne_ue'] * $module->credits;

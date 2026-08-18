@@ -157,6 +157,69 @@ class CurriculumController extends Controller
         return response()->json(['message' => 'Professeur supprimé.']);
     }
 
+    /** Cree (ou reutilise) un compte de connexion pour ce professeur, avec un
+     *  mot de passe temporaire envoye par email — meme mecanique que le staff. */
+    public function createProfesseurAccount(Request $request, Professeur $professeur)
+    {
+        if ($professeur->user_id) {
+            return response()->json(['message' => 'Ce professeur a déjà un compte.'], 422);
+        }
+
+        $validated = $request->validate([
+            'email' => 'required|email|unique:users,email',
+        ]);
+
+        $tempPassword = \Illuminate\Support\Str::random(10);
+        $user = \App\Models\User::create([
+            'name'     => trim($professeur->prenom . ' ' . $professeur->nom),
+            'email'    => $validated['email'],
+            'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+            'role'     => 'professeur',
+        ]);
+
+        $professeur->update(['user_id' => $user->id, 'email' => $professeur->email ?: $validated['email']]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\StaffInvite($user, $tempPassword));
+        } catch (\Exception $e) {
+            \Log::warning('Email invitation professeur: ' . $e->getMessage());
+        }
+
+        return response()->json($professeur->fresh(), 201);
+    }
+
+    // ── Verrouillage de la saisie des notes ─────────────────────────────────
+
+    /** Statut du verrou de saisie pour un semestre + annee scolaire donnee. */
+    public function verrouStatus(\App\Models\Semestre $semestre, Request $request)
+    {
+        $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
+        $verrou = \App\Models\VerrouNotes::where('semestre_id', $semestre->id)
+            ->where('annee_scolaire', $anneeScolaire)->first();
+
+        return response()->json(['verrouille' => (bool) ($verrou?->verrouille), 'annee_scolaire' => $anneeScolaire]);
+    }
+
+    /** Active/desactive le verrou — bloque la saisie des profs le temps de generer les bulletins. */
+    public function verrouToggle(\App\Models\Semestre $semestre, Request $request)
+    {
+        $validated = $request->validate([
+            'annee_scolaire' => 'required|string|max:20',
+            'verrouille'     => 'required|boolean',
+        ]);
+
+        $verrou = \App\Models\VerrouNotes::updateOrCreate(
+            ['semestre_id' => $semestre->id, 'annee_scolaire' => $validated['annee_scolaire']],
+            [
+                'verrouille'     => $validated['verrouille'],
+                'verrouille_par' => $request->user()->id,
+                'verrouille_le'  => now(),
+            ]
+        );
+
+        return response()->json($verrou);
+    }
+
     // ── Emploi du temps ──────────────────────────────────────────────────────
 
     public function createCreneau(Request $request, Matiere $matiere)
@@ -193,6 +256,40 @@ class CurriculumController extends Controller
             ->get();
 
         return response()->json(['semestre' => $semestre, 'creneaux' => $creneaux]);
+    }
+
+    /** Liste des bulletins (calculés à la volée) de l'étudiant connecté, un par semestre de son niveau. */
+    public function mesBulletins(Request $request, BulletinService $bulletinService)
+    {
+        $student = Student::where('user_id', $request->user()->id)->with('license')->firstOrFail();
+        if (!$student->license_id) return response()->json([]);
+
+        $anneeScolaire = $student->annee_scolaire ?? (date('Y') . '-' . (date('Y') + 1));
+        $semestres = Semestre::where('license_id', $student->license_id)->orderBy('numero_global')->get();
+
+        $bulletins = $semestres->map(fn ($s) => $bulletinService->detailSemestre($student, $s, $anneeScolaire));
+
+        return response()->json(['annee_scolaire' => $anneeScolaire, 'bulletins' => $bulletins]);
+    }
+
+    /** Téléchargement du PDF officiel d'un de ses propres bulletins par l'étudiant connecté. */
+    public function telechargerMonBulletin(Request $request, Semestre $semestre, \App\Services\PDFService $pdfService)
+    {
+        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+        abort_if($student->license_id !== $semestre->license_id, 403, "Ce bulletin ne concerne pas votre niveau.");
+
+        $anneeScolaire = $student->annee_scolaire ?? (date('Y') . '-' . (date('Y') + 1));
+        $path = $pdfService->generateBulletin($student, $semestre, $anneeScolaire, null);
+        $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+
+        if (!file_exists($full)) {
+            return response()->json(['message' => 'Erreur génération PDF'], 500);
+        }
+
+        return response()->file($full, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="bulletin_S' . $semestre->numero_global . '.pdf"',
+        ]);
     }
 
     // ── Notes ────────────────────────────────────────────────────────────────

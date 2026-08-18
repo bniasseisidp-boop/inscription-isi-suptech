@@ -141,7 +141,7 @@ export default function Login() {
   const { register, handleSubmit, formState: { errors } } = useForm()
 
   // Redirect if already logged in
-  const ROLE_PATHS = { admin: '/admin', super_admin: '/admin', student: '/student', cashier: '/caisse', accueil: '/accueil', pedagogique: '/pedagogique' }
+  const ROLE_PATHS = { admin: '/admin', super_admin: '/admin', student: '/student', cashier: '/caisse', accueil: '/accueil', pedagogique: '/pedagogique', professeur: '/professeur' }
 
   if (user) {
     const path = ROLE_PATHS[user.role] || '/'

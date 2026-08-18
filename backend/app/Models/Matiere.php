@@ -30,4 +30,9 @@ class Matiere extends Model
     {
         return $this->hasMany(EmploiDuTemps::class);
     }
+
+    public function presences()
+    {
+        return $this->hasMany(Presence::class);
+    }
 }

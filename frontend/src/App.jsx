@@ -10,6 +10,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import CashierDashboard from './pages/CashierDashboard'
 import AccueilDashboard from './pages/AccueilDashboard'
 import AccueilPedagogiqueDashboard from './pages/AccueilPedagogiqueDashboard'
+import ProfesseurDashboard from './pages/ProfesseurDashboard'
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
@@ -57,6 +58,12 @@ export default function App() {
       <Route path="/pedagogique/*" element={
         <ProtectedRoute roles={['pedagogique', 'admin']}>
           <AccueilPedagogiqueDashboard />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/professeur/*" element={
+        <ProtectedRoute roles={['professeur']}>
+          <ProfesseurDashboard />
         </ProtectedRoute>
       } />
 

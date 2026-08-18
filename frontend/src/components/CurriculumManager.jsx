@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock } from 'lucide-react'
 import {
   getFilieres, getLicenseSemestres, createSemestre, createModule, updateModule, deleteModule,
   createMatiere, updateMatiere, deleteMatiere, getProfesseurs, createProfesseur, deleteProfesseur,
   createCreneau, deleteCreneau, saisirNotesEtudiant, getBulletin, downloadBulletinPdf,
+  createProfesseurAccount, getVerrouStatus, toggleVerrouNotes,
 } from '../services/api'
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -392,6 +393,15 @@ function ProfesseursTab({ onChange }) {
     try { await deleteProfesseur(id); toast.success('Supprimé'); load(); onChange?.() }
     catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
   }
+  const handleCreateAccount = async (prof) => {
+    const email = window.prompt(`Email de connexion pour ${prof.prenom} ${prof.nom} :`, prof.email || '')
+    if (!email) return
+    try {
+      await createProfesseurAccount(prof.id, { email })
+      toast.success('Compte créé — les identifiants ont été envoyés par email.')
+      load()
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur création du compte') }
+  }
 
   return (
     <div className="space-y-4">
@@ -408,7 +418,7 @@ function ProfesseursTab({ onChange }) {
       )}
       <div className="light-card overflow-hidden">
         <table className="data-table-light">
-          <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Spécialité</th><th></th></tr></thead>
+          <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Spécialité</th><th>Compte</th><th></th></tr></thead>
           <tbody>
             {profs.map(p => (
               <tr key={p.id}>
@@ -416,10 +426,19 @@ function ProfesseursTab({ onChange }) {
                 <td className="text-xs text-slate-500">{p.email || '—'}</td>
                 <td className="text-xs text-slate-500">{p.telephone || '—'}</td>
                 <td className="text-xs text-slate-500">{p.specialite || '—'}</td>
+                <td>
+                  {p.user_id ? (
+                    <span className="badge-accepted">Actif</span>
+                  ) : (
+                    <button onClick={() => handleCreateAccount(p)} className="flex items-center gap-1 text-xs font-semibold text-isiblue-600 hover:bg-isiblue-50 px-2 py-1 rounded-lg">
+                      <KeyRound size={12}/> Créer un compte
+                    </button>
+                  )}
+                </td>
                 <td><button onClick={() => handleDelete(p.id, p.nom)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={13}/></button></td>
               </tr>
             ))}
-            {profs.length === 0 && <tr><td colSpan={5} className="text-center text-slate-400 py-6 text-sm">Aucun professeur</td></tr>}
+            {profs.length === 0 && <tr><td colSpan={6} className="text-center text-slate-400 py-6 text-sm">Aucun professeur</td></tr>}
           </tbody>
         </table>
       </div>
@@ -437,6 +456,8 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
   const [saving, setSaving] = useState(false)
   const [bulletin, setBulletin] = useState(null)
   const [downloading, setDownloading] = useState(false)
+  const [verrouille, setVerrouille] = useState(false)
+  const [togglingVerrou, setTogglingVerrou] = useState(false)
 
   useEffect(() => {
     if (search.length < 2 || !searchStudents) { setResults([]); return }
@@ -445,6 +466,26 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
     }, 350)
     return () => clearTimeout(t)
   }, [search, searchStudents])
+
+  const loadVerrou = useCallback(() => {
+    if (!sem) return
+    getVerrouStatus(sem.id, { annee_scolaire: anneeScolaire })
+      .then(({ data }) => setVerrouille(data.verrouille))
+      .catch(() => {})
+  }, [sem, anneeScolaire])
+
+  useEffect(() => { loadVerrou() }, [loadVerrou])
+
+  const handleToggleVerrou = async () => {
+    if (!sem) return
+    setTogglingVerrou(true)
+    try {
+      await toggleVerrouNotes(sem.id, { annee_scolaire: anneeScolaire, verrouille: !verrouille })
+      setVerrouille(v => !v)
+      toast.success(!verrouille ? 'Saisie des notes verrouillée pour les professeurs.' : 'Saisie des notes déverrouillée.')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+    finally { setTogglingVerrou(false) }
+  }
 
   const allMatieres = (sem?.modules || []).flatMap(m => m.matieres || [])
 
@@ -491,13 +532,24 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {semestres.map(s => (
-          <button key={s.id} onClick={() => setActiveSem(s.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activeSem === s.id ? 'bg-isiblue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-            {s.libelle}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          {semestres.map(s => (
+            <button key={s.id} onClick={() => setActiveSem(s.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activeSem === s.id ? 'bg-isiblue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              {s.libelle}
+            </button>
+          ))}
+        </div>
+        {sem && (
+          <button onClick={handleToggleVerrou} disabled={togglingVerrou}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${
+              verrouille ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}>
+            {verrouille ? <Lock size={13}/> : <Unlock size={13}/>}
+            {verrouille ? 'Saisie verrouillée (profs)' : 'Verrouiller la saisie (profs)'}
           </button>
-        ))}
+        )}
       </div>
 
       <div className="light-card p-4 space-y-3">

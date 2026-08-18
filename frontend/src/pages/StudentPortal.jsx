@@ -6,7 +6,7 @@ import {
   Clock, CheckCircle, XCircle, AlertTriangle, LogOut, User, Bell, CreditCard,
   GraduationCap, FileText, Phone, MapPin, Calendar, BookOpen, Save,
   ChevronRight, Wallet, TrendingUp, AlertCircle, Download, QrCode, Upload,
-  Menu, X,
+  Menu, X, Award,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import QRCode from 'qrcode'
@@ -14,7 +14,7 @@ import {
   getStudentDashboard, initiatePayment, markNotificationsRead,
   getStudentPayments, downloadStudentReceiptBlob, cancelStudentPayment,
   downloadStudentCard, updateStudentProfile, updateStudentPhoto,
-  submitMissingDocuments,
+  submitMissingDocuments, getMonEmploiDuTemps, getMesBulletins, downloadMonBulletinPdf,
 } from '../services/api'
 import api from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
@@ -573,6 +573,11 @@ export default function StudentPortal() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [waveEnabled, setWaveEnabled] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [emploiDuTemps, setEmploiDuTemps] = useState(null)
+  const [loadingEmploi, setLoadingEmploi] = useState(false)
+  const [bulletins, setBulletins] = useState(null)
+  const [loadingBulletins, setLoadingBulletins] = useState(false)
+  const [downloadingBulletin, setDownloadingBulletin] = useState(null)
 
   const refreshStudent = useCallback(() => {
     return getStudentDashboard()
@@ -620,7 +625,25 @@ export default function StudentPortal() {
         api.get('/etudiant/suivi-paiements').then(({ data }) => setSuivi(data)).catch(() => {})
       }
     }
+    if (activeSection === 'emploi' && !emploiDuTemps) {
+      setLoadingEmploi(true)
+      getMonEmploiDuTemps().then(({ data }) => setEmploiDuTemps(data)).catch(() => {}).finally(() => setLoadingEmploi(false))
+    }
+    if (activeSection === 'bulletins' && !bulletins) {
+      setLoadingBulletins(true)
+      getMesBulletins().then(({ data }) => setBulletins(data)).catch(() => {}).finally(() => setLoadingBulletins(false))
+    }
   }, [activeSection])
+
+  const handleDownloadBulletin = async (semestreId) => {
+    setDownloadingBulletin(semestreId)
+    try {
+      const { data } = await downloadMonBulletinPdf(semestreId)
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      window.open(url, '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
+    finally { setDownloadingBulletin(null) }
+  }
 
   const handlePay = async (type, mois = null) => {
     setInitiating(true)
@@ -872,6 +895,8 @@ export default function StudentPortal() {
     { id: 'accueil',   label: 'Tableau de bord', icon: GraduationCap },
     { id: 'profil',    label: 'Mon profil',       icon: User },
     { id: 'carte',     label: 'Carte étudiante',  icon: QrCode },
+    { id: 'emploi',    label: 'Emploi du temps',  icon: Clock },
+    { id: 'bulletins', label: 'Mes bulletins',    icon: Award },
     { id: 'paiements', label: 'Paiements',        icon: Wallet },
     { id: 'suivi',     label: 'Suivi mensuel',    icon: TrendingUp },
   ]
@@ -1225,6 +1250,95 @@ export default function StudentPortal() {
                         La carte étudiante est créée par l'administration après confirmation de votre inscription.
                       </div>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── EMPLOI DU TEMPS ────────────────────────────────────────── */}
+              {activeSection === 'emploi' && (
+                <div className="space-y-4">
+                  {loadingEmploi ? (
+                    <div className="flex justify-center py-16"><div className="spinner"/></div>
+                  ) : !emploiDuTemps?.creneaux?.length ? (
+                    <div className="light-card p-10 text-center border border-slate-200">
+                      <Clock size={48} className="text-slate-300 mx-auto mb-4"/>
+                      <div className="text-slate-600 text-sm">Aucun créneau n'a encore été programmé pour votre niveau.</div>
+                    </div>
+                  ) : (
+                    ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'].map(jour => {
+                      const items = emploiDuTemps.creneaux.filter(c => c.jour === jour)
+                      if (items.length === 0) return null
+                      return (
+                        <div key={jour} className="light-card overflow-hidden">
+                          <div className="p-3 bg-isiblue-600 text-white font-bold text-sm capitalize">{jour}</div>
+                          <div className="divide-y divide-slate-100">
+                            {items.map(c => (
+                              <div key={c.id} className="p-3 flex items-center gap-3">
+                                <div className="w-24 flex-shrink-0 text-xs font-mono text-isiblue-700 font-bold">
+                                  {c.heure_debut?.slice(0, 5)}–{c.heure_fin?.slice(0, 5)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-semibold text-slate-800 truncate">{c.matiere?.nom}</div>
+                                  <div className="text-xs text-slate-400 truncate">
+                                    {c.matiere?.professeur ? `${c.matiere.professeur.prenom} ${c.matiere.professeur.nom}` : 'Professeur non assigné'}
+                                    {c.salle && ` · Salle ${c.salle}`}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* ── MES BULLETINS ──────────────────────────────────────────── */}
+              {activeSection === 'bulletins' && (
+                <div className="space-y-4">
+                  {loadingBulletins ? (
+                    <div className="flex justify-center py-16"><div className="spinner"/></div>
+                  ) : !bulletins?.bulletins?.length ? (
+                    <div className="light-card p-10 text-center border border-slate-200">
+                      <Award size={48} className="text-slate-300 mx-auto mb-4"/>
+                      <div className="text-slate-600 text-sm">Aucun bulletin n'est encore disponible pour votre niveau.</div>
+                    </div>
+                  ) : (
+                    bulletins.bulletins.map((b) => (
+                      <div key={b.semestre.id} className="light-card p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="font-bold text-isiblue-700">{b.semestre.libelle}</h4>
+                            <div className="text-xs text-slate-400">Année {bulletins.annee_scolaire}</div>
+                          </div>
+                          <button onClick={() => handleDownloadBulletin(b.semestre.id)} disabled={downloadingBulletin === b.semestre.id}
+                            className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
+                            <Download size={13}/> {downloadingBulletin === b.semestre.id ? 'Génération...' : 'Télécharger le PDF'}
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne</div><div className="text-lg font-black text-slate-800">{b.moyenne_generale ?? '—'}</div></div>
+                          <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Crédits</div><div className="text-lg font-black text-slate-800">{b.credits_obtenus} / {b.credits_requis}</div></div>
+                          <div className={`rounded-xl p-3 ${b.valide ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                            <div className="text-xs text-slate-400">Statut</div>
+                            <div className={`text-lg font-black ${b.valide ? 'text-emerald-600' : 'text-red-600'}`}>{b.valide ? 'Validé' : 'Non validé'}</div>
+                          </div>
+                        </div>
+                        <table className="data-table-light">
+                          <thead><tr><th>UE</th><th>Moyenne</th><th>Statut</th></tr></thead>
+                          <tbody>
+                            {b.modules.map((m, i) => (
+                              <tr key={i}>
+                                <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
+                                <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
+                                <td>{m.valide ? <span className="badge-accepted">Validé</span> : <span className="badge-pending">Non validé</span>}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))
                   )}
                 </div>
               )}

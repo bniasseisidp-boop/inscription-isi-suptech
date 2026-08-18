@@ -9,6 +9,7 @@ use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\ContentController;
 use App\Http\Controllers\AccueilPedagogiqueController;
 use App\Http\Controllers\CurriculumController;
+use App\Http\Controllers\ProfesseurPortalController;
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 // Limitées en fréquence — ce sont des cibles classiques pour le bruteforce
@@ -250,13 +251,31 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/professeurs',                              [CurriculumController::class, 'createProfesseur']);
         Route::put('/professeurs/{professeur}',                  [CurriculumController::class, 'updateProfesseur']);
         Route::delete('/professeurs/{professeur}',                [CurriculumController::class, 'deleteProfesseur']);
+        Route::post('/professeurs/{professeur}/compte',           [CurriculumController::class, 'createProfesseurAccount']);
         Route::post('/matieres/{matiere}/creneaux',              [CurriculumController::class, 'createCreneau']);
         Route::delete('/creneaux/{creneau}',                     [CurriculumController::class, 'deleteCreneau']);
         Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
         Route::get('/semestres/{semestre}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
         Route::post('/semestres/{semestre}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
+        Route::get('/semestres/{semestre}/verrou',                [CurriculumController::class, 'verrouStatus']);
+        Route::post('/semestres/{semestre}/verrou',               [CurriculumController::class, 'verrouToggle']);
     });
 
-    // ── Étudiant — emploi du temps ──────────────────────────────────────────
+    // ── Espace professeur ────────────────────────────────────────────────────
+    Route::middleware('role:professeur')->prefix('prof')->group(function () {
+        Route::get('/emploi-du-temps',                    [ProfesseurPortalController::class, 'monEmploiDuTemps']);
+        Route::get('/matieres',                            [ProfesseurPortalController::class, 'mesMatieres']);
+        Route::get('/matieres/{matiere}/effectif',          [ProfesseurPortalController::class, 'roster']);
+        Route::get('/matieres/{matiere}/presences',         [ProfesseurPortalController::class, 'presences']);
+        Route::post('/matieres/{matiere}/presences',        [ProfesseurPortalController::class, 'saisirPresences']);
+        Route::get('/matieres/{matiere}/notes',             [ProfesseurPortalController::class, 'notes']);
+        Route::post('/matieres/{matiere}/notes',            [ProfesseurPortalController::class, 'saisirNotes']);
+    });
+
+    // ── Étudiant — emploi du temps & bulletins ──────────────────────────────
     Route::get('/etudiant/emploi-du-temps', [CurriculumController::class, 'monEmploiDuTemps']);
+    Route::middleware('role:student')->group(function () {
+        Route::get('/etudiant/bulletins',                       [CurriculumController::class, 'mesBulletins']);
+        Route::get('/etudiant/semestres/{semestre}/bulletin-pdf', [CurriculumController::class, 'telechargerMonBulletin']);
+    });
 });

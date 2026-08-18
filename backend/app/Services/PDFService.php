@@ -695,7 +695,9 @@ class PDFService
     {
         $student->load(['filiere', 'license']);
         $bulletinService = app(\App\Services\BulletinService::class);
-        $bulletin = $bulletinService->detailSemestre($student, $semestre, $anneeScolaire);
+        // strict=true : le bulletin officiel genere applique la regle ISI SUPTECH
+        // "une note non renseignee = 0" (contrairement a l'apercu de saisie).
+        $bulletin = $bulletinService->detailSemestre($student, $semestre, $anneeScolaire, true);
 
         $domaine = str_contains($this->inferDomaine($student), 'Gestion') ? 'Sciences Économiques et de Gestion' : 'NTIC';
         $mentionFiliere = str_contains($this->inferDomaine($student), 'Gestion') ? 'Gestion' : 'Informatique';

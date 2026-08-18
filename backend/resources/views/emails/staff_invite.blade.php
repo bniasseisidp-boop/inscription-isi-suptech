@@ -5,6 +5,7 @@ $roleLabels = [
     'cashier'     => 'Caissier(ère)',
     'accueil'     => 'Accueil',
     'pedagogique' => 'Accueil Pédagogique',
+    'professeur'  => 'Professeur',
 ];
 $roleLabel = $roleLabels[$user->role] ?? $user->role;
 @endphp

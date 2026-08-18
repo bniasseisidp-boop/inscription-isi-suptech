@@ -249,5 +249,21 @@ export const saisirNotesEtudiant  = (studentId, data) => api.post(`/curriculum/e
 export const getBulletin          = (semestreId, studentId, params) => api.get(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin`, { params })
 export const downloadBulletinPdf  = (semestreId, studentId, data) => api.post(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin-pdf`, data, { responseType: 'blob' })
 export const getMonEmploiDuTemps  = () => api.get('/etudiant/emploi-du-temps')
+export const createProfesseurAccount = (id, data) => api.post(`/curriculum/professeurs/${id}/compte`, data)
+export const getVerrouStatus      = (semestreId, params) => api.get(`/curriculum/semestres/${semestreId}/verrou`, { params })
+export const toggleVerrouNotes    = (semestreId, data) => api.post(`/curriculum/semestres/${semestreId}/verrou`, data)
+
+// ── Étudiant — bulletins ─────────────────────────────────────────────────────
+export const getMesBulletins        = () => api.get('/etudiant/bulletins')
+export const downloadMonBulletinPdf = (semestreId) => api.get(`/etudiant/semestres/${semestreId}/bulletin-pdf`, { responseType: 'blob' })
+
+// ── Espace professeur ────────────────────────────────────────────────────────
+export const getProfEmploiDuTemps = () => api.get('/prof/emploi-du-temps')
+export const getProfMatieres      = () => api.get('/prof/matieres')
+export const getProfRoster        = (matiereId) => api.get(`/prof/matieres/${matiereId}/effectif`)
+export const getProfPresences     = (matiereId, params) => api.get(`/prof/matieres/${matiereId}/presences`, { params })
+export const saisirProfPresences  = (matiereId, data) => api.post(`/prof/matieres/${matiereId}/presences`, data)
+export const getProfNotes         = (matiereId, params) => api.get(`/prof/matieres/${matiereId}/notes`, { params })
+export const saisirProfNotes      = (matiereId, data) => api.post(`/prof/matieres/${matiereId}/notes`, data)
 
 export default api
