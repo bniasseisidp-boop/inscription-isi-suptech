@@ -919,7 +919,7 @@ export default function AdminDashboard() {
     updateStaffRole(staffMember.id, newRole)
       .then(({ data }) => {
         setStaff(prev => prev.map(s => s.id === staffMember.id ? data : s))
-        toast.success(`Rôle mis à jour : ${staffMember.name} est maintenant ${{admin:'Admin',cashier:'Caissier',accueil:'Accueil',pedagogique:'Accueil Pédagogique'}[newRole]}.`)
+        toast.success(`Rôle mis à jour : ${staffMember.name} est maintenant ${{admin:'Admin',cashier:'Caissier',accueil:'Accueil',pedagogique:'Accueil Pédagogique',super_admin:'Super Admin'}[newRole]}.`)
       })
       .catch(e => toast.error(e.response?.data?.message || 'Erreur lors du changement de rôle'))
       .finally(() => setChangingRoleId(null))
@@ -2079,6 +2079,7 @@ export default function AdminDashboard() {
                                   <option value="cashier">Caissier</option>
                                   <option value="accueil">Accueil</option>
                                   <option value="pedagogique">Accueil Pédagogique</option>
+                                  <option value="super_admin">Super Admin</option>
                                 </select>
                               ) : (
                                 <span className={`text-xs px-2 py-0.5 rounded font-semibold ${s.role==='admin'?'bg-red-500/20 text-red-300':s.role==='cashier'?'bg-isiblue-500/20 text-isiblue-300':'bg-blue-500/20 text-blue-300'}`}>

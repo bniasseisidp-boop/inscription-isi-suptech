@@ -57,10 +57,13 @@ export default function Navbar() {
   }
 
   const dashboardPath = {
-    admin:   '/admin',
-    student: '/student',
-    cashier: '/caisse',
-    accueil: '/accueil',
+    admin:       '/admin',
+    super_admin: '/admin',
+    student:     '/student',
+    cashier:     '/caisse',
+    accueil:     '/accueil',
+    pedagogique: '/pedagogique',
+    professeur:  '/professeur',
   }[user?.role] || '/'
 
   const navBg = scrolled
