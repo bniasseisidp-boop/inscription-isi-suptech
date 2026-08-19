@@ -124,7 +124,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:9px; color:#111827;
           <td class="num">{{ $ligne['moyenne_ec'] !== null ? number_format($ligne['moyenne_ec'], 2, ',', '') : '—' }}</td>
           <td class="num">{{ number_format($ligne['matiere']->coef, 2, ',', '') }}</td>
           <td class="num">{{ $ligne['moyenne_coef'] !== null ? number_format($ligne['moyenne_coef'], 2, ',', '') : '—' }}</td>
-          <td></td>
+          <td class="num">{{ $ligne['matiere']->credits !== null ? number_format($ligne['matiere']->credits, 1, ',', '') : '—' }}</td>
           <td></td>
           <td class="appr">{{ $ligne['appreciation'] ?? '—' }}</td>
         </tr>

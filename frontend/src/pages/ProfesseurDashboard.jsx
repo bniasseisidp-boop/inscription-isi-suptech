@@ -160,7 +160,8 @@ function NotesPanel({ matiere }) {
         annee_scolaire: anneeScolaire,
         notes: etudiants.map(e => ({
           student_id: e.id,
-          mcc: e.mcc !== '' && e.mcc !== null && e.mcc !== undefined ? Number(e.mcc) : null,
+          devoir1: e.devoir1 !== '' && e.devoir1 !== null && e.devoir1 !== undefined ? Number(e.devoir1) : null,
+          devoir2: e.devoir2 !== '' && e.devoir2 !== null && e.devoir2 !== undefined ? Number(e.devoir2) : null,
           examen: e.examen !== '' && e.examen !== null && e.examen !== undefined ? Number(e.examen) : null,
         })),
       })
@@ -187,7 +188,7 @@ function NotesPanel({ matiere }) {
       {loading ? <div className="py-8 flex justify-center"><div className="spinner"/></div> : (
         <div className="light-card overflow-hidden">
           <table className="data-table-light">
-            <thead><tr><th>Matricule</th><th>Étudiant</th><th>MCC /20 (40%)</th><th>Examen /20 (60%)</th></tr></thead>
+            <thead><tr><th>Matricule</th><th>Étudiant</th><th>Devoir 1 /20</th><th>Devoir 2 /20</th><th>Examen /20 (60%)</th></tr></thead>
             <tbody>
               {etudiants.map(e => (
                 <tr key={e.id}>
@@ -195,8 +196,13 @@ function NotesPanel({ matiere }) {
                   <td className="text-sm">{e.prenom} {e.nom}</td>
                   <td>
                     <input type="number" min="0" max="20" step="0.25" disabled={verrouille}
-                      className="form-input-light w-24 !py-1 disabled:opacity-50"
-                      value={e.mcc ?? ''} onChange={ev => setNote(e.id, 'mcc', ev.target.value)}/>
+                      className="form-input-light w-20 !py-1 disabled:opacity-50"
+                      value={e.devoir1 ?? ''} onChange={ev => setNote(e.id, 'devoir1', ev.target.value)}/>
+                  </td>
+                  <td>
+                    <input type="number" min="0" max="20" step="0.25" disabled={verrouille}
+                      className="form-input-light w-20 !py-1 disabled:opacity-50"
+                      value={e.devoir2 ?? ''} onChange={ev => setNote(e.id, 'devoir2', ev.target.value)}/>
                   </td>
                   <td>
                     <input type="number" min="0" max="20" step="0.25" disabled={verrouille}
@@ -205,7 +211,7 @@ function NotesPanel({ matiere }) {
                   </td>
                 </tr>
               ))}
-              {etudiants.length === 0 && <tr><td colSpan={4} className="text-center text-slate-400 py-6 text-sm">Aucun étudiant dans cette classe</td></tr>}
+              {etudiants.length === 0 && <tr><td colSpan={5} className="text-center text-slate-400 py-6 text-sm">Aucun étudiant dans cette classe</td></tr>}
             </tbody>
           </table>
         </div>

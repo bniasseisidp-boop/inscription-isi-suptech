@@ -140,13 +140,14 @@ class ProfesseurPortalController extends Controller
             'verrouille' => (bool) ($verrou?->verrouille),
             'etudiants' => $etudiants->map(fn ($e) => [
                 'id' => $e->id, 'matricule' => $e->matricule, 'nom' => $e->nom, 'prenom' => $e->prenom,
-                'mcc' => $notes->get($e->id)?->mcc,
+                'devoir1' => $notes->get($e->id)?->devoir1,
+                'devoir2' => $notes->get($e->id)?->devoir2,
                 'examen' => $notes->get($e->id)?->examen,
             ]),
         ]);
     }
 
-    /** Saisie/correction des notes MCC+Examen par le professeur — bloquee si
+    /** Saisie/correction des notes (2 devoirs + examen) par le professeur — bloquee si
      *  l'admin/l'accueil pedagogique a verrouille la saisie pour ce semestre. */
     public function saisirNotes(Request $request, Matiere $matiere)
     {
@@ -155,7 +156,8 @@ class ProfesseurPortalController extends Controller
             'annee_scolaire' => 'required|string|max:20',
             'notes' => 'required|array|min:1',
             'notes.*.student_id' => 'required|exists:students,id',
-            'notes.*.mcc' => 'nullable|numeric|min:0|max:20',
+            'notes.*.devoir1' => 'nullable|numeric|min:0|max:20',
+            'notes.*.devoir2' => 'nullable|numeric|min:0|max:20',
             'notes.*.examen' => 'nullable|numeric|min:0|max:20',
         ]);
 
@@ -172,7 +174,8 @@ class ProfesseurPortalController extends Controller
             Note::updateOrCreate(
                 ['student_id' => $entry['student_id'], 'matiere_id' => $matiere->id, 'annee_scolaire' => $validated['annee_scolaire']],
                 array_filter([
-                    'mcc' => $entry['mcc'] ?? null,
+                    'devoir1' => $entry['devoir1'] ?? null,
+                    'devoir2' => $entry['devoir2'] ?? null,
                     'examen' => $entry['examen'] ?? null,
                     'saisi_par' => $request->user()->id,
                 ], fn ($v) => $v !== null)

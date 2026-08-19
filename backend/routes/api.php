@@ -254,12 +254,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/professeurs/{professeur}/compte',           [CurriculumController::class, 'createProfesseurAccount']);
         Route::post('/matieres/{matiere}/creneaux',              [CurriculumController::class, 'createCreneau']);
         Route::delete('/creneaux/{creneau}',                     [CurriculumController::class, 'deleteCreneau']);
+        Route::get('/matieres/{matiere}/presences',              [CurriculumController::class, 'presences']);
+        Route::post('/matieres/{matiere}/presences',             [CurriculumController::class, 'saisirPresences']);
         Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
         Route::get('/semestres/{semestre}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
         Route::post('/semestres/{semestre}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
         Route::get('/semestres/{semestre}/verrou',                [CurriculumController::class, 'verrouStatus']);
         Route::post('/semestres/{semestre}/verrou',               [CurriculumController::class, 'verrouToggle']);
         Route::get('/semestres/{semestre}/emploi-du-temps-pdf',   [CurriculumController::class, 'downloadEmploiDuTemps']);
+        Route::get('/semestres/{semestre}/conseil-classe',        [CurriculumController::class, 'conseilClasse']);
+        Route::get('/semestres/{semestre}/conseil-classe-pdf',    [CurriculumController::class, 'downloadConseilClasse']);
     });
 
     // ── Espace professeur ────────────────────────────────────────────────────

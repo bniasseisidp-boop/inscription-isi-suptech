@@ -88,6 +88,7 @@ class CurriculumController extends Controller
             'tpe'           => 'nullable|integer|min:0',
             'vht'           => 'nullable|integer|min:0',
             'coef'          => 'required|numeric|min:0',
+            'credits'       => 'nullable|numeric|min:0',
             'professeur_id' => 'nullable|exists:professeurs,id',
         ]);
         $ordre = $module->matieres()->max('ordre') + 1;
@@ -106,6 +107,7 @@ class CurriculumController extends Controller
             'tpe'           => 'sometimes|integer|min:0',
             'vht'           => 'sometimes|integer|min:0',
             'coef'          => 'sometimes|numeric|min:0',
+            'credits'       => 'nullable|numeric|min:0',
             'professeur_id' => 'nullable|exists:professeurs,id',
         ]);
         $matiere->update($validated);
@@ -240,6 +242,52 @@ class CurriculumController extends Controller
         return response()->json(['message' => 'Créneau supprimé.']);
     }
 
+    // ── Présences (consultation/saisie par Admin ou Accueil Pédagogique) ────────
+
+    /** Effectif + présences d'une matière pour une date donnée — vue admin/pédagogique
+     *  (les profs voient/saisissent la même donnée depuis leur propre espace). */
+    public function presences(Matiere $matiere, Request $request)
+    {
+        $date = $request->query('date', now()->toDateString());
+        $matiere->loadMissing('module.semestre');
+
+        $etudiants = Student::where('license_id', $matiere->module->semestre->license_id)
+            ->where('statut_inscription', 'accepte')
+            ->orderBy('nom')->orderBy('prenom')
+            ->get(['id', 'matricule', 'nom', 'prenom']);
+
+        $presences = \App\Models\Presence::where('matiere_id', $matiere->id)->where('date', $date)
+            ->get()->keyBy('student_id');
+
+        return response()->json([
+            'date' => $date,
+            'etudiants' => $etudiants->map(fn ($e) => [
+                'id' => $e->id, 'matricule' => $e->matricule, 'nom' => $e->nom, 'prenom' => $e->prenom,
+                'present' => $presences->has($e->id) ? $presences->get($e->id)->present : null,
+            ]),
+        ]);
+    }
+
+    /** Saisie/correction de l'appel par Admin ou Accueil Pédagogique (même règle que le prof). */
+    public function saisirPresences(Matiere $matiere, Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'presences' => 'required|array|min:1',
+            'presences.*.student_id' => 'required|exists:students,id',
+            'presences.*.present' => 'required|boolean',
+        ]);
+
+        foreach ($validated['presences'] as $entry) {
+            \App\Models\Presence::updateOrCreate(
+                ['student_id' => $entry['student_id'], 'matiere_id' => $matiere->id, 'date' => $validated['date']],
+                ['present' => $entry['present'], 'saisi_par' => $request->user()->id]
+            );
+        }
+
+        return response()->json(['message' => 'Présences enregistrées.']);
+    }
+
     /** Emploi du temps de l'étudiant connecté (semestre en cours déduit de son niveau). */
     public function monEmploiDuTemps(Request $request)
     {
@@ -297,6 +345,26 @@ class CurriculumController extends Controller
         ]);
     }
 
+    /** Grand tableau de délibération de la classe (JSON, pour affichage à l'écran). */
+    public function conseilClasse(Semestre $semestre, Request $request, BulletinService $bulletinService)
+    {
+        $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
+        return response()->json($bulletinService->conseilClasse($semestre, $anneeScolaire));
+    }
+
+    /** PDF du grand tableau de délibération de la classe. */
+    public function downloadConseilClasse(Semestre $semestre, Request $request, \App\Services\PDFService $pdfService)
+    {
+        $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
+        $path = $pdfService->generateConseilClasse($semestre, $anneeScolaire);
+        $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+
+        return response()->file($full, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="conseil_classe_S' . $semestre->numero_global . '.pdf"',
+        ])->deleteFileAfterSend(true);
+    }
+
     /** PDF de l'emploi du temps complet d'une classe (filière + niveau + semestre). */
     public function downloadEmploiDuTemps(Semestre $semestre, \App\Services\PDFService $pdfService)
     {
@@ -318,7 +386,8 @@ class CurriculumController extends Controller
             'annee_scolaire' => 'required|string|max:20',
             'notes'          => 'required|array|min:1',
             'notes.*.matiere_id' => 'required|exists:matieres,id',
-            'notes.*.mcc'         => 'nullable|numeric|min:0|max:20',
+            'notes.*.devoir1'     => 'nullable|numeric|min:0|max:20',
+            'notes.*.devoir2'     => 'nullable|numeric|min:0|max:20',
             'notes.*.examen'      => 'nullable|numeric|min:0|max:20',
         ]);
 
@@ -326,7 +395,8 @@ class CurriculumController extends Controller
             Note::updateOrCreate(
                 ['student_id' => $student->id, 'matiere_id' => $entry['matiere_id'], 'annee_scolaire' => $validated['annee_scolaire']],
                 array_filter([
-                    'mcc'       => $entry['mcc'] ?? null,
+                    'devoir1'   => $entry['devoir1'] ?? null,
+                    'devoir2'   => $entry['devoir2'] ?? null,
                     'examen'    => $entry['examen'] ?? null,
                     'saisi_par' => $request->user()->id,
                 ], fn ($v) => $v !== null)

@@ -165,6 +165,23 @@ class PDFService
         return $path;
     }
 
+    /** Grand tableau de délibération de la classe (PDF) — un semestre, tous les
+     *  étudiants du niveau, moyenne+validation par UE, stats de réussite. */
+    public function generateConseilClasse(\App\Models\Semestre $semestre, string $anneeScolaire): string
+    {
+        $bulletinService = app(\App\Services\BulletinService::class);
+        $conseil = $bulletinService->conseilClasse($semestre, $anneeScolaire);
+
+        $pdf = Pdf::loadView('pdf.conseil_classe', ['conseil' => $conseil])
+            ->setPaper('a3', 'landscape');
+
+        $filename = 'conseil_classe_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
+        $path = 'conseils_classe/' . $filename;
+
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
     /** Generate PDF of unpaid students for a given month */
     public function generateImpayesPdf(array $etudiants, string $mois): string
     {

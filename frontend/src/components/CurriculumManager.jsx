@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock, CheckCircle2, CircleSlash, ClipboardList } from 'lucide-react'
 import {
   getFilieres, getLicenseSemestres, createSemestre, createModule, updateModule, deleteModule,
   createMatiere, updateMatiere, deleteMatiere, getProfesseurs, createProfesseur, deleteProfesseur,
   createCreneau, deleteCreneau, saisirNotesEtudiant, getBulletin, downloadBulletinPdf,
   createProfesseurAccount, getVerrouStatus, toggleVerrouNotes, downloadEmploiDuTempsPdf,
+  getAdminPresences, saisirAdminPresences, downloadConseilClassePdf,
 } from '../services/api'
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -105,6 +106,7 @@ export default function CurriculumManager({ searchStudents }) {
 /* ── Onglet Programme ─────────────────────────────────────────────────────── */
 function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, loading, onCreateSemestre, onRefresh, professeurs }) {
   const [downloadingEdt, setDownloadingEdt] = useState(false)
+  const [downloadingConseil, setDownloadingConseil] = useState(false)
 
   if (!licenseId) return <div className="light-card p-8 text-center text-slate-400 text-sm">Choisis une filière et un niveau pour voir le programme.</div>
   if (loading) return <div className="py-10 flex justify-center"><div className="spinner"/></div>
@@ -118,6 +120,17 @@ function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, load
       window.open(url, '_blank')
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
     finally { setDownloadingEdt(false) }
+  }
+
+  const handleDownloadConseil = async () => {
+    if (!sem) return
+    setDownloadingConseil(true)
+    try {
+      const { data } = await downloadConseilClassePdf(sem.id)
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
+      window.open(url, '_blank')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
+    finally { setDownloadingConseil(false) }
   }
 
   return (
@@ -137,10 +150,16 @@ function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, load
           </button>
         </div>
         {sem && (
-          <button onClick={handleDownloadEdt} disabled={downloadingEdt}
-            className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
-            <Download size={13}/> {downloadingEdt ? 'Génération...' : "Télécharger l'emploi du temps (PDF)"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={handleDownloadEdt} disabled={downloadingEdt}
+              className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
+              <Download size={13}/> {downloadingEdt ? 'Génération...' : "Emploi du temps (PDF)"}
+            </button>
+            <button onClick={handleDownloadConseil} disabled={downloadingConseil}
+              className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
+              <ClipboardList size={13}/> {downloadingConseil ? 'Génération...' : 'Conseil de classe (PDF)'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -188,9 +207,10 @@ function SemestrePanel({ sem, onRefresh, professeurs }) {
 
 function ModulePanel({ mod, onRefresh, professeurs }) {
   const [showAddMatiere, setShowAddMatiere] = useState(false)
-  const [newMatiere, setNewMatiere] = useState({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1 })
+  const [newMatiere, setNewMatiere] = useState({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1, credits: '' })
   const [editingModule, setEditingModule] = useState(false)
   const [moduleForm, setModuleForm] = useState({ code: mod.code, nom: mod.nom, credits: mod.credits })
+  const sommeCreditsMatieres = (mod.matieres || []).reduce((acc, m) => acc + (Number(m.credits) || 0), 0)
 
   const handleSaveModule = async () => {
     try { await updateModule(mod.id, moduleForm); toast.success('UE mise à jour'); setEditingModule(false); onRefresh() }
@@ -206,7 +226,7 @@ function ModulePanel({ mod, onRefresh, professeurs }) {
     try {
       await createMatiere(mod.id, newMatiere)
       toast.success('Matière ajoutée')
-      setNewMatiere({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1 })
+      setNewMatiere({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1, credits: '' })
       setShowAddMatiere(false)
       onRefresh()
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
@@ -229,6 +249,13 @@ function ModulePanel({ mod, onRefresh, professeurs }) {
               <span className="text-xs font-mono text-isiblue-600 font-bold">{mod.code}</span>
               <span className="text-sm font-bold text-slate-800">{mod.nom}</span>
               <span className="text-xs text-slate-400">({mod.credits} crédits)</span>
+              {(mod.matieres || []).length > 0 && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                  sommeCreditsMatieres === Number(mod.credits) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                }`} title="Somme des crédits des matières de cette UE">
+                  Σ matières : {sommeCreditsMatieres}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1">
               <button onClick={() => setShowAddMatiere(o => !o)} className="text-isiblue-600 hover:bg-isiblue-50 p-1.5 rounded-lg" title="Ajouter matière"><Plus size={15}/></button>
@@ -244,6 +271,7 @@ function ModulePanel({ mod, onRefresh, professeurs }) {
           <input placeholder="Code" className="form-input-light" value={newMatiere.code} onChange={e => setNewMatiere(f => ({ ...f, code: e.target.value }))}/>
           <input placeholder="Nom de la matière" className="form-input-light sm:col-span-2" value={newMatiere.nom} onChange={e => setNewMatiere(f => ({ ...f, nom: e.target.value }))}/>
           <input type="number" step="0.25" placeholder="Coef" className="form-input-light" value={newMatiere.coef} onChange={e => setNewMatiere(f => ({ ...f, coef: e.target.value }))}/>
+          <input type="number" step="0.1" placeholder="Crédit" className="form-input-light" value={newMatiere.credits} onChange={e => setNewMatiere(f => ({ ...f, credits: e.target.value }))}/>
           {['cm', 'tp', 'td', 'tpe', 'vht'].map(k => (
             <input key={k} type="number" placeholder={k.toUpperCase()} className="form-input-light" value={newMatiere[k]} onChange={e => setNewMatiere(f => ({ ...f, [k]: e.target.value }))}/>
           ))}
@@ -252,10 +280,10 @@ function ModulePanel({ mod, onRefresh, professeurs }) {
       )}
 
       <table className="data-table-light">
-        <thead><tr><th>Code</th><th>Matière</th><th>CM</th><th>TP</th><th>TD</th><th>TPE</th><th>VHT</th><th>Coef</th><th>Prof</th><th></th></tr></thead>
+        <thead><tr><th>Code</th><th>Matière</th><th>CM</th><th>TP</th><th>TD</th><th>TPE</th><th>VHT</th><th>Coef</th><th>Crédit</th><th>Prof</th><th></th></tr></thead>
         <tbody>
           {(mod.matieres || []).map(mat => <MatiereRow key={mat.id} mat={mat} onRefresh={onRefresh} professeurs={professeurs}/>)}
-          {(mod.matieres || []).length === 0 && <tr><td colSpan={10} className="text-center text-slate-400 py-4 text-xs">Aucune matière</td></tr>}
+          {(mod.matieres || []).length === 0 && <tr><td colSpan={11} className="text-center text-slate-400 py-4 text-xs">Aucune matière</td></tr>}
         </tbody>
       </table>
     </div>
@@ -265,7 +293,8 @@ function ModulePanel({ mod, onRefresh, professeurs }) {
 function MatiereRow({ mat, onRefresh, professeurs }) {
   const [editing, setEditing] = useState(false)
   const [showCreneaux, setShowCreneaux] = useState(false)
-  const [form, setForm] = useState({ code: mat.code, nom: mat.nom, cm: mat.cm, tp: mat.tp, td: mat.td, tpe: mat.tpe, vht: mat.vht, coef: mat.coef, professeur_id: mat.professeur_id ?? '' })
+  const [showPresences, setShowPresences] = useState(false)
+  const [form, setForm] = useState({ code: mat.code, nom: mat.nom, cm: mat.cm, tp: mat.tp, td: mat.td, tpe: mat.tpe, vht: mat.vht, coef: mat.coef, credits: mat.credits ?? '', professeur_id: mat.professeur_id ?? '' })
 
   const handleSave = async () => {
     try { await updateMatiere(mat.id, { ...form, professeur_id: form.professeur_id || null }); toast.success('Matière mise à jour'); setEditing(false); onRefresh() }
@@ -286,6 +315,7 @@ function MatiereRow({ mat, onRefresh, professeurs }) {
           <td key={k}><input type="number" className="form-input-light !py-1 !px-2 text-xs w-14" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}/></td>
         ))}
         <td><input type="number" step="0.25" className="form-input-light !py-1 !px-2 text-xs w-14" value={form.coef} onChange={e => setForm(f => ({ ...f, coef: e.target.value }))}/></td>
+        <td><input type="number" step="0.1" className="form-input-light !py-1 !px-2 text-xs w-14" value={form.credits} onChange={e => setForm(f => ({ ...f, credits: e.target.value }))}/></td>
         <td>
           <select className="form-input-light !py-1 !px-2 text-xs w-32" value={form.professeur_id} onChange={e => setForm(f => ({ ...f, professeur_id: e.target.value }))}>
             <option value="">-- Aucun --</option>
@@ -311,8 +341,10 @@ function MatiereRow({ mat, onRefresh, professeurs }) {
         <td className="text-xs">{mat.tpe}</td>
         <td className="text-xs">{mat.vht}</td>
         <td className="text-xs font-bold">{mat.coef}</td>
+        <td className="text-xs">{mat.credits ?? '—'}</td>
         <td className="text-xs text-slate-500">{mat.professeur ? `${mat.professeur.prenom} ${mat.professeur.nom}` : '—'}</td>
         <td className="flex gap-1">
+          <button onClick={() => setShowPresences(o => !o)} className={`p-1 ${showPresences ? 'text-isiblue-600' : 'text-slate-400 hover:text-isiblue-600'}`} title="Présences"><Users size={12}/></button>
           <button onClick={() => setShowCreneaux(o => !o)} className={`p-1 ${showCreneaux ? 'text-isiblue-600' : 'text-slate-400 hover:text-isiblue-600'}`} title="Emploi du temps"><Clock size={12}/></button>
           <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-isiblue-600 p-1"><Pencil size={12}/></button>
           <button onClick={handleDelete} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={12}/></button>
@@ -320,8 +352,15 @@ function MatiereRow({ mat, onRefresh, professeurs }) {
       </tr>
       {showCreneaux && (
         <tr>
-          <td colSpan={10} className="bg-isiblue-50/30 p-0">
+          <td colSpan={11} className="bg-isiblue-50/30 p-0">
             <CreneauxPanel mat={mat} onRefresh={onRefresh}/>
+          </td>
+        </tr>
+      )}
+      {showPresences && (
+        <tr>
+          <td colSpan={11} className="bg-emerald-50/30 p-0">
+            <PresencesAdminPanel matiere={mat}/>
           </td>
         </tr>
       )}
@@ -385,6 +424,64 @@ function CreneauxPanel({ mat, onRefresh }) {
         </div>
         <button onClick={handleAdd} disabled={saving} className="btn-primary text-xs !py-1.5 disabled:opacity-50">Ajouter</button>
       </div>
+    </div>
+  )
+}
+
+/* ── Panneau Présences (vue Admin/Accueil Pédagogique — meme donnee que le prof) ── */
+function PresencesAdminPanel({ matiere }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [etudiants, setEtudiants] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    getAdminPresences(matiere.id, { date })
+      .then(({ data }) => setEtudiants(data.etudiants))
+      .catch(() => toast.error('Erreur chargement'))
+      .finally(() => setLoading(false))
+  }, [matiere.id, date])
+
+  useEffect(() => { load() }, [load])
+
+  const setPresent = (id, present) => setEtudiants(list => list.map(e => e.id === id ? { ...e, present } : e))
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await saisirAdminPresences(matiere.id, {
+        date,
+        presences: etudiants.filter(e => e.present !== null).map(e => ({ student_id: e.id, present: e.present })),
+      })
+      toast.success('Présences enregistrées !')
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="p-3 space-y-2">
+      <div className="text-xs font-semibold text-emerald-700 flex items-center gap-1"><Users size={12}/> Présences — {matiere.nom}</div>
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-slate-500">Date :</label>
+        <input type="date" className="form-input-light !py-1 w-auto" value={date} onChange={e => setDate(e.target.value)}/>
+      </div>
+      {loading ? <div className="py-4 flex justify-center"><div className="spinner"/></div> : (
+        <div className="flex flex-wrap gap-2">
+          {etudiants.map(e => (
+            <div key={e.id} className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs">
+              <span className="font-mono text-slate-400">{e.matricule}</span>
+              <span className="font-semibold">{e.prenom} {e.nom}</span>
+              <button onClick={() => setPresent(e.id, true)} className={`p-1 rounded ${e.present === true ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-emerald-50'}`}><CheckCircle2 size={12}/></button>
+              <button onClick={() => setPresent(e.id, false)} className={`p-1 rounded ${e.present === false ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400 hover:bg-red-50'}`}><CircleSlash size={12}/></button>
+            </div>
+          ))}
+          {etudiants.length === 0 && <div className="text-slate-400 text-xs py-2">Aucun étudiant dans cette classe</div>}
+        </div>
+      )}
+      <button onClick={handleSave} disabled={saving} className="btn-primary text-xs !py-1.5 disabled:opacity-50">
+        {saving ? 'Enregistrement...' : "Enregistrer l'appel"}
+      </button>
     </div>
   )
 }
@@ -521,10 +618,11 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   const handleSave = async () => {
     const notes = Object.entries(notesForm)
-      .filter(([, v]) => (v?.mcc ?? '') !== '' || (v?.examen ?? '') !== '')
+      .filter(([, v]) => (v?.devoir1 ?? '') !== '' || (v?.devoir2 ?? '') !== '' || (v?.examen ?? '') !== '')
       .map(([matiere_id, v]) => ({
         matiere_id: Number(matiere_id),
-        mcc: v.mcc !== '' && v.mcc !== undefined ? Number(v.mcc) : null,
+        devoir1: v.devoir1 !== '' && v.devoir1 !== undefined ? Number(v.devoir1) : null,
+        devoir2: v.devoir2 !== '' && v.devoir2 !== undefined ? Number(v.devoir2) : null,
         examen: v.examen !== '' && v.examen !== undefined ? Number(v.examen) : null,
       }))
     if (notes.length === 0) { toast.error('Saisis au moins une note'); return }
@@ -607,16 +705,21 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
         <div className="light-card overflow-hidden">
           <div className="p-3 border-b border-slate-100 bg-slate-50/60 text-sm font-semibold text-slate-700">{sem.libelle} — Saisie des notes</div>
           <table className="data-table-light">
-            <thead><tr><th>Matière</th><th>Coef</th><th>MCC / 20 (40%)</th><th>Examen / 20 (60%)</th></tr></thead>
+            <thead><tr><th>Matière</th><th>Coef</th><th>Devoir 1 /20</th><th>Devoir 2 /20</th><th>Examen /20 (60%)</th></tr></thead>
             <tbody>
               {allMatieres.map(mat => (
                 <tr key={mat.id}>
                   <td className="text-sm">{mat.nom}</td>
                   <td className="text-xs font-bold">{mat.coef}</td>
                   <td>
-                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-24 !py-1"
-                      value={notesForm[mat.id]?.mcc ?? ''}
-                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], mcc: e.target.value } }))}/>
+                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-20 !py-1"
+                      value={notesForm[mat.id]?.devoir1 ?? ''}
+                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], devoir1: e.target.value } }))}/>
+                  </td>
+                  <td>
+                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-20 !py-1"
+                      value={notesForm[mat.id]?.devoir2 ?? ''}
+                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], devoir2: e.target.value } }))}/>
                   </td>
                   <td>
                     <input type="number" min="0" max="20" step="0.25" className="form-input-light w-24 !py-1"

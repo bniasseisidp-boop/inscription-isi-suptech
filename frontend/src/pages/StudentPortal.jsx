@@ -15,6 +15,7 @@ import {
   getStudentPayments, downloadStudentReceiptBlob, cancelStudentPayment,
   downloadStudentCard, updateStudentProfile, updateStudentPhoto,
   submitMissingDocuments, getMonEmploiDuTemps, getMesBulletins, downloadMonBulletinPdf,
+  updateMyPassword,
 } from '../services/api'
 import api from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
@@ -553,6 +554,52 @@ function DocResendForm({ onSuccess }) {
         {submitting ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/> : <Upload size={16}/>}
         Envoyer les documents
       </button>
+    </div>
+  )
+}
+
+// ── Changement de mot de passe (obligatoire pour un compte cree avec un mot de
+//    passe temporaire par l'admin/l'accueil pedagogique, ou pour tout etudiant) ──
+function ChangePasswordCard() {
+  const [form, setForm] = useState({ current_password: '', password: '', password_confirmation: '' })
+  const [saving, setSaving] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (form.password !== form.password_confirmation) { toast.error('Les mots de passe ne correspondent pas.'); return }
+    setSaving(true)
+    try {
+      await updateMyPassword(form)
+      toast.success('Mot de passe mis à jour !')
+      setForm({ current_password: '', password: '', password_confirmation: '' })
+    } catch (err) { toast.error(err.response?.data?.message || 'Erreur — vérifiez votre mot de passe actuel.') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="light-card p-5">
+      <h3 className="text-isiblue-700 font-bold text-sm mb-1">Changer mon mot de passe</h3>
+      <p className="text-slate-400 text-xs mb-4">Utilisez le mot de passe reçu par email pour vous connecter la première fois, puis changez-le ici.</p>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+        <div>
+          <label className="block text-slate-500 text-xs mb-1.5">Mot de passe actuel</label>
+          <input type="password" required value={form.current_password}
+            onChange={e => setForm(f => ({ ...f, current_password: e.target.value }))} className="form-input-light"/>
+        </div>
+        <div>
+          <label className="block text-slate-500 text-xs mb-1.5">Nouveau mot de passe</label>
+          <input type="password" required minLength={8} value={form.password}
+            onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="form-input-light"/>
+        </div>
+        <div>
+          <label className="block text-slate-500 text-xs mb-1.5">Confirmer</label>
+          <input type="password" required minLength={8} value={form.password_confirmation}
+            onChange={e => setForm(f => ({ ...f, password_confirmation: e.target.value }))} className="form-input-light"/>
+        </div>
+        <button type="submit" disabled={saving} className="btn-primary text-sm sm:col-span-3 disabled:opacity-50">
+          {saving ? <div className="spinner w-4 h-4 mx-auto"/> : 'Mettre à jour le mot de passe'}
+        </button>
+      </form>
     </div>
   )
 }
@@ -1127,6 +1174,7 @@ export default function StudentPortal() {
                     <p className="text-slate-500 text-sm">Complétez votre dossier académique et personnel.</p>
                     {student.profil_complet && <span className="badge-accepted">Profil complet</span>}
                   </div>
+                  <ChangePasswordCard/>
                   <CompleteProfileForm student={student} onSaved={(s) => setStudent((prev) => ({ ...prev, ...s }))} />
                 </div>
               )}

@@ -108,6 +108,74 @@ class BulletinService
         ];
     }
 
+    /**
+     * Grand tableau de délibération de la classe : un semestre donné, tous les
+     * étudiants de son niveau, moyenne+validation par UE, stats de réussite par UE
+     * et pour la classe entière. Sert au conseil de classe (vue Admin/Pédagogique).
+     */
+    public function conseilClasse(Semestre $semestre, string $anneeScolaire): array
+    {
+        $semestre->loadMissing('modules.matieres', 'license.filiere');
+
+        $etudiants = \App\Models\Student::where('license_id', $semestre->license_id)
+            ->where('statut_inscription', 'accepte')
+            ->orderBy('nom')->orderBy('prenom')
+            ->get();
+
+        $lignes = [];
+        $nbValidesParModule = array_fill(0, $semestre->modules->count(), 0);
+        $reussites = 0;
+        $mentionsCount = [];
+
+        foreach ($etudiants as $etudiant) {
+            $detail = $this->detailSemestre($etudiant, $semestre, $anneeScolaire, true);
+
+            foreach ($detail['modules'] as $i => $mod) {
+                if ($mod['valide']) $nbValidesParModule[$i]++;
+            }
+            if ($detail['valide']) $reussites++;
+
+            $mention = $detail['mention'] ?? 'Insuffisant';
+            $mentionsCount[$mention] = ($mentionsCount[$mention] ?? 0) + 1;
+
+            $lignes[] = [
+                'student' => $etudiant,
+                'modules' => $detail['modules'],
+                'moyenne_generale' => $detail['moyenne_generale'],
+                'credits_obtenus' => $detail['credits_obtenus'],
+                'valide' => $detail['valide'],
+                'mention' => $mention,
+            ];
+        }
+
+        $effectifTotal = $etudiants->count();
+        $modulesStats = $semestre->modules->values()->map(function ($mod, $i) use ($nbValidesParModule, $effectifTotal) {
+            $nbValides = $nbValidesParModule[$i] ?? 0;
+            return [
+                'module' => $mod,
+                'nb_valides' => $nbValides,
+                'pourcentage' => $effectifTotal > 0 ? round($nbValides / $effectifTotal * 100, 2) : 0,
+            ];
+        });
+
+        $mentionsDistribution = collect($mentionsCount)->map(fn ($count, $mention) => [
+            'mention' => $mention,
+            'count' => $count,
+            'pourcentage' => $effectifTotal > 0 ? round($count / $effectifTotal * 100, 2) : 0,
+        ])->values();
+
+        return [
+            'semestre' => $semestre,
+            'annee_scolaire' => $anneeScolaire,
+            'lignes' => $lignes,
+            'modules_stats' => $modulesStats,
+            'mentions_distribution' => $mentionsDistribution,
+            'effectif_total' => $effectifTotal,
+            'reussites' => $reussites,
+            'taux_reussite' => $effectifTotal > 0 ? round($reussites / $effectifTotal * 100, 2) : 0,
+        ];
+    }
+
     /** Appréciation par matière/UE (échelle utilisée sur les bulletins ISI SUPTECH). */
     public function appreciationDe(float $moyenne): string
     {

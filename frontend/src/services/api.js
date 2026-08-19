@@ -86,12 +86,19 @@ export const getAdminStudents = (params) => api.get('/admin/etudiants', { params
 export const createAdminStudent = (data) => api.post('/admin/etudiants', data, {
   headers: { 'Content-Type': 'multipart/form-data' },
 })
-export const updatePedagogiqueStudent = (id, data) => api.put(`/pedagogique/etudiants/${id}`, data, {
-  headers: { 'Content-Type': 'multipart/form-data' },
-})
-export const updateAdminStudent = (id, data) => api.put(`/admin/etudiants/${id}`, data, {
-  headers: { 'Content-Type': 'multipart/form-data' },
-})
+// PUT + multipart/form-data n'est jamais parse par PHP (seul POST recoit un body
+// multipart parse en $_POST/$_FILES) — Laravel verrait alors une requete sans aucun
+// champ et $student->update() serait un no-op silencieux. On envoie donc un vrai POST
+// avec un champ _method=PUT (method-spoofing standard de Laravel) pour que le body
+// multipart soit bien parse tout en routant vers le controleur PUT.
+export const updatePedagogiqueStudent = (id, data) => {
+  data.append('_method', 'PUT')
+  return api.post(`/pedagogique/etudiants/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
+export const updateAdminStudent = (id, data) => {
+  data.append('_method', 'PUT')
+  return api.post(`/admin/etudiants/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+}
 export const acceptStudent = (id, data) => api.post(`/admin/etudiants/${id}/accepter`, data)
 export const rejectStudent = (id, data) => api.post(`/admin/etudiants/${id}/rejeter`, data)
 export const deleteStudent = (id) => api.delete(`/admin/etudiants/${id}`)
@@ -245,6 +252,10 @@ export const updateProfesseur     = (id, data) => api.put(`/curriculum/professeu
 export const deleteProfesseur     = (id) => api.delete(`/curriculum/professeurs/${id}`)
 export const createCreneau        = (matiereId, data) => api.post(`/curriculum/matieres/${matiereId}/creneaux`, data)
 export const deleteCreneau        = (id) => api.delete(`/curriculum/creneaux/${id}`)
+export const getAdminPresences    = (matiereId, params) => api.get(`/curriculum/matieres/${matiereId}/presences`, { params })
+export const saisirAdminPresences = (matiereId, data) => api.post(`/curriculum/matieres/${matiereId}/presences`, data)
+export const getConseilClasse     = (semestreId, params) => api.get(`/curriculum/semestres/${semestreId}/conseil-classe`, { params })
+export const downloadConseilClassePdf = (semestreId, params) => api.get(`/curriculum/semestres/${semestreId}/conseil-classe-pdf`, { params, responseType: 'blob' })
 export const saisirNotesEtudiant  = (studentId, data) => api.post(`/curriculum/etudiants/${studentId}/notes`, data)
 export const getBulletin          = (semestreId, studentId, params) => api.get(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin`, { params })
 export const downloadBulletinPdf  = (semestreId, studentId, data) => api.post(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin-pdf`, data, { responseType: 'blob' })

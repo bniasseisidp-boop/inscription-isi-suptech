@@ -8,7 +8,7 @@ class Matiere extends Model
 {
     protected $fillable = [
         'module_id', 'professeur_id', 'code', 'nom',
-        'cm', 'tp', 'td', 'tpe', 'vht', 'coef', 'ordre',
+        'cm', 'tp', 'td', 'tpe', 'vht', 'coef', 'credits', 'ordre',
     ];
 
     public function module()
