@@ -115,7 +115,8 @@ class BulletinService
      */
     public function conseilClasse(Semestre $semestre, string $anneeScolaire): array
     {
-        $semestre->loadMissing('modules.matieres', 'license.filiere');
+        $semestre->loadMissing('modules.matieres', 'matieresDirectes', 'license.filiere');
+        $calculSimple = (bool) $semestre->license?->calcul_simple;
 
         $etudiants = \App\Models\Student::where('license_id', $semestre->license_id)
             ->where('statut_inscription', 'accepte')
@@ -128,28 +129,45 @@ class BulletinService
         $mentionsCount = [];
 
         foreach ($etudiants as $etudiant) {
-            $detail = $this->detailSemestre($etudiant, $semestre, $anneeScolaire, true);
+            if ($calculSimple) {
+                $detail = $this->detailSemestreSimple($etudiant, $semestre, $anneeScolaire, true);
+                $moyenneGenerale = $detail['moyenne_semestre'];
+                $valide = $moyenneGenerale !== null && $moyenneGenerale >= self::SEUIL_VALIDATION;
+                $mention = $detail['mention'] ?? 'Insuffisant';
 
-            foreach ($detail['modules'] as $i => $mod) {
-                if ($mod['valide']) $nbValidesParModule[$i]++;
+                $lignes[] = [
+                    'student' => $etudiant,
+                    'modules' => [],
+                    'moyenne_generale' => $moyenneGenerale,
+                    'credits_obtenus' => null,
+                    'valide' => $valide,
+                    'mention' => $mention,
+                ];
+            } else {
+                $detail = $this->detailSemestre($etudiant, $semestre, $anneeScolaire, true);
+
+                foreach ($detail['modules'] as $i => $mod) {
+                    if ($mod['valide']) $nbValidesParModule[$i]++;
+                }
+                $valide = $detail['valide'];
+                $mention = $detail['mention'] ?? 'Insuffisant';
+
+                $lignes[] = [
+                    'student' => $etudiant,
+                    'modules' => $detail['modules'],
+                    'moyenne_generale' => $detail['moyenne_generale'],
+                    'credits_obtenus' => $detail['credits_obtenus'],
+                    'valide' => $valide,
+                    'mention' => $mention,
+                ];
             }
-            if ($detail['valide']) $reussites++;
 
-            $mention = $detail['mention'] ?? 'Insuffisant';
+            if ($valide) $reussites++;
             $mentionsCount[$mention] = ($mentionsCount[$mention] ?? 0) + 1;
-
-            $lignes[] = [
-                'student' => $etudiant,
-                'modules' => $detail['modules'],
-                'moyenne_generale' => $detail['moyenne_generale'],
-                'credits_obtenus' => $detail['credits_obtenus'],
-                'valide' => $detail['valide'],
-                'mention' => $mention,
-            ];
         }
 
         $effectifTotal = $etudiants->count();
-        $modulesStats = $semestre->modules->values()->map(function ($mod, $i) use ($nbValidesParModule, $effectifTotal) {
+        $modulesStats = $calculSimple ? collect() : $semestre->modules->values()->map(function ($mod, $i) use ($nbValidesParModule, $effectifTotal) {
             $nbValides = $nbValidesParModule[$i] ?? 0;
             return [
                 'module' => $mod,
@@ -167,6 +185,7 @@ class BulletinService
         return [
             'semestre' => $semestre,
             'annee_scolaire' => $anneeScolaire,
+            'calcul_simple' => $calculSimple,
             'lignes' => $lignes,
             'modules_stats' => $modulesStats,
             'mentions_distribution' => $mentionsDistribution,
@@ -174,6 +193,73 @@ class BulletinService
             'reussites' => $reussites,
             'taux_reussite' => $effectifTotal > 0 ? round($reussites / $effectifTotal * 100, 2) : 0,
         ];
+    }
+
+    /**
+     * Détail du bulletin d'un semestre pour les filières "calcul_simple" (BT, BTS...
+     * — hors Licence/Master) : les matières sont attachées directement au semestre,
+     * sans UE ni système de crédits. Moyenne générale par matière = (Moy Cont +
+     * Compo) / 2 (50/50, pas de pondération 40/60), pondérée ensuite par coef.
+     */
+    public function detailSemestreSimple(Student $student, Semestre $semestre, string $anneeScolaire, bool $strict = false): array
+    {
+        $semestre->loadMissing('matieresDirectes');
+        $notes = $student->notes()
+            ->whereIn('matiere_id', $semestre->matieresDirectes->pluck('id'))
+            ->where('annee_scolaire', $anneeScolaire)
+            ->get()->keyBy('matiere_id');
+
+        $lignes = [];
+        $sommeCoef = 0;
+        $sommePonderee = 0;
+
+        foreach ($semestre->matieresDirectes as $matiere) {
+            $note = $notes->get($matiere->id);
+            $moyCont = $note?->mcc; // moyenne des devoirs saisis
+            $compo = $note?->examen;
+            if ($strict) { $moyCont = $moyCont ?? 0.0; $compo = $compo ?? 0.0; }
+
+            $moyGenerale = ($moyCont !== null && $compo !== null) ? round(($moyCont + $compo) / 2, 2) : null;
+            $moyenneCoef = $moyGenerale !== null ? round($moyGenerale * (float) $matiere->coef, 2) : null;
+
+            if ($moyGenerale !== null) {
+                $sommeCoef += (float) $matiere->coef;
+                $sommePonderee += $moyenneCoef;
+            }
+
+            $lignes[] = [
+                'matiere' => $matiere,
+                'moy_cont' => $moyCont,
+                'compo' => $compo,
+                'moyenne_generale' => $moyGenerale,
+                'moyenne_coef' => $moyenneCoef,
+                'appreciation' => $moyGenerale !== null ? $this->appreciationDe($moyGenerale) : null,
+            ];
+        }
+
+        $moyenneSemestre = $sommeCoef > 0 ? round($sommePonderee / $sommeCoef, 2) : null;
+
+        return [
+            'semestre' => $semestre,
+            'lignes' => $lignes,
+            'total_coef' => $sommeCoef,
+            'total_moyenne_coef' => round($sommePonderee, 2),
+            'moyenne_semestre' => $moyenneSemestre,
+            'mention' => $moyenneSemestre !== null ? $this->mentionDe($moyenneSemestre) : null,
+        ];
+    }
+
+    /** Rang de l'étudiant dans sa classe (par moyenne du semestre décroissante) — filières calcul_simple. */
+    public function rangClasseSimple(Student $student, Semestre $semestre, string $anneeScolaire): ?int
+    {
+        $classe = Student::where('license_id', $semestre->license_id)->where('statut_inscription', 'accepte')->get();
+        $moyennes = $classe->map(fn ($e) => [
+            'id' => $e->id,
+            'moyenne' => $this->detailSemestreSimple($e, $semestre, $anneeScolaire, true)['moyenne_semestre'] ?? 0,
+        ])->sortByDesc('moyenne')->values();
+
+        $rang = $moyennes->search(fn ($m) => $m['id'] === $student->id);
+        return $rang === false ? null : $rang + 1;
     }
 
     /** Appréciation par matière/UE (échelle utilisée sur les bulletins ISI SUPTECH). */

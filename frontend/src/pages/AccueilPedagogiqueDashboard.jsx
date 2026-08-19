@@ -686,7 +686,7 @@ export default function AccueilPedagogiqueDashboard() {
   const [editingFiliere, setEditingFiliere] = useState(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [newFiliere, setNewFiliere] = useState({ nom: '', code: '', description: '' })
-  const [newLicense, setNewLicense] = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0 })
+  const [newLicense, setNewLicense] = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false })
 
   const handleLogout = async () => { await logout(); navigate('/') }
 
@@ -779,7 +779,7 @@ export default function AccueilPedagogiqueDashboard() {
     if (!editingLicense) return
     setSavingEdit(true)
     try {
-      await updatePedagogiqueLicense(editingLicense.id, { nom: editingLicense.nom, mois_debut: Number(editingLicense.mois_debut), mois_fin: Number(editingLicense.mois_fin), frais_inscription: Number(editingLicense.frais_inscription), frais_mensuel: Number(editingLicense.frais_mensuel) })
+      await updatePedagogiqueLicense(editingLicense.id, { nom: editingLicense.nom, mois_debut: Number(editingLicense.mois_debut), mois_fin: Number(editingLicense.mois_fin), frais_inscription: Number(editingLicense.frais_inscription), frais_mensuel: Number(editingLicense.frais_mensuel), calcul_simple: !!editingLicense.calcul_simple })
       toast.success('Niveau mis à jour !'); setEditingLicense(null); loadMgmtFilieres()
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') } finally { setSavingEdit(false) }
   }
@@ -1278,6 +1278,10 @@ export default function AccueilPedagogiqueDashboard() {
                       <div><label className="block text-slate-500 text-xs mb-1.5">Mois début</label><select className="form-input-light" value={newLicense.mois_debut} onChange={e => setNewLicense({...newLicense, mois_debut: Number(e.target.value)})}>{['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'].map((m,i) => <option key={i+1} value={i+1}>{m}</option>)}</select></div>
                       <div><label className="block text-slate-500 text-xs mb-1.5">Mois fin</label><select className="form-input-light" value={newLicense.mois_fin} onChange={e => setNewLicense({...newLicense, mois_fin: Number(e.target.value)})}>{['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'].map((m,i) => <option key={i+1} value={i+1}>{m}</option>)}</select></div>
                     </div>
+                    <label className="flex items-center gap-2 text-xs cursor-pointer">
+                      <input type="checkbox" checked={newLicense.calcul_simple} onChange={e => setNewLicense({...newLicense, calcul_simple: e.target.checked})}/>
+                      <span className="text-slate-500">Calcul simple (BT/BTS — matières sans UE, moyenne 50/50)</span>
+                    </label>
                     <button onClick={submitMgmtLicense} className="btn-primary w-full text-sm">Ajouter le niveau</button>
                   </div>
                 </div>
@@ -1304,10 +1308,13 @@ export default function AccueilPedagogiqueDashboard() {
                         {f.licenses.map(l => (
                           <div key={l.id} className="rounded-lg p-3 bg-slate-50 border border-slate-200">
                             <div className="flex items-center justify-between mb-1">
-                              <div className="text-sm font-medium text-slate-900">{l.nom}</div>
+                              <div className="text-sm font-medium text-slate-900 flex items-center gap-1.5">
+                                {l.nom}
+                                {l.calcul_simple && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-isigold-100 text-isigold-600">Calcul simple</span>}
+                              </div>
                               {!filieresLocked && (
                                 <div className="flex gap-1">
-                                  <button onClick={() => setEditingLicense({ id: l.id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_mensuel: l.frais_mensuel })} className="p-1 rounded hover:bg-isigold-100 text-isigold-600 transition-colors"><Pencil size={12}/></button>
+                                  <button onClick={() => setEditingLicense({ id: l.id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_mensuel: l.frais_mensuel, calcul_simple: !!l.calcul_simple })} className="p-1 rounded hover:bg-isigold-100 text-isigold-600 transition-colors"><Pencil size={12}/></button>
                                   <button onClick={() => handleDeleteLicense(l.id)} className="p-1 rounded hover:bg-red-50 text-red-500 transition-colors"><Trash2 size={12}/></button>
                                 </div>
                               )}
@@ -1345,6 +1352,10 @@ export default function AccueilPedagogiqueDashboard() {
                         <div><label className="block text-slate-500 text-xs mb-1.5">Inscription (FCFA)</label><input className="form-input-light" type="number" value={editingLicense.frais_inscription} onChange={e => setEditingLicense({...editingLicense, frais_inscription: e.target.value})}/></div>
                         <div><label className="block text-slate-500 text-xs mb-1.5">Mensualité (FCFA)</label><input className="form-input-light" type="number" value={editingLicense.frais_mensuel} onChange={e => setEditingLicense({...editingLicense, frais_mensuel: e.target.value})}/></div>
                       </div>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer mt-2">
+                        <input type="checkbox" checked={!!editingLicense.calcul_simple} onChange={e => setEditingLicense({...editingLicense, calcul_simple: e.target.checked})}/>
+                        <span className="text-slate-500">Calcul simple (BT/BTS — matières sans UE, moyenne 50/50)</span>
+                      </label>
                     </div>
                     <div className="flex gap-3 mt-5">
                       <button onClick={() => setEditingLicense(null)} className="btn-secondary-light flex-1 text-sm">Annuler</button>

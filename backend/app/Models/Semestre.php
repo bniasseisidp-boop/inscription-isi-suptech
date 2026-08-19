@@ -17,4 +17,10 @@ class Semestre extends Model
     {
         return $this->hasMany(Module::class)->orderBy('ordre');
     }
+
+    /** Matieres attachees directement au semestre (sans UE) — filieres "calcul_simple" (BT, BTS...). */
+    public function matieresDirectes()
+    {
+        return $this->hasMany(Matiere::class)->whereNull('module_id')->orderBy('ordre');
+    }
 }

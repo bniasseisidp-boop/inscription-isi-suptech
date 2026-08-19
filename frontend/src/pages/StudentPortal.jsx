@@ -1365,26 +1365,55 @@ export default function StudentPortal() {
                             <Download size={13}/> {downloadingBulletin === b.semestre.id ? 'Génération...' : 'Télécharger le PDF'}
                           </button>
                         </div>
-                        <div className="grid grid-cols-3 gap-3 mb-3">
-                          <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne</div><div className="text-lg font-black text-slate-800">{b.moyenne_generale ?? '—'}</div></div>
-                          <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Crédits</div><div className="text-lg font-black text-slate-800">{b.credits_obtenus} / {b.credits_requis}</div></div>
-                          <div className={`rounded-xl p-3 ${b.valide ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                            <div className="text-xs text-slate-400">Statut</div>
-                            <div className={`text-lg font-black ${b.valide ? 'text-emerald-600' : 'text-red-600'}`}>{b.valide ? 'Validé' : 'Non validé'}</div>
-                          </div>
-                        </div>
-                        <table className="data-table-light">
-                          <thead><tr><th>UE</th><th>Moyenne</th><th>Statut</th></tr></thead>
-                          <tbody>
-                            {b.modules.map((m, i) => (
-                              <tr key={i}>
-                                <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
-                                <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
-                                <td>{m.valide ? <span className="badge-accepted">Validé</span> : <span className="badge-pending">Non validé</span>}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        {bulletins.calcul_simple ? (
+                          <>
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne du semestre</div><div className="text-lg font-black text-slate-800">{b.moyenne_semestre ?? '—'} / 20</div></div>
+                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Mention</div><div className="text-lg font-black text-slate-800">{b.mention ?? '—'}</div></div>
+                            </div>
+                            <div className="overflow-x-auto">
+                            <table className="data-table-light">
+                              <thead><tr><th>Matière</th><th>Moy Cont</th><th>Compo</th><th>Moy Géné</th><th>Appréciation</th></tr></thead>
+                              <tbody>
+                                {(b.lignes || []).map((l, i) => (
+                                  <tr key={i}>
+                                    <td className="text-sm">{l.matiere?.nom}</td>
+                                    <td className="text-sm">{l.moy_cont ?? '—'}</td>
+                                    <td className="text-sm">{l.compo ?? '—'}</td>
+                                    <td className="text-sm font-bold">{l.moyenne_generale ?? '—'}</td>
+                                    <td className="text-xs">{l.appreciation ?? '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="grid grid-cols-3 gap-3 mb-3">
+                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne</div><div className="text-lg font-black text-slate-800">{b.moyenne_generale ?? '—'}</div></div>
+                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Crédits</div><div className="text-lg font-black text-slate-800">{b.credits_obtenus} / {b.credits_requis}</div></div>
+                              <div className={`rounded-xl p-3 ${b.valide ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                                <div className="text-xs text-slate-400">Statut</div>
+                                <div className={`text-lg font-black ${b.valide ? 'text-emerald-600' : 'text-red-600'}`}>{b.valide ? 'Validé' : 'Non validé'}</div>
+                              </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                            <table className="data-table-light">
+                              <thead><tr><th>UE</th><th>Moyenne</th><th>Statut</th></tr></thead>
+                              <tbody>
+                                {(b.modules || []).map((m, i) => (
+                                  <tr key={i}>
+                                    <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
+                                    <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
+                                    <td>{m.valide ? <span className="badge-accepted">Validé</span> : <span className="badge-pending">Non validé</span>}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ))
                   )}

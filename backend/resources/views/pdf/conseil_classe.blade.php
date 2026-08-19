@@ -55,44 +55,58 @@ table.stats th { background:#f1f5f9; font-weight:900; }
 
 <table class="grand-tableau">
   <thead>
-    <tr>
-      <th class="ue-head" rowspan="2" style="width:60px;">Matricule</th>
-      <th class="ue-head" rowspan="2" style="width:130px;">Nom & Prénom</th>
-      @foreach($conseil['modules_stats'] as $i => $ms)
-        <th class="ue-head" colspan="2">UE{{ $i + 1 }} — {{ $ms['module']->code }}</th>
-      @endforeach
-      <th class="ue-head" rowspan="2" style="width:55px;">Moyenne<br>générale</th>
-      <th class="ue-head" rowspan="2" style="width:45px;">Crédits</th>
-      <th class="ue-head" rowspan="2" style="width:70px;">Résultat</th>
-    </tr>
-    <tr>
-      @foreach($conseil['modules_stats'] as $ms)
-        <th class="sub-head">Moy</th>
-        <th class="sub-head">Validation</th>
-      @endforeach
-    </tr>
+    @if($conseil['calcul_simple'])
+      <tr>
+        <th class="ue-head" style="width:80px;">Matricule</th>
+        <th class="ue-head" style="width:180px;">Nom & Prénom</th>
+        <th class="ue-head" style="width:80px;">Moyenne générale</th>
+        <th class="ue-head" style="width:110px;">Résultat</th>
+      </tr>
+    @else
+      <tr>
+        <th class="ue-head" rowspan="2" style="width:60px;">Matricule</th>
+        <th class="ue-head" rowspan="2" style="width:130px;">Nom & Prénom</th>
+        @foreach($conseil['modules_stats'] as $i => $ms)
+          <th class="ue-head" colspan="2">UE{{ $i + 1 }} — {{ $ms['module']->code }}</th>
+        @endforeach
+        <th class="ue-head" rowspan="2" style="width:55px;">Moyenne<br>générale</th>
+        <th class="ue-head" rowspan="2" style="width:45px;">Crédits</th>
+        <th class="ue-head" rowspan="2" style="width:70px;">Résultat</th>
+      </tr>
+      <tr>
+        @foreach($conseil['modules_stats'] as $ms)
+          <th class="sub-head">Moy</th>
+          <th class="sub-head">Validation</th>
+        @endforeach
+      </tr>
+    @endif
   </thead>
   <tbody>
     @foreach($conseil['lignes'] as $ligne)
       <tr>
         <td class="matricule">{{ $ligne['student']->matricule }}</td>
         <td class="ident"><strong>{{ strtoupper($ligne['student']->nom) }}</strong> {{ $ligne['student']->prenom }}</td>
-        @foreach($ligne['modules'] as $mod)
-          <td>{{ $mod['moyenne_ue'] !== null ? number_format($mod['moyenne_ue'], 2, ',', '') : '—' }}</td>
-          <td><span class="{{ $mod['valide'] ? 'valide' : 'invalide' }}">{{ $mod['valide'] ? 'Validée' : 'Invalidée' }}</span></td>
-        @endforeach
+        @if(!$conseil['calcul_simple'])
+          @foreach($ligne['modules'] as $mod)
+            <td>{{ $mod['moyenne_ue'] !== null ? number_format($mod['moyenne_ue'], 2, ',', '') : '—' }}</td>
+            <td><span class="{{ $mod['valide'] ? 'valide' : 'invalide' }}">{{ $mod['valide'] ? 'Validée' : 'Invalidée' }}</span></td>
+          @endforeach
+        @endif
         <td><strong>{{ $ligne['moyenne_generale'] !== null ? number_format($ligne['moyenne_generale'], 2, ',', '') : '—' }}</strong></td>
-        <td>{{ number_format($ligne['credits_obtenus'], 1, ',', '') }} / {{ $conseil['semestre']->credits_requis }}</td>
+        @if(!$conseil['calcul_simple'])
+          <td>{{ number_format($ligne['credits_obtenus'], 1, ',', '') }} / {{ $conseil['semestre']->credits_requis }}</td>
+        @endif
         <td><span class="{{ $ligne['valide'] ? 'valide' : 'invalide' }}">{{ $ligne['mention'] }}</span></td>
       </tr>
     @endforeach
     @if(empty($conseil['lignes']))
-      <tr><td colspan="{{ 5 + count($conseil['modules_stats']) * 2 }}" style="padding:14px; color:#94a3b8;">Aucun étudiant inscrit sur ce niveau.</td></tr>
+      <tr><td colspan="{{ $conseil['calcul_simple'] ? 4 : (5 + count($conseil['modules_stats']) * 2) }}" style="padding:14px; color:#94a3b8;">Aucun étudiant inscrit sur ce niveau.</td></tr>
     @endif
   </tbody>
 </table>
 
 <div class="bottom">
+  @if(!$conseil['calcul_simple'])
   <div class="col" style="width:55%;">
     <div class="stats-title">Résultats par UE</div>
     <table class="stats">
@@ -108,7 +122,8 @@ table.stats th { background:#f1f5f9; font-weight:900; }
       </tbody>
     </table>
   </div>
-  <div class="col" style="width:45%;">
+  @endif
+  <div class="col" style="width:{{ $conseil['calcul_simple'] ? '100%' : '45%' }};">
     <div class="stats-title">Répartition des mentions</div>
     <table class="stats">
       <thead><tr><th>Mention</th><th>Effectif</th><th>Taux</th></tr></thead>

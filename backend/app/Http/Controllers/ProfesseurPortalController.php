@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContenuCours;
 use App\Models\EmploiDuTemps;
 use App\Models\Matiere;
 use App\Models\Note;
@@ -38,7 +39,7 @@ class ProfesseurPortalController extends Controller
     {
         $professeur = $this->moi($request);
         $creneaux = EmploiDuTemps::whereHas('matiere', fn ($q) => $q->where('professeur_id', $professeur->id))
-            ->with(['matiere.module.semestre.license.filiere'])
+            ->with(['matiere.module.semestre.license.filiere', 'matiere.semestre.license.filiere'])
             ->orderBy('jour')->orderBy('heure_debut')
             ->get();
 
@@ -50,7 +51,7 @@ class ProfesseurPortalController extends Controller
     {
         $professeur = $this->moi($request);
         $matieres = Matiere::where('professeur_id', $professeur->id)
-            ->with(['module.semestre.license.filiere'])
+            ->with(['module.semestre.license.filiere', 'semestre.license.filiere'])
             ->orderBy('nom')
             ->get();
 
@@ -62,7 +63,7 @@ class ProfesseurPortalController extends Controller
     {
         $this->assertProprietaire($request, $matiere);
         $matiere->loadMissing('module.semestre');
-        $licenseId = $matiere->module->semestre->license_id;
+        $licenseId = $matiere->semestreResolu()->license_id;
 
         $etudiants = Student::where('license_id', $licenseId)
             ->where('statut_inscription', 'accepte')
@@ -79,7 +80,7 @@ class ProfesseurPortalController extends Controller
         $date = $request->query('date', now()->toDateString());
 
         $matiere->loadMissing('module.semestre');
-        $etudiants = Student::where('license_id', $matiere->module->semestre->license_id)
+        $etudiants = Student::where('license_id', $matiere->semestreResolu()->license_id)
             ->where('statut_inscription', 'accepte')
             ->orderBy('nom')->orderBy('prenom')
             ->get(['id', 'matricule', 'nom', 'prenom']);
@@ -124,7 +125,7 @@ class ProfesseurPortalController extends Controller
         $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
 
         $matiere->loadMissing('module.semestre');
-        $etudiants = Student::where('license_id', $matiere->module->semestre->license_id)
+        $etudiants = Student::where('license_id', $matiere->semestreResolu()->license_id)
             ->where('statut_inscription', 'accepte')
             ->orderBy('nom')->orderBy('prenom')
             ->get(['id', 'matricule', 'nom', 'prenom']);
@@ -132,7 +133,7 @@ class ProfesseurPortalController extends Controller
         $notes = Note::where('matiere_id', $matiere->id)->where('annee_scolaire', $anneeScolaire)
             ->get()->keyBy('student_id');
 
-        $verrou = VerrouNotes::where('semestre_id', $matiere->module->semestre_id)
+        $verrou = VerrouNotes::where('semestre_id', $matiere->semestreResolu()->id)
             ->where('annee_scolaire', $anneeScolaire)->first();
 
         return response()->json([
@@ -162,7 +163,7 @@ class ProfesseurPortalController extends Controller
         ]);
 
         $matiere->loadMissing('module');
-        $verrou = VerrouNotes::where('semestre_id', $matiere->module->semestre_id)
+        $verrou = VerrouNotes::where('semestre_id', $matiere->semestreResolu()->id)
             ->where('annee_scolaire', $validated['annee_scolaire'])->first();
         if ($verrou?->verrouille) {
             throw ValidationException::withMessages([
@@ -183,5 +184,31 @@ class ProfesseurPortalController extends Controller
         }
 
         return response()->json(['message' => 'Notes enregistrées.']);
+    }
+
+    // ── Cahier de texte (grandes lignes enseignees) ─────────────────────────────
+
+    /** Historique des seances saisies par le prof pour cette matiere. */
+    public function contenus(Request $request, Matiere $matiere)
+    {
+        $this->assertProprietaire($request, $matiere);
+        return response()->json($matiere->contenusCours()->orderByDesc('date')->get());
+    }
+
+    /** Ajoute/corrige les grandes lignes enseignees a une date donnee. */
+    public function saisirContenu(Request $request, Matiere $matiere)
+    {
+        $this->assertProprietaire($request, $matiere);
+        $validated = $request->validate([
+            'date' => 'required|date',
+            'contenu' => 'required|string|max:2000',
+        ]);
+
+        $contenu = ContenuCours::updateOrCreate(
+            ['matiere_id' => $matiere->id, 'date' => $validated['date']],
+            ['contenu' => $validated['contenu'], 'saisi_par' => $request->user()->id]
+        );
+
+        return response()->json($contenu, 201);
     }
 }

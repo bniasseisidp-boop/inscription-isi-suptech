@@ -895,7 +895,7 @@ export default function AdminDashboard() {
   const [drawerStudent, setDrawerStudent] = useState(null)
   const [showCreateStaff, setShowCreateStaff]     = useState(false)
   const [newFiliere, setNewFiliere]   = useState({ nom: '', code: '', description: '' })
-  const [newLicense, setNewLicense]   = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0 })
+  const [newLicense, setNewLicense]   = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false })
   const [showCreateStudent, setShowCreateStudent] = useState(false)
   const [savingStudent, setSavingStudent] = useState(false)
   const [newStudent, setNewStudent] = useState({
@@ -1145,7 +1145,7 @@ export default function AdminDashboard() {
     catch { toast.error('Erreur') }
   }
   const submitLicense = async () => {
-    try { await createLicense(newLicense); toast.success('Niveau ajouté !'); getFilieres().then(({ data }) => setFilieres(data)) }
+    try { await createLicense(newLicense); toast.success('Niveau ajouté !'); setNewLicense({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false }); getFilieres().then(({ data }) => setFilieres(data)) }
     catch { toast.error('Erreur') }
   }
   const handleSaveLicense = async () => {
@@ -1158,6 +1158,7 @@ export default function AdminDashboard() {
         mois_fin: Number(editingLicense.mois_fin),
         frais_inscription: Number(editingLicense.frais_inscription),
         frais_mensuel: Number(editingLicense.frais_mensuel),
+        calcul_simple: !!editingLicense.calcul_simple,
       })
       toast.success('Niveau mis à jour !')
       setEditingLicense(null)
@@ -1906,6 +1907,10 @@ export default function AdminDashboard() {
                             </select>
                           </div>
                         </div>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input type="checkbox" checked={newLicense.calcul_simple} onChange={e => setNewLicense({...newLicense, calcul_simple: e.target.checked})}/>
+                          <span className={T.mute}>Calcul simple (BT/BTS — matières sans UE, moyenne 50/50)</span>
+                        </label>
                         <button onClick={submitLicense} className="btn-primary w-full text-sm">Ajouter le niveau</button>
                       </div>
                     </div>
@@ -1935,13 +1940,16 @@ export default function AdminDashboard() {
                             {f.licenses.map(l => (
                               <div key={l.id} className={`rounded-lg p-3 ${isDark?'bg-white/5':'bg-slate-50 border border-slate-200'}`}>
                                 <div className="flex items-center justify-between mb-1">
-                                  <div className={`text-sm font-medium ${T.title}`}>{l.nom}</div>
+                                  <div className={`text-sm font-medium ${T.title} flex items-center gap-1.5`}>
+                                    {l.nom}
+                                    {l.calcul_simple && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-isigold-500/20 text-isigold-500">Calcul simple</span>}
+                                  </div>
                                   <div className="flex gap-1">
                                     <div className="relative">
                                       <button onClick={() => setListMenuFor(`l${l.id}`)} disabled={dlListId === `l${l.id}`} className={`p-1 rounded transition-colors ${isDark?'text-isiblue-400 hover:bg-isiblue-500/10':'text-isiblue-600 hover:bg-isiblue-50'} disabled:opacity-50`} title="Liste PDF"><Download size={12}/></button>
                                       <ListMenu id={`l${l.id}`} filiereId={f.id} licenseId={l.id} filiereName={f.code} licenseName={l.code}/>
                                     </div>
-                                    <button onClick={() => setEditingLicense({ id: l.id, filiere_id: l.filiere_id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_mensuel: l.frais_mensuel })} className="p-1 rounded hover:bg-amber-500/10 text-amber-400 transition-colors" title="Modifier"><Pencil size={12}/></button>
+                                    <button onClick={() => setEditingLicense({ id: l.id, filiere_id: l.filiere_id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_mensuel: l.frais_mensuel, calcul_simple: !!l.calcul_simple })} className="p-1 rounded hover:bg-amber-500/10 text-amber-400 transition-colors" title="Modifier"><Pencil size={12}/></button>
                                     <button onClick={() => handleDeleteLicense(l.id)} className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors" title="Supprimer"><Trash2 size={12}/></button>
                                   </div>
                                 </div>
@@ -1987,6 +1995,10 @@ export default function AdminDashboard() {
                           <div><label className={T.label}>Frais inscription (FCFA)</label><input className={T.input} type="number" value={editingLicense.frais_inscription} onChange={e => setEditingLicense({...editingLicense, frais_inscription: e.target.value})}/></div>
                           <div><label className={T.label}>Mensualité (FCFA)</label><input className={T.input} type="number" value={editingLicense.frais_mensuel} onChange={e => setEditingLicense({...editingLicense, frais_mensuel: e.target.value})}/></div>
                         </div>
+                        <label className="flex items-center gap-2 text-xs cursor-pointer mt-1">
+                          <input type="checkbox" checked={!!editingLicense.calcul_simple} onChange={e => setEditingLicense({...editingLicense, calcul_simple: e.target.checked})}/>
+                          <span className={T.mute}>Calcul simple (BT/BTS — matières sans UE, moyenne 50/50)</span>
+                        </label>
                       </div>
                       <div className="flex gap-3 mt-5">
                         <button onClick={() => setEditingLicense(null)} className="btn-secondary flex-1 text-sm">Annuler</button>

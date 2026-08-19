@@ -245,6 +245,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/modules/{module}',                          [CurriculumController::class, 'updateModule']);
         Route::delete('/modules/{module}',                       [CurriculumController::class, 'deleteModule']);
         Route::post('/modules/{module}/matieres',                [CurriculumController::class, 'createMatiere']);
+        Route::post('/semestres/{semestre}/matieres-directes',   [CurriculumController::class, 'createMatiereDirecte']);
         Route::put('/matieres/{matiere}',                        [CurriculumController::class, 'updateMatiere']);
         Route::delete('/matieres/{matiere}',                     [CurriculumController::class, 'deleteMatiere']);
         Route::get('/professeurs',                               [CurriculumController::class, 'professeurs']);
@@ -256,12 +257,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/creneaux/{creneau}',                     [CurriculumController::class, 'deleteCreneau']);
         Route::get('/matieres/{matiere}/presences',              [CurriculumController::class, 'presences']);
         Route::post('/matieres/{matiere}/presences',             [CurriculumController::class, 'saisirPresences']);
+        Route::get('/matieres/{matiere}/contenus',                [CurriculumController::class, 'contenus']);
         Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
         Route::get('/semestres/{semestre}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
         Route::post('/semestres/{semestre}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
         Route::get('/semestres/{semestre}/verrou',                [CurriculumController::class, 'verrouStatus']);
         Route::post('/semestres/{semestre}/verrou',               [CurriculumController::class, 'verrouToggle']);
         Route::get('/semestres/{semestre}/emploi-du-temps-pdf',   [CurriculumController::class, 'downloadEmploiDuTemps']);
+        Route::get('/semestres/{semestre}/bulletins-classe-zip',  [CurriculumController::class, 'downloadBulletinsClasse']);
         Route::get('/semestres/{semestre}/conseil-classe',        [CurriculumController::class, 'conseilClasse']);
         Route::get('/semestres/{semestre}/conseil-classe-pdf',    [CurriculumController::class, 'downloadConseilClasse']);
     });
@@ -275,6 +278,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/matieres/{matiere}/presences',        [ProfesseurPortalController::class, 'saisirPresences']);
         Route::get('/matieres/{matiere}/notes',             [ProfesseurPortalController::class, 'notes']);
         Route::post('/matieres/{matiere}/notes',            [ProfesseurPortalController::class, 'saisirNotes']);
+        Route::get('/matieres/{matiere}/contenus',          [ProfesseurPortalController::class, 'contenus']);
+        Route::post('/matieres/{matiere}/contenus',         [ProfesseurPortalController::class, 'saisirContenu']);
     });
 
     // ── Étudiant — emploi du temps & bulletins ──────────────────────────────

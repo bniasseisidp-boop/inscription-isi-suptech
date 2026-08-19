@@ -165,6 +165,34 @@ class PDFService
         return $path;
     }
 
+    /** Bulletin PDF pour les filières "calcul_simple" (BT, BTS... hors Licence/Master) —
+     *  format à plat, sans UE, moyenne (Moy Cont + Compo)/2 par matière. */
+    public function generateBulletinSimple(\App\Models\Student $student, \App\Models\Semestre $semestre, string $anneeScolaire, ?string $appreciationConseil): string
+    {
+        $student->load(['filiere', 'license']);
+        $bulletinService = app(\App\Services\BulletinService::class);
+        $detail = $bulletinService->detailSemestreSimple($student, $semestre, $anneeScolaire, true);
+        $rang = $bulletinService->rangClasseSimple($student, $semestre, $anneeScolaire);
+
+        $matiereIds = $semestre->matieresDirectes()->pluck('id');
+        $totalAbsences = \App\Models\Presence::whereIn('matiere_id', $matiereIds)
+            ->where('student_id', $student->id)->where('present', false)->count();
+
+        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . ($student->matricule ?? $student->id) . '-S' . $semestre->numero_global, 100);
+
+        $pdf = Pdf::loadView('pdf.bulletin_notes_simple', [
+            'student' => $student, 'semestre' => $semestre, 'detail' => $detail,
+            'anneeScolaire' => $anneeScolaire, 'rang' => $rang, 'totalAbsences' => $totalAbsences,
+            'appreciationConseil' => $appreciationConseil, 'qrBase64' => $qrBase64,
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'bulletin_' . ($student->matricule ?? $student->id) . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
+        $path = 'bulletins/' . $filename;
+
+        Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
+
     /** Grand tableau de délibération de la classe (PDF) — un semestre, tous les
      *  étudiants du niveau, moyenne+validation par UE, stats de réussite. */
     public function generateConseilClasse(\App\Models\Semestre $semestre, string $anneeScolaire): string

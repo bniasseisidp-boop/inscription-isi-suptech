@@ -244,6 +244,7 @@ export const createModule         = (semestreId, data) => api.post(`/curriculum/
 export const updateModule         = (moduleId, data) => api.put(`/curriculum/modules/${moduleId}`, data)
 export const deleteModule         = (moduleId) => api.delete(`/curriculum/modules/${moduleId}`)
 export const createMatiere        = (moduleId, data) => api.post(`/curriculum/modules/${moduleId}/matieres`, data)
+export const createMatiereDirecte = (semestreId, data) => api.post(`/curriculum/semestres/${semestreId}/matieres-directes`, data)
 export const updateMatiere        = (matiereId, data) => api.put(`/curriculum/matieres/${matiereId}`, data)
 export const deleteMatiere        = (matiereId) => api.delete(`/curriculum/matieres/${matiereId}`)
 export const getProfesseurs       = () => api.get('/curriculum/professeurs')
@@ -264,6 +265,10 @@ export const createProfesseurAccount = (id, data) => api.post(`/curriculum/profe
 export const getVerrouStatus      = (semestreId, params) => api.get(`/curriculum/semestres/${semestreId}/verrou`, { params })
 export const toggleVerrouNotes    = (semestreId, data) => api.post(`/curriculum/semestres/${semestreId}/verrou`, data)
 export const downloadEmploiDuTempsPdf = (semestreId) => api.get(`/curriculum/semestres/${semestreId}/emploi-du-temps-pdf`, { responseType: 'blob' })
+export const downloadBulletinsClasseZip = (semestreId, params) => api.get(`/curriculum/semestres/${semestreId}/bulletins-classe-zip`, { params, responseType: 'blob' })
+export const getAdminContenus     = (matiereId) => api.get(`/curriculum/matieres/${matiereId}/contenus`)
+export const getProfContenus      = (matiereId) => api.get(`/prof/matieres/${matiereId}/contenus`)
+export const saisirProfContenu    = (matiereId, data) => api.post(`/prof/matieres/${matiereId}/contenus`, data)
 
 // ── Étudiant — bulletins ─────────────────────────────────────────────────────
 export const getMesBulletins        = () => api.get('/etudiant/bulletins')

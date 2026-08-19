@@ -237,6 +237,13 @@ class Student extends Model
         return null;
     }
 
+    /** Etudiant "en regle" avec la comptabilite (inscription payee + aucune mensualite en retard)
+     *  — condition requise pour generer son bulletin officiel. */
+    public function estEnRegle(): bool
+    {
+        return (bool) $this->inscription_payee && empty($this->mois_non_payes);
+    }
+
     public static function generateMatricule(): string
     {
         $year  = date('Y');

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock, CheckCircle2, CircleSlash, ClipboardList } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock, CheckCircle2, CircleSlash, ClipboardList, FileText, Archive } from 'lucide-react'
 import {
   getFilieres, getLicenseSemestres, createSemestre, createModule, updateModule, deleteModule,
   createMatiere, updateMatiere, deleteMatiere, getProfesseurs, createProfesseur, deleteProfesseur,
   createCreneau, deleteCreneau, saisirNotesEtudiant, getBulletin, downloadBulletinPdf,
   createProfesseurAccount, getVerrouStatus, toggleVerrouNotes, downloadEmploiDuTempsPdf,
-  getAdminPresences, saisirAdminPresences, downloadConseilClassePdf,
+  getAdminPresences, saisirAdminPresences, downloadConseilClassePdf, createMatiereDirecte,
+  downloadBulletinsClasseZip, getAdminContenus,
 } from '../services/api'
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
@@ -29,6 +30,8 @@ export default function CurriculumManager({ searchStudents }) {
 
   const filiere = filieres.find(f => String(f.id) === String(filiereId))
   const licenses = filiere?.licenses || []
+  const activeLicense = licenses.find(l => String(l.id) === String(licenseId))
+  const calculSimple = !!activeLicense?.calcul_simple
 
   const loadSemestres = useCallback((lid) => {
     if (!lid) { setSemestres([]); setActiveSem(null); return }
@@ -92,21 +95,22 @@ export default function CurriculumManager({ searchStudents }) {
         <ProgrammeTab
           licenseId={licenseId} semestres={semestres} activeSem={activeSem} setActiveSem={setActiveSem}
           sem={sem} loading={loading} onCreateSemestre={handleCreateSemestre} onRefresh={refreshSemestres}
-          professeurs={professeurs}
+          professeurs={professeurs} calculSimple={calculSimple}
         />
       )}
       {tab === 'profs' && <ProfesseursTab onChange={() => getProfesseurs().then(({ data }) => setProfesseurs(data)).catch(() => {})}/>}
       {tab === 'notes' && (
-        <NotesTab licenseId={licenseId} semestres={semestres} activeSem={activeSem} setActiveSem={setActiveSem} sem={sem} searchStudents={searchStudents}/>
+        <NotesTab licenseId={licenseId} semestres={semestres} activeSem={activeSem} setActiveSem={setActiveSem} sem={sem} searchStudents={searchStudents} calculSimple={calculSimple}/>
       )}
     </div>
   )
 }
 
 /* ── Onglet Programme ─────────────────────────────────────────────────────── */
-function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, loading, onCreateSemestre, onRefresh, professeurs }) {
+function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, loading, onCreateSemestre, onRefresh, professeurs, calculSimple }) {
   const [downloadingEdt, setDownloadingEdt] = useState(false)
   const [downloadingConseil, setDownloadingConseil] = useState(false)
+  const [downloadingZip, setDownloadingZip] = useState(false)
 
   if (!licenseId) return <div className="light-card p-8 text-center text-slate-400 text-sm">Choisis une filière et un niveau pour voir le programme.</div>
   if (loading) return <div className="py-10 flex justify-center"><div className="spinner"/></div>
@@ -131,6 +135,21 @@ function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, load
       window.open(url, '_blank')
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
     finally { setDownloadingConseil(false) }
+  }
+
+  const handleDownloadZip = async () => {
+    if (!sem) return
+    if (!window.confirm("Générer les bulletins de tous les étudiants à jour de paiement de cette classe ?")) return
+    setDownloadingZip(true)
+    try {
+      const { data } = await downloadBulletinsClasseZip(sem.id)
+      const url = URL.createObjectURL(new Blob([data], { type: 'application/zip' }))
+      const a = document.createElement('a')
+      a.href = url; a.download = `bulletins_${sem.libelle.replace(/\s+/g, '_')}.zip`
+      document.body.appendChild(a); a.click(); a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération des bulletins') }
+    finally { setDownloadingZip(false) }
   }
 
   return (
@@ -159,11 +178,70 @@ function ProgrammeTab({ licenseId, semestres, activeSem, setActiveSem, sem, load
               className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
               <ClipboardList size={13}/> {downloadingConseil ? 'Génération...' : 'Conseil de classe (PDF)'}
             </button>
+            <button onClick={handleDownloadZip} disabled={downloadingZip}
+              className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50" title="Génère un ZIP avec le bulletin de chaque étudiant à jour de paiement">
+              <Archive size={13}/> {downloadingZip ? 'Génération...' : 'Tous les bulletins (ZIP)'}
+            </button>
           </div>
         )}
       </div>
 
-      {sem && <SemestrePanel sem={sem} onRefresh={onRefresh} professeurs={professeurs}/>}
+      {sem && (calculSimple
+        ? <SemestreSimplePanel sem={sem} onRefresh={onRefresh} professeurs={professeurs}/>
+        : <SemestrePanel sem={sem} onRefresh={onRefresh} professeurs={professeurs}/>)}
+    </div>
+  )
+}
+
+/* ── Panneau matières a plat (filieres calcul_simple : BT, BTS...) ───────────── */
+function SemestreSimplePanel({ sem, onRefresh, professeurs }) {
+  const [showAddMatiere, setShowAddMatiere] = useState(false)
+  const [newMatiere, setNewMatiere] = useState({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1 })
+  const matieres = sem.matieres_directes || []
+  const totalCoef = matieres.reduce((acc, m) => acc + Number(m.coef || 0), 0)
+
+  const handleAddMatiere = async () => {
+    if (!newMatiere.code || !newMatiere.nom) { toast.error('Code et nom requis'); return }
+    try {
+      await createMatiereDirecte(sem.id, newMatiere)
+      toast.success('Matière ajoutée')
+      setNewMatiere({ code: '', nom: '', cm: 0, tp: 0, td: 0, tpe: 0, vht: 0, coef: 1 })
+      setShowAddMatiere(false)
+      onRefresh()
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+  }
+
+  return (
+    <div className="light-card overflow-hidden">
+      <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-slate-800">Matières du semestre</span>
+          <span className="text-xs text-slate-400">(calcul simple — Σ coef : {totalCoef})</span>
+        </div>
+        <button onClick={() => setShowAddMatiere(o => !o)} className="text-isiblue-600 hover:bg-isiblue-50 p-1.5 rounded-lg" title="Ajouter matière"><Plus size={15}/></button>
+      </div>
+
+      {showAddMatiere && (
+        <div className="p-3 border-b border-slate-100 bg-isiblue-50/30 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <input placeholder="Code" className="form-input-light" value={newMatiere.code} onChange={e => setNewMatiere(f => ({ ...f, code: e.target.value }))}/>
+          <input placeholder="Nom de la matière" className="form-input-light sm:col-span-2" value={newMatiere.nom} onChange={e => setNewMatiere(f => ({ ...f, nom: e.target.value }))}/>
+          <input type="number" step="0.25" placeholder="Coef" className="form-input-light" value={newMatiere.coef} onChange={e => setNewMatiere(f => ({ ...f, coef: e.target.value }))}/>
+          {['cm', 'tp', 'td', 'tpe', 'vht'].map(k => (
+            <input key={k} type="number" placeholder={k.toUpperCase()} className="form-input-light" value={newMatiere[k]} onChange={e => setNewMatiere(f => ({ ...f, [k]: e.target.value }))}/>
+          ))}
+          <button onClick={handleAddMatiere} className="btn-primary text-xs">Ajouter</button>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="data-table-light">
+          <thead><tr><th>Code</th><th>Matière</th><th>CM</th><th>TP</th><th>TD</th><th>TPE</th><th>VHT</th><th>Coef</th><th>Prof</th><th></th></tr></thead>
+          <tbody>
+            {matieres.map(mat => <MatiereRow key={mat.id} mat={mat} onRefresh={onRefresh} professeurs={professeurs} hideCredits/>)}
+            {matieres.length === 0 && <tr><td colSpan={10} className="text-center text-slate-400 py-4 text-xs">Aucune matière</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -279,21 +357,25 @@ function ModulePanel({ mod, onRefresh, professeurs }) {
         </div>
       )}
 
-      <table className="data-table-light">
-        <thead><tr><th>Code</th><th>Matière</th><th>CM</th><th>TP</th><th>TD</th><th>TPE</th><th>VHT</th><th>Coef</th><th>Crédit</th><th>Prof</th><th></th></tr></thead>
-        <tbody>
-          {(mod.matieres || []).map(mat => <MatiereRow key={mat.id} mat={mat} onRefresh={onRefresh} professeurs={professeurs}/>)}
-          {(mod.matieres || []).length === 0 && <tr><td colSpan={11} className="text-center text-slate-400 py-4 text-xs">Aucune matière</td></tr>}
-        </tbody>
-      </table>
+      <div className="overflow-x-auto">
+        <table className="data-table-light">
+          <thead><tr><th>Code</th><th>Matière</th><th>CM</th><th>TP</th><th>TD</th><th>TPE</th><th>VHT</th><th>Coef</th><th>Crédit</th><th>Prof</th><th></th></tr></thead>
+          <tbody>
+            {(mod.matieres || []).map(mat => <MatiereRow key={mat.id} mat={mat} onRefresh={onRefresh} professeurs={professeurs}/>)}
+            {(mod.matieres || []).length === 0 && <tr><td colSpan={11} className="text-center text-slate-400 py-4 text-xs">Aucune matière</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
-function MatiereRow({ mat, onRefresh, professeurs }) {
+function MatiereRow({ mat, onRefresh, professeurs, hideCredits }) {
   const [editing, setEditing] = useState(false)
   const [showCreneaux, setShowCreneaux] = useState(false)
   const [showPresences, setShowPresences] = useState(false)
+  const [showContenus, setShowContenus] = useState(false)
+  const colSpanPanel = hideCredits ? 10 : 11
   const [form, setForm] = useState({ code: mat.code, nom: mat.nom, cm: mat.cm, tp: mat.tp, td: mat.td, tpe: mat.tpe, vht: mat.vht, coef: mat.coef, credits: mat.credits ?? '', professeur_id: mat.professeur_id ?? '' })
 
   const handleSave = async () => {
@@ -315,7 +397,7 @@ function MatiereRow({ mat, onRefresh, professeurs }) {
           <td key={k}><input type="number" className="form-input-light !py-1 !px-2 text-xs w-14" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}/></td>
         ))}
         <td><input type="number" step="0.25" className="form-input-light !py-1 !px-2 text-xs w-14" value={form.coef} onChange={e => setForm(f => ({ ...f, coef: e.target.value }))}/></td>
-        <td><input type="number" step="0.1" className="form-input-light !py-1 !px-2 text-xs w-14" value={form.credits} onChange={e => setForm(f => ({ ...f, credits: e.target.value }))}/></td>
+        {!hideCredits && <td><input type="number" step="0.1" className="form-input-light !py-1 !px-2 text-xs w-14" value={form.credits} onChange={e => setForm(f => ({ ...f, credits: e.target.value }))}/></td>}
         <td>
           <select className="form-input-light !py-1 !px-2 text-xs w-32" value={form.professeur_id} onChange={e => setForm(f => ({ ...f, professeur_id: e.target.value }))}>
             <option value="">-- Aucun --</option>
@@ -341,9 +423,10 @@ function MatiereRow({ mat, onRefresh, professeurs }) {
         <td className="text-xs">{mat.tpe}</td>
         <td className="text-xs">{mat.vht}</td>
         <td className="text-xs font-bold">{mat.coef}</td>
-        <td className="text-xs">{mat.credits ?? '—'}</td>
+        {!hideCredits && <td className="text-xs">{mat.credits ?? '—'}</td>}
         <td className="text-xs text-slate-500">{mat.professeur ? `${mat.professeur.prenom} ${mat.professeur.nom}` : '—'}</td>
         <td className="flex gap-1">
+          <button onClick={() => setShowContenus(o => !o)} className={`p-1 ${showContenus ? 'text-isiblue-600' : 'text-slate-400 hover:text-isiblue-600'}`} title="Cahier de texte"><FileText size={12}/></button>
           <button onClick={() => setShowPresences(o => !o)} className={`p-1 ${showPresences ? 'text-isiblue-600' : 'text-slate-400 hover:text-isiblue-600'}`} title="Présences"><Users size={12}/></button>
           <button onClick={() => setShowCreneaux(o => !o)} className={`p-1 ${showCreneaux ? 'text-isiblue-600' : 'text-slate-400 hover:text-isiblue-600'}`} title="Emploi du temps"><Clock size={12}/></button>
           <button onClick={() => setEditing(true)} className="text-slate-400 hover:text-isiblue-600 p-1"><Pencil size={12}/></button>
@@ -352,19 +435,57 @@ function MatiereRow({ mat, onRefresh, professeurs }) {
       </tr>
       {showCreneaux && (
         <tr>
-          <td colSpan={11} className="bg-isiblue-50/30 p-0">
+          <td colSpan={colSpanPanel} className="bg-isiblue-50/30 p-0">
             <CreneauxPanel mat={mat} onRefresh={onRefresh}/>
           </td>
         </tr>
       )}
       {showPresences && (
         <tr>
-          <td colSpan={11} className="bg-emerald-50/30 p-0">
+          <td colSpan={colSpanPanel} className="bg-emerald-50/30 p-0">
             <PresencesAdminPanel matiere={mat}/>
           </td>
         </tr>
       )}
+      {showContenus && (
+        <tr>
+          <td colSpan={colSpanPanel} className="bg-slate-50 p-0">
+            <ContenusViewerPanel matiere={mat}/>
+          </td>
+        </tr>
+      )}
     </>
+  )
+}
+
+/* ── Cahier de texte (lecture seule Admin/Accueil Pedagogique — saisi par le prof) ── */
+function ContenusViewerPanel({ matiere }) {
+  const [contenus, setContenus] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getAdminContenus(matiere.id)
+      .then(({ data }) => setContenus(data))
+      .catch(() => toast.error('Erreur chargement'))
+      .finally(() => setLoading(false))
+  }, [matiere.id])
+
+  return (
+    <div className="p-3 space-y-2">
+      <div className="text-xs font-semibold text-slate-700 flex items-center gap-1"><FileText size={12}/> Cahier de texte — {matiere.nom}</div>
+      {loading ? <div className="py-3 flex justify-center"><div className="spinner"/></div> : contenus.length === 0 ? (
+        <div className="text-slate-400 text-xs py-2">Le professeur n'a encore rien saisi.</div>
+      ) : (
+        <div className="space-y-2">
+          {contenus.map(c => (
+            <div key={c.id} className="bg-white border border-slate-200 rounded-lg p-2.5 text-xs">
+              <div className="font-bold text-slate-700 mb-1">{new Date(c.date).toLocaleDateString('fr-FR')}</div>
+              <div className="text-slate-600 whitespace-pre-wrap">{c.contenu}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -535,6 +656,7 @@ function ProfesseursTab({ onChange }) {
         </div>
       )}
       <div className="light-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="data-table-light">
           <thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Spécialité</th><th>Compte</th><th></th></tr></thead>
           <tbody>
@@ -559,13 +681,14 @@ function ProfesseursTab({ onChange }) {
             {profs.length === 0 && <tr><td colSpan={6} className="text-center text-slate-400 py-6 text-sm">Aucun professeur</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
 }
 
 /* ── Onglet Saisie des notes ──────────────────────────────────────────────── */
-function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchStudents }) {
+function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchStudents, calculSimple }) {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
   const [student, setStudent] = useState(null)
@@ -605,7 +728,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
     finally { setTogglingVerrou(false) }
   }
 
-  const allMatieres = (sem?.modules || []).flatMap(m => m.matieres || [])
+  const allMatieres = calculSimple ? (sem?.matieres_directes || []) : (sem?.modules || []).flatMap(m => m.matieres || [])
 
   const loadBulletin = useCallback(() => {
     if (!student || !sem) return
@@ -704,8 +827,9 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
       {student && sem && (
         <div className="light-card overflow-hidden">
           <div className="p-3 border-b border-slate-100 bg-slate-50/60 text-sm font-semibold text-slate-700">{sem.libelle} — Saisie des notes</div>
+          <div className="overflow-x-auto">
           <table className="data-table-light">
-            <thead><tr><th>Matière</th><th>Coef</th><th>Devoir 1 /20</th><th>Devoir 2 /20</th><th>Examen /20 (60%)</th></tr></thead>
+            <thead><tr><th>Matière</th><th>Coef</th><th>Devoir 1 /20</th><th>Devoir 2 /20</th><th>Examen /20 {calculSimple ? '(50%)' : '(60%)'}</th></tr></thead>
             <tbody>
               {allMatieres.map(mat => (
                 <tr key={mat.id}>
@@ -730,6 +854,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
               ))}
             </tbody>
           </table>
+          </div>
           <div className="p-3 border-t border-slate-100 flex flex-wrap gap-2">
             <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
               {saving ? 'Enregistrement...' : 'Enregistrer les notes'}
@@ -741,7 +866,34 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
         </div>
       )}
 
-      {bulletin && (
+      {bulletin && calculSimple && (
+        <div className="light-card p-4">
+          <h4 className="font-semibold text-isiblue-700 mb-3 text-sm">Bulletin calculé — {bulletin.semestre?.libelle}</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne du semestre</div><div className="text-xl font-black text-slate-800">{bulletin.moyenne_semestre ?? '—'} / 20</div></div>
+            <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Mention</div><div className="text-xl font-black text-slate-800">{bulletin.mention ?? '—'}</div></div>
+          </div>
+          <div className="overflow-x-auto">
+          <table className="data-table-light">
+            <thead><tr><th>Matière</th><th>Moy Cont</th><th>Compo</th><th>Moy Géné</th><th>Coef</th><th>Appréciation</th></tr></thead>
+            <tbody>
+              {(bulletin.lignes || []).map((l, i) => (
+                <tr key={i}>
+                  <td className="text-sm">{l.matiere?.nom}</td>
+                  <td className="text-sm">{l.moy_cont ?? '—'}</td>
+                  <td className="text-sm">{l.compo ?? '—'}</td>
+                  <td className="text-sm font-bold">{l.moyenne_generale ?? '—'}</td>
+                  <td className="text-xs">{l.matiere?.coef}</td>
+                  <td className="text-xs">{l.appreciation ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        </div>
+      )}
+
+      {bulletin && !calculSimple && (
         <div className="light-card p-4">
           <h4 className="font-semibold text-isiblue-700 mb-3 text-sm">Bulletin calculé — {bulletin.semestre?.libelle}</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
@@ -752,10 +904,11 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
               <div className={`text-xl font-black ${bulletin.valide ? 'text-emerald-600' : 'text-red-600'}`}>{bulletin.valide ? 'Validé' : 'Non validé'}</div>
             </div>
           </div>
+          <div className="overflow-x-auto">
           <table className="data-table-light">
             <thead><tr><th>UE</th><th>Moyenne</th><th>Statut</th></tr></thead>
             <tbody>
-              {bulletin.modules.map((m, i) => (
+              {(bulletin.modules || []).map((m, i) => (
                 <tr key={i}>
                   <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
                   <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
@@ -764,6 +917,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

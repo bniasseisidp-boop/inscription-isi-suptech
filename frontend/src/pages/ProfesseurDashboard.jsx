@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
-  LogOut, Clock, BookOpen, Users, X, UserCog, Save, CheckCircle2, CircleSlash, Lock,
+  LogOut, Clock, BookOpen, Users, X, UserCog, Save, CheckCircle2, CircleSlash, Lock, FileText,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
   getProfEmploiDuTemps, getProfMatieres, getProfRoster,
   getProfPresences, saisirProfPresences, getProfNotes, saisirProfNotes,
+  getProfContenus, saisirProfContenu,
   updateMyPassword, updateMyPhoto,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
@@ -248,7 +249,7 @@ function ClasseModal({ matiere, onClose }) {
         </div>
         <div className="p-4 space-y-4">
           <div className="flex gap-2">
-            {[['effectif', 'Effectif', Users], ['presences', 'Présences', CheckCircle2], ['notes', 'Notes', BookOpen]].map(([k, label, Icon]) => (
+            {[['effectif', 'Effectif', Users], ['presences', 'Présences', CheckCircle2], ['notes', 'Notes', BookOpen], ['contenus', 'Cahier de texte', FileText]].map(([k, label, Icon]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${tab === k ? 'bg-isiblue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
                 <Icon size={13}/> {label}
@@ -273,8 +274,66 @@ function ClasseModal({ matiere, onClose }) {
           )}
           {tab === 'presences' && <PresencesPanel matiere={matiere}/>}
           {tab === 'notes' && <NotesPanel matiere={matiere}/>}
+          {tab === 'contenus' && <ContenusPanel matiere={matiere}/>}
         </div>
       </div>
+    </div>
+  )
+}
+
+/* ── Cahier de texte (grandes lignes enseignees, saisi par seance) ────────── */
+function ContenusPanel({ matiere }) {
+  const [contenus, setContenus] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [texte, setTexte] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    getProfContenus(matiere.id)
+      .then(({ data }) => setContenus(data))
+      .catch(() => toast.error('Erreur chargement'))
+      .finally(() => setLoading(false))
+  }, [matiere.id])
+
+  useEffect(() => { load() }, [load])
+
+  const handleSave = async () => {
+    if (!texte.trim()) { toast.error('Saisis le contenu de la séance'); return }
+    setSaving(true)
+    try {
+      await saisirProfContenu(matiere.id, { date, contenu: texte })
+      toast.success('Contenu enregistré !')
+      setTexte('')
+      load()
+    } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="light-card p-4 space-y-2">
+        <label className="text-xs text-slate-500 block">Date</label>
+        <input type="date" className="form-input-light w-auto" value={date} onChange={e => setDate(e.target.value)}/>
+        <label className="text-xs text-slate-500 block mt-2">Grandes lignes enseignées</label>
+        <textarea className="form-input-light resize-none" rows={3} placeholder="Ex : Introduction aux boucles for/while, exercices pratiques..."
+          value={texte} onChange={e => setTexte(e.target.value)}/>
+        <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
+          {saving ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
+      </div>
+      {loading ? <div className="py-6 flex justify-center"><div className="spinner"/></div> : (
+        <div className="space-y-2">
+          {contenus.map(c => (
+            <div key={c.id} className="light-card p-3 text-sm">
+              <div className="font-bold text-isiblue-700 text-xs mb-1">{new Date(c.date).toLocaleDateString('fr-FR')}</div>
+              <div className="text-slate-600 whitespace-pre-wrap">{c.contenu}</div>
+            </div>
+          ))}
+          {contenus.length === 0 && <div className="text-slate-400 text-xs text-center py-4">Aucune séance saisie pour l'instant.</div>}
+        </div>
+      )}
     </div>
   )
 }

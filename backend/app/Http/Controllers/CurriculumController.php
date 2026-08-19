@@ -15,11 +15,15 @@ use Illuminate\Http\Request;
 
 class CurriculumController extends Controller
 {
-    /** Arbre complet Semestres -> Modules -> Matières pour un niveau (license) donné. */
+    /** Arbre complet Semestres -> Modules -> Matières pour un niveau (license) donné.
+     *  Pour les filieres "calcul_simple" (BT, BTS...), les matieres sont attachees
+     *  directement au semestre (matieres_directes), sans UE/module. */
     public function semestres(License $license)
     {
         return response()->json(
-            $license->semestres()->with('modules.matieres.professeur', 'modules.matieres.creneaux')->get()
+            $license->semestres()
+                ->with('modules.matieres.professeur', 'modules.matieres.creneaux', 'matieresDirectes.professeur', 'matieresDirectes.creneaux')
+                ->get()
         );
     }
 
@@ -93,6 +97,25 @@ class CurriculumController extends Controller
         ]);
         $ordre = $module->matieres()->max('ordre') + 1;
         $matiere = $module->matieres()->create($validated + ['ordre' => $ordre]);
+        return response()->json($matiere->load('professeur'), 201);
+    }
+
+    /** Matiere attachee directement a un semestre, sans UE — filieres "calcul_simple". */
+    public function createMatiereDirecte(Request $request, Semestre $semestre)
+    {
+        $validated = $request->validate([
+            'code'          => 'required|string|max:30',
+            'nom'           => 'required|string|max:200',
+            'cm'            => 'nullable|integer|min:0',
+            'tp'            => 'nullable|integer|min:0',
+            'td'            => 'nullable|integer|min:0',
+            'tpe'           => 'nullable|integer|min:0',
+            'vht'           => 'nullable|integer|min:0',
+            'coef'          => 'required|numeric|min:0',
+            'professeur_id' => 'nullable|exists:professeurs,id',
+        ]);
+        $ordre = $semestre->matieresDirectes()->max('ordre') + 1;
+        $matiere = $semestre->matieresDirectes()->create($validated + ['ordre' => $ordre]);
         return response()->json($matiere->load('professeur'), 201);
     }
 
@@ -251,7 +274,7 @@ class CurriculumController extends Controller
         $date = $request->query('date', now()->toDateString());
         $matiere->loadMissing('module.semestre');
 
-        $etudiants = Student::where('license_id', $matiere->module->semestre->license_id)
+        $etudiants = Student::where('license_id', $matiere->semestreResolu()->license_id)
             ->where('statut_inscription', 'accepte')
             ->orderBy('nom')->orderBy('prenom')
             ->get(['id', 'matricule', 'nom', 'prenom']);
@@ -266,6 +289,12 @@ class CurriculumController extends Controller
                 'present' => $presences->has($e->id) ? $presences->get($e->id)->present : null,
             ]),
         ]);
+    }
+
+    /** Cahier de texte d'une matiere (grandes lignes enseignees par le prof) — vue admin/pédagogique. */
+    public function contenus(Matiere $matiere)
+    {
+        return response()->json($matiere->contenusCours()->orderByDesc('date')->get());
     }
 
     /** Saisie/correction de l'appel par Admin ou Accueil Pédagogique (même règle que le prof). */
@@ -319,20 +348,31 @@ class CurriculumController extends Controller
 
         $anneeScolaire = $student->annee_scolaire ?? (date('Y') . '-' . (date('Y') + 1));
         $semestres = Semestre::where('license_id', $student->license_id)->orderBy('numero_global')->get();
+        $calculSimple = (bool) $student->license?->calcul_simple;
 
-        $bulletins = $semestres->map(fn ($s) => $bulletinService->detailSemestre($student, $s, $anneeScolaire));
+        $bulletins = $semestres->map(fn ($s) => $calculSimple
+            ? $bulletinService->detailSemestreSimple($student, $s, $anneeScolaire)
+            : $bulletinService->detailSemestre($student, $s, $anneeScolaire));
 
-        return response()->json(['annee_scolaire' => $anneeScolaire, 'bulletins' => $bulletins]);
+        return response()->json(['annee_scolaire' => $anneeScolaire, 'calcul_simple' => $calculSimple, 'bulletins' => $bulletins]);
     }
 
     /** Téléchargement du PDF officiel d'un de ses propres bulletins par l'étudiant connecté. */
     public function telechargerMonBulletin(Request $request, Semestre $semestre, \App\Services\PDFService $pdfService)
     {
-        $student = Student::where('user_id', $request->user()->id)->firstOrFail();
+        $student = Student::where('user_id', $request->user()->id)->with('license')->firstOrFail();
         abort_if($student->license_id !== $semestre->license_id, 403, "Ce bulletin ne concerne pas votre niveau.");
 
+        if (!$student->estEnRegle()) {
+            return response()->json([
+                'message' => "Votre bulletin ne peut pas être téléchargé : vous n'êtes pas à jour de vos paiements. Régularisez votre situation auprès de la caisse.",
+            ], 422);
+        }
+
         $anneeScolaire = $student->annee_scolaire ?? (date('Y') . '-' . (date('Y') + 1));
-        $path = $pdfService->generateBulletin($student, $semestre, $anneeScolaire, null);
+        $path = $student->license?->calcul_simple
+            ? $pdfService->generateBulletinSimple($student, $semestre, $anneeScolaire, null)
+            : $pdfService->generateBulletin($student, $semestre, $anneeScolaire, null);
         $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
 
         if (!file_exists($full)) {
@@ -363,6 +403,41 @@ class CurriculumController extends Controller
             'Content-Type'        => 'application/pdf',
             'Content-Disposition' => 'inline; filename="conseil_classe_S' . $semestre->numero_global . '.pdf"',
         ])->deleteFileAfterSend(true);
+    }
+
+    /** Genere en un seul coup les bulletins PDF de tous les etudiants "en regle" (a jour
+     *  de paiement) de la classe, dans une archive ZIP. Les etudiants non en regle sont
+     *  listes a part dans la reponse pour que l'admin sache lesquels ont ete ignores. */
+    public function downloadBulletinsClasse(Semestre $semestre, Request $request, \App\Services\PDFService $pdfService)
+    {
+        $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
+
+        $etudiants = Student::where('license_id', $semestre->license_id)
+            ->where('statut_inscription', 'accepte')
+            ->orderBy('nom')->orderBy('prenom')
+            ->get();
+
+        $enRegle = $etudiants->filter(fn ($e) => $e->estEnRegle());
+        if ($enRegle->isEmpty()) {
+            return response()->json(['message' => "Aucun étudiant de cette classe n'est à jour de ses paiements."], 422);
+        }
+
+        $tmpZip = tempnam(sys_get_temp_dir(), 'bulletins_') . '.zip';
+        $zip = new \ZipArchive();
+        $zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+
+        foreach ($enRegle as $etudiant) {
+            $path = $semestre->license?->calcul_simple
+                ? $pdfService->generateBulletinSimple($etudiant, $semestre, $anneeScolaire, null)
+                : $pdfService->generateBulletin($etudiant, $semestre, $anneeScolaire, null);
+            $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+            $nomFichier = 'bulletin_' . ($etudiant->matricule ?? $etudiant->id) . '_' . str_replace(' ', '_', $etudiant->nom) . '.pdf';
+            $zip->addFile($full, $nomFichier);
+        }
+        $zip->close();
+
+        $filename = 'bulletins_S' . $semestre->numero_global . '_' . now()->format('Ymd') . '.zip';
+        return response()->download($tmpZip, $filename)->deleteFileAfterSend(true);
     }
 
     /** PDF de l'emploi du temps complet d'une classe (filière + niveau + semestre). */
@@ -410,19 +485,33 @@ class CurriculumController extends Controller
     public function bulletin(Semestre $semestre, Student $student, Request $request, BulletinService $bulletinService)
     {
         $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? date('Y') . '-' . (date('Y') + 1));
-        return response()->json($bulletinService->detailSemestre($student, $semestre, $anneeScolaire));
+        $calculSimple = (bool) $semestre->license?->calcul_simple;
+
+        $detail = $calculSimple
+            ? $bulletinService->detailSemestreSimple($student, $semestre, $anneeScolaire)
+            : $bulletinService->detailSemestre($student, $semestre, $anneeScolaire);
+
+        return response()->json(array_merge($detail, ['calcul_simple' => $calculSimple]));
     }
 
     /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
     public function downloadBulletin(Semestre $semestre, Student $student, Request $request, \App\Services\PDFService $pdfService)
     {
+        if (!$student->estEnRegle()) {
+            return response()->json([
+                'message' => "Impossible de générer le bulletin : {$student->prenom} {$student->nom} n'est pas à jour de ses paiements.",
+            ], 422);
+        }
+
         $validated = $request->validate([
             'annee_scolaire'    => 'nullable|string|max:20',
             'appreciation'      => 'nullable|string|max:150',
         ]);
         $anneeScolaire = $validated['annee_scolaire'] ?? ($student->annee_scolaire ?? date('Y') . '-' . (date('Y') + 1));
 
-        $path = $pdfService->generateBulletin($student, $semestre, $anneeScolaire, $validated['appreciation'] ?? null);
+        $path = $semestre->license?->calcul_simple
+            ? $pdfService->generateBulletinSimple($student, $semestre, $anneeScolaire, $validated['appreciation'] ?? null)
+            : $pdfService->generateBulletin($student, $semestre, $anneeScolaire, $validated['appreciation'] ?? null);
         $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
 
         if (!file_exists($full)) {
