@@ -71,7 +71,7 @@ class AdminController extends Controller
      */
     public function updateStudentProfile(Request $request, Student $student)
     {
-        \Log::info('updateStudentProfile HIT', [
+        \Log::error('updateStudentProfile HIT', [
             'student_id' => $student->id,
             'method' => $request->method(),
             'content_type' => $request->header('Content-Type'),
@@ -141,7 +141,7 @@ class AdminController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::warning('updateStudentProfile VALIDATION FAILED', [
+            \Log::error('updateStudentProfile VALIDATION FAILED', [
                 'student_id' => $student->id,
                 'errors' => $validator->errors()->toArray(),
             ]);
