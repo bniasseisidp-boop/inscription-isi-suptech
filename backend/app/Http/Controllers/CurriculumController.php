@@ -96,7 +96,7 @@ class CurriculumController extends Controller
             'professeur_id' => 'nullable|exists:professeurs,id',
         ]);
         $ordre = $module->matieres()->max('ordre') + 1;
-        $matiere = $module->matieres()->create($validated + ['ordre' => $ordre]);
+        $matiere = $module->matieres()->create(array_filter($validated, fn ($v) => $v !== null) + ['ordre' => $ordre]);
         return response()->json($matiere->load('professeur'), 201);
     }
 
@@ -115,7 +115,7 @@ class CurriculumController extends Controller
             'professeur_id' => 'nullable|exists:professeurs,id',
         ]);
         $ordre = $semestre->matieresDirectes()->max('ordre') + 1;
-        $matiere = $semestre->matieresDirectes()->create($validated + ['ordre' => $ordre]);
+        $matiere = $semestre->matieresDirectes()->create(array_filter($validated, fn ($v) => $v !== null) + ['ordre' => $ordre]);
         return response()->json($matiere->load('professeur'), 201);
     }
 
