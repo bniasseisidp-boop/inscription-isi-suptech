@@ -741,11 +741,10 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   const handleSave = async () => {
     const notes = Object.entries(notesForm)
-      .filter(([, v]) => (v?.devoir1 ?? '') !== '' || (v?.devoir2 ?? '') !== '' || (v?.examen ?? '') !== '')
+      .filter(([, v]) => (v?.mcc ?? '') !== '' || (v?.examen ?? '') !== '')
       .map(([matiere_id, v]) => ({
         matiere_id: Number(matiere_id),
-        devoir1: v.devoir1 !== '' && v.devoir1 !== undefined ? Number(v.devoir1) : null,
-        devoir2: v.devoir2 !== '' && v.devoir2 !== undefined ? Number(v.devoir2) : null,
+        mcc: v.mcc !== '' && v.mcc !== undefined ? Number(v.mcc) : null,
         examen: v.examen !== '' && v.examen !== undefined ? Number(v.examen) : null,
       }))
     if (notes.length === 0) { toast.error('Saisis au moins une note'); return }
@@ -804,7 +803,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
                 <button onClick={() => { setStudent(null); setNotesForm({}); setBulletin(null) }}><X size={14}/></button>
               </div>
             ) : (
-              <input className="form-input-light" placeholder="Chercher un étudiant..." value={search} onChange={e => setSearch(e.target.value)}/>
+              <input className="form-input-light" placeholder="Chercher par nom ou matricule..." value={search} onChange={e => setSearch(e.target.value)}/>
             )}
             {!student && results.length > 0 && (
               <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
@@ -829,7 +828,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
           <div className="p-3 border-b border-slate-100 bg-slate-50/60 text-sm font-semibold text-slate-700">{sem.libelle} — Saisie des notes</div>
           <div className="overflow-x-auto">
           <table className="data-table-light">
-            <thead><tr><th>Matière</th><th>Coef</th><th>Devoir 1 /20</th><th>Devoir 2 /20</th><th>Examen /20 {calculSimple ? '(50%)' : '(60%)'}</th></tr></thead>
+            <thead><tr><th>Matière</th><th>Coef</th><th>Devoir /20 {calculSimple ? '(50%)' : '(40%)'}</th><th>Examen /20 {calculSimple ? '(50%)' : '(60%)'}</th></tr></thead>
             <tbody>
               {allMatieres.map(mat => (
                 <tr key={mat.id}>
@@ -837,13 +836,8 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
                   <td className="text-xs font-bold">{mat.coef}</td>
                   <td>
                     <input type="number" min="0" max="20" step="0.25" className="form-input-light w-20 !py-1"
-                      value={notesForm[mat.id]?.devoir1 ?? ''}
-                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], devoir1: e.target.value } }))}/>
-                  </td>
-                  <td>
-                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-20 !py-1"
-                      value={notesForm[mat.id]?.devoir2 ?? ''}
-                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], devoir2: e.target.value } }))}/>
+                      value={notesForm[mat.id]?.mcc ?? ''}
+                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], mcc: e.target.value } }))}/>
                   </td>
                   <td>
                     <input type="number" min="0" max="20" step="0.25" className="form-input-light w-24 !py-1"

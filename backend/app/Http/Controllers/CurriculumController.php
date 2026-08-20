@@ -461,8 +461,7 @@ class CurriculumController extends Controller
             'annee_scolaire' => 'required|string|max:20',
             'notes'          => 'required|array|min:1',
             'notes.*.matiere_id' => 'required|exists:matieres,id',
-            'notes.*.devoir1'     => 'nullable|numeric|min:0|max:20',
-            'notes.*.devoir2'     => 'nullable|numeric|min:0|max:20',
+            'notes.*.mcc'         => 'nullable|numeric|min:0|max:20',
             'notes.*.examen'      => 'nullable|numeric|min:0|max:20',
         ]);
 
@@ -470,8 +469,7 @@ class CurriculumController extends Controller
             Note::updateOrCreate(
                 ['student_id' => $student->id, 'matiere_id' => $entry['matiere_id'], 'annee_scolaire' => $validated['annee_scolaire']],
                 array_filter([
-                    'devoir1'   => $entry['devoir1'] ?? null,
-                    'devoir2'   => $entry['devoir2'] ?? null,
+                    'mcc'       => $entry['mcc'] ?? null,
                     'examen'    => $entry['examen'] ?? null,
                     'saisi_par' => $request->user()->id,
                 ], fn ($v) => $v !== null)
