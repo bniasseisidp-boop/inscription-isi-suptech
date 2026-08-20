@@ -17,7 +17,7 @@ import CurriculumManager from '../components/CurriculumManager'
 import {
   getAdminStats, getAdminStudents, acceptStudent, rejectStudent,
   deleteStudent, getTrashedStudents, restoreStudent, forceDeleteStudent,
-  generateStudentCard, downloadAdminCard, getAdminPayments, getFilieres, createAdminStudent, createFiliere,
+  generateStudentCard, downloadAdminCard, getAdminPayments, getFilieres, createAdminStudent, updateAdminStudent, createFiliere,
   downloadAttestationScolarite, downloadAttestationInscription, downloadFicheInscription, uploadStudentDocument,
   downloadCertificatScolarite, downloadAttestationFormation, downloadAttestationNonSoutenance,
   downloadAttestationReussite, downloadAttestationEncouragement, downloadDiplomeLicence,
