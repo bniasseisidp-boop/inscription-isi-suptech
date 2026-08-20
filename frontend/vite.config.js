@@ -28,6 +28,12 @@ export default defineConfig({
         // Ne jamais mettre en cache les appels API ou le stockage — toujours frais.
         navigateFallbackDenylist: [/^\/api\//, /^\/storage\//],
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,woff2}'],
+        // Un nouveau service worker prend le controle immediatement (au lieu d'attendre
+        // la fermeture de tous les onglets) — sinon un redeploy peut rester invisible
+        // pendant des heures/jours pour un utilisateur qui garde un onglet ouvert.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],
