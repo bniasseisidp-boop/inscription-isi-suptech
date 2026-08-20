@@ -244,11 +244,30 @@ class Student extends Model
         return (bool) $this->inscription_payee && empty($this->mois_non_payes);
     }
 
+    /** Base sur le plus grand numero de matricule deja attribue cette annee (pas un simple
+     *  comptage) — un comptage se desynchronise des qu'il y a un ecart (etudiant supprime,
+     *  matricule attribue hors de cette methode...), ce qui provoquait des collisions
+     *  ("Duplicate entry ... students_matricule_unique") lors de la creation. */
     public static function generateMatricule(): string
     {
-        $year  = date('Y');
-        $count = self::withTrashed()->whereYear('created_at', $year)->count() + 1;
-        return 'ISI-' . $year . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+        $prefix = 'ISI-' . date('Y') . '-';
+
+        $maxSuffix = self::withTrashed()
+            ->where('matricule', 'like', $prefix . '%')
+            ->pluck('matricule')
+            ->map(fn ($m) => (int) substr($m, strlen($prefix)))
+            ->max() ?? 0;
+
+        $next = $maxSuffix + 1;
+        $matricule = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+
+        // Garde-fou contre une collision improbable (deux creations simultanees).
+        while (self::withTrashed()->where('matricule', $matricule)->exists()) {
+            $next++;
+            $matricule = $prefix . str_pad($next, 4, '0', STR_PAD_LEFT);
+        }
+
+        return $matricule;
     }
 
     /** Champs "nom de personne / lieu" — normalisés en Title Case à chaque sauvegarde,
