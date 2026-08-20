@@ -79,7 +79,7 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
     setSavingProfile(true)
     try {
       const payload = new FormData()
-      Object.entries(profileForm).forEach(([k, v]) => payload.append(k, v ?? ''))
+      Object.entries(profileForm).forEach(([k, v]) => { if (v !== null && v !== undefined && v !== '') payload.append(k, v) })
       const { data } = await updatePedagogiqueStudent(s.id, payload)
       setDetail(prev => ({ ...prev, student: { ...prev.student, ...data } }))
       toast.success('Profil complété !')

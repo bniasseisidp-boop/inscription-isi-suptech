@@ -61,6 +61,7 @@ const NAV = [
   { id: 'dashboard',   label: 'Tableau de bord',   icon: LayoutDashboard, color: 'text-isiblue-400',  badge: null },
   { id: 'etudiants',   label: 'Étudiants',          icon: Users,           color: 'text-isiblue-400',  badge: null },
   { id: 'paiements',   label: 'Paiements',           icon: CreditCard,      color: 'text-isigold-500',  badge: null },
+  { id: 'caisse',      label: 'Enregistrer un paiement', icon: Wallet,      color: 'text-isigold-500',  badge: null, external: '/caisse' },
   { id: 'filieres',    label: 'Filières & Niveaux',  icon: BookOpen,        color: 'text-isiblue-400',  badge: null },
   { id: 'programme',   label: 'Programme & Notes',   icon: GraduationCap,   color: 'text-isigold-500',  badge: null },
   { id: 'staff',       label: 'Équipe staff',        icon: Shield,          color: 'text-isiblue-400',  badge: null },
@@ -79,6 +80,7 @@ const NAV = [
 ]
 
 function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, onClose }) {
+  const navigate = useNavigate()
   const T = isDark ? {
     logo:   'text-white',
     sub:    'text-isiblue-400',
@@ -138,7 +140,7 @@ function SidebarContent({ active, setActive, onLogout, isDark, setIsDark, user, 
           const Icon = item.icon
           const isActive = active === item.id
           return (
-            <motion.button key={item.id} onClick={() => { setActive(item.id); onClose?.() }}
+            <motion.button key={item.id} onClick={() => { item.external ? navigate(item.external) : setActive(item.id); onClose?.() }}
               whileTap={{ scale: 0.97 }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${isActive ? T.active : T.item}`}>
               <div className={`flex-shrink-0 ${isActive ? '' : item.color}`}><Icon size={17}/></div>
@@ -501,7 +503,7 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
     try {
       const payload = new FormData()
       Object.entries(formData).forEach(([key, value]) => {
-        if (value === null || value === undefined) return
+        if (value === null || value === undefined || value === '') return
         if (key === 'photo' && value instanceof File) {
           payload.append('photo', value)
         } else {
@@ -534,6 +536,7 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
   const text = isDark ? 'text-white' : 'text-slate-900'
   const sub  = isDark ? 'text-white/60' : 'text-slate-500'
   const mute = isDark ? 'text-white/40' : 'text-slate-400'
+  const inputCls = isDark ? 'form-input' : 'form-input-light'
   const div  = isDark ? 'border-white/5' : 'border-slate-100'
   return (
     <>
@@ -598,13 +601,13 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                   <div key={key}>
                     <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
                     {key === 'sexe' ? (
-                      <select className="form-input" value={formData[key]} onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}>
+                      <select className={inputCls} value={formData[key]} onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}>
                         <option value="M">M</option>
                         <option value="F">F</option>
                       </select>
                     ) : (
                       <input
-                        className="form-input"
+                        className={inputCls}
                         value={formData[key]}
                         onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
                       />
@@ -627,7 +630,7 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                 ].map(([label, key]) => (
                   <div key={key}>
                     <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
-                    <input className="form-input" value={formData[key]}
+                    <input className={inputCls} value={formData[key]}
                       onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}/>
                   </div>
                 ))}
@@ -645,7 +648,7 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                 ].map(([label, key]) => (
                   <div key={key}>
                     <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
-                    <input className="form-input" value={formData[key]}
+                    <input className={inputCls} value={formData[key]}
                       onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}/>
                   </div>
                 ))}
@@ -663,7 +666,7 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
                 ].map(([label, key]) => (
                   <div key={key}>
                     <label className="block text-xs font-semibold mb-1 text-slate-500">{label}</label>
-                    <input className="form-input" value={formData[key]}
+                    <input className={inputCls} value={formData[key]}
                       onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}/>
                   </div>
                 ))}
