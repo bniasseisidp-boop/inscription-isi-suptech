@@ -71,7 +71,14 @@ class AdminController extends Controller
      */
     public function updateStudentProfile(Request $request, Student $student)
     {
-        $validated = $request->validate([
+        \Log::info('updateStudentProfile HIT', [
+            'student_id' => $student->id,
+            'method' => $request->method(),
+            'content_type' => $request->header('Content-Type'),
+            'keys_recues' => array_keys($request->except(['photo', '_method'])),
+        ]);
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             // Identité
             'nom'                => 'sometimes|string|max:100',
             'prenom'             => 'sometimes|string|max:100',
@@ -132,6 +139,18 @@ class AdminController extends Controller
             'medecin_famille'       => 'nullable|string|max:150',
             'tel_medecin'           => 'nullable|string|max:30',
         ]);
+
+        if ($validator->fails()) {
+            \Log::warning('updateStudentProfile VALIDATION FAILED', [
+                'student_id' => $student->id,
+                'errors' => $validator->errors()->toArray(),
+            ]);
+            return response()->json([
+                'message' => 'Validation échouée : ' . collect($validator->errors()->all())->implode(' — '),
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+        $validated = $validator->validated();
 
         if (array_key_exists('email', $validated)) {
             $email = $validated['email'];
