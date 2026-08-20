@@ -515,7 +515,9 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
       setEditing(false)
       onRefresh()
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Erreur mise à jour étudiant')
+      const errors = e.response?.data?.errors
+      const detail = errors ? Object.values(errors).flat().join(' — ') : null
+      toast.error(detail || e.response?.data?.message || 'Erreur mise à jour étudiant', { duration: 8000 })
     } finally {
       setSaving(false)
     }

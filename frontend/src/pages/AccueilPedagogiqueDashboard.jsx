@@ -85,7 +85,11 @@ function StudentDetailModal({ studentId, onClose, onUpdated }) {
       toast.success('Profil complété !')
       setEditingProfile(false)
       onUpdated?.()
-    } catch (e) { toast.error(e.response?.data?.message || 'Erreur mise à jour du profil') }
+    } catch (e) {
+      const errors = e.response?.data?.errors
+      const detail = errors ? Object.values(errors).flat().join(' — ') : null
+      toast.error(detail || e.response?.data?.message || 'Erreur mise à jour du profil', { duration: 8000 })
+    }
     finally { setSavingProfile(false) }
   }
 
