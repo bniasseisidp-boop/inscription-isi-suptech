@@ -517,7 +517,9 @@ function StudentDrawer({ student, onClose, onRefresh, isDark }) {
     } catch (e) {
       const errors = e.response?.data?.errors
       const detail = errors ? Object.values(errors).flat().join(' — ') : null
-      toast.error(detail || e.response?.data?.message || 'Erreur mise à jour étudiant', { duration: 8000 })
+      const status = e.response?.status
+      const raw = `[${e.code || 'NO_CODE'}] ${e.message || 'no message'}${status ? ' (HTTP ' + status + ')' : ' (pas de réponse serveur)'}`
+      toast.error(detail || e.response?.data?.message || raw, { duration: 15000 })
     } finally {
       setSaving(false)
     }
