@@ -88,16 +88,32 @@ export const createAdminStudent = (data) => api.post('/admin/etudiants', data, {
 })
 // PUT + multipart/form-data n'est jamais parse par PHP (seul POST recoit un body
 // multipart parse en $_POST/$_FILES) — Laravel verrait alors une requete sans aucun
-// champ et $student->update() serait un no-op silencieux. On envoie donc un vrai POST
-// avec un champ _method=PUT (method-spoofing standard de Laravel) pour que le body
-// multipart soit bien parse tout en routant vers le controleur PUT.
+// champ et $student->update() serait un no-op silencieux. Un vrai fichier (photo)
+// oblige donc a passer par POST + _method=PUT (method-spoofing). Mais sans fichier,
+// on envoie un PUT classique en JSON — plus simple, plus standard, et ca evite tout
+// souci eventuel avec un pare-feu applicatif qui flaguerait le spoofing de methode.
+const hasRealFile = (formData) => {
+  for (const value of formData.values()) {
+    if (value instanceof File) return true
+  }
+  return false
+}
+
 export const updatePedagogiqueStudent = (id, data) => {
-  data.append('_method', 'PUT')
-  return api.post(`/pedagogique/etudiants/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+  if (data instanceof FormData && hasRealFile(data)) {
+    data.append('_method', 'PUT')
+    return api.post(`/pedagogique/etudiants/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+  }
+  const payload = data instanceof FormData ? Object.fromEntries(data.entries()) : data
+  return api.put(`/pedagogique/etudiants/${id}`, payload)
 }
 export const updateAdminStudent = (id, data) => {
-  data.append('_method', 'PUT')
-  return api.post(`/admin/etudiants/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+  if (data instanceof FormData && hasRealFile(data)) {
+    data.append('_method', 'PUT')
+    return api.post(`/admin/etudiants/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
+  }
+  const payload = data instanceof FormData ? Object.fromEntries(data.entries()) : data
+  return api.put(`/admin/etudiants/${id}`, payload)
 }
 export const acceptStudent = (id, data) => api.post(`/admin/etudiants/${id}/accepter`, data)
 export const rejectStudent = (id, data) => api.post(`/admin/etudiants/${id}/rejeter`, data)
