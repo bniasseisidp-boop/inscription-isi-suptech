@@ -62,6 +62,7 @@ const NAV = [
   { id: 'etudiants',   label: 'Étudiants',          icon: Users,           color: 'text-isiblue-400',  badge: null },
   { id: 'paiements',   label: 'Paiements',           icon: CreditCard,      color: 'text-isigold-500',  badge: null },
   { id: 'caisse',      label: 'Enregistrer un paiement', icon: Wallet,      color: 'text-isigold-500',  badge: null, external: '/caisse' },
+  { id: 'pedagogique', label: 'Accueil Pédagogique', icon: UserCog,      color: 'text-isigold-500',  badge: null, external: '/pedagogique' },
   { id: 'filieres',    label: 'Filières & Niveaux',  icon: BookOpen,        color: 'text-isiblue-400',  badge: null },
   { id: 'programme',   label: 'Programme & Notes',   icon: GraduationCap,   color: 'text-isigold-500',  badge: null },
   { id: 'staff',       label: 'Équipe staff',        icon: Shield,          color: 'text-isiblue-400',  badge: null },

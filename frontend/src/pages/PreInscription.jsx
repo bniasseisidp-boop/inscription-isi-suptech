@@ -12,6 +12,7 @@ import {
 import Navbar from '../components/Navbar'
 import AnimatedBackground from '../components/AnimatedBackground'
 import { submitPreInscription, getFilieres } from '../services/api'
+import { NATIONALITES } from '../data/nationalites'
 
 const STEPS = ['Identité', 'Naissance & Adresse', 'Formation', 'Documents', 'Sécurité']
 
@@ -51,41 +52,6 @@ const VILLES_SENEGAL = [
   'Sédhiou', 'Bounkiling', 'Goudomp',
 ]
 
-const NATIONALITES = [
-  'Afghane', 'Albanaise', 'Algérienne', 'Allemande', 'Américaine', 'Andorrane',
-  'Angolaise', 'Antiguaise', 'Saoudienne', 'Argentine', 'Arménienne', 'Australienne',
-  'Autrichienne', 'Azerbaïdjanaise', 'Bahaméenne', 'Bahreïnienne', 'Bangladaise',
-  'Barbadienne', 'Bélarusse', 'Belge', 'Bélizienne', 'Béninoise', 'Bhoutanaise',
-  'Bolivienne', 'Bosniaque', 'Botswanaise', 'Brésilienne', 'Brunéienne', 'Bulgare',
-  'Burkinabè', 'Burundaise', 'Cambodgienne', 'Camerounaise', 'Canadienne',
-  'Cap-Verdienne', 'Centrafricaine', 'Chilienne', 'Chinoise', 'Chypriote',
-  'Colombienne', 'Comorienne', 'Congolaise (Brazzaville)', 'Congolaise (Kinshasa)',
-  'Coréenne (Nord)', 'Coréenne (Sud)', 'Costaricaine', 'Croate', 'Cubaine',
-  'Danoise', 'Djiboutienne', 'Dominicaine', 'Égyptienne', 'Émiratie',
-  'Équatorienne', 'Érythréenne', 'Espagnole', 'Estonienne', 'Éthiopienne',
-  'Fidjienne', 'Finlandaise', 'Française', 'Gabonaise', 'Gambienne',
-  'Géorgienne', 'Ghanéenne', 'Grecque', 'Guatémaltèque', 'Guinéenne',
-  'Bissau-Guinéenne', 'Équatoguinéenne', 'Guyanienne', 'Haïtienne', 'Hondurienne',
-  'Hongroise', 'Indienne', 'Indonésienne', 'Irakienne', 'Iranienne',
-  'Irlandaise', 'Islandaise', 'Israélienne', 'Italienne', 'Ivoirienne',
-  'Jamaïcaine', 'Japonaise', 'Jordanienne', 'Kazakhstanaise', 'Kényane',
-  'Kirghize', 'Koweïtienne', 'Laotienne', 'Lesothane', 'Lettone',
-  'Libanaise', 'Libérienne', 'Libyenne', 'Lituanienne', 'Luxembourgeoise',
-  'Malgache', 'Malaisienne', 'Malawienne', 'Maldivienne', 'Malienne',
-  'Maltaise', 'Marocaine', 'Mauritanienne', 'Mauricienne', 'Mexicaine',
-  'Moldave', 'Monégasque', 'Mongole', 'Monténégrine', 'Mozambicaine',
-  'Namibienne', 'Népalaise', 'Nicaraguayenne', 'Nigérienne', 'Nigériane',
-  'Norvégienne', 'Néo-Zélandaise', 'Omanaise', 'Ougandaise', 'Ouzbèke',
-  'Pakistanaise', 'Palestinienne', 'Panaméenne', 'Paraguayenne', 'Néerlandaise',
-  'Péruvienne', 'Philippine', 'Polonaise', 'Portugaise', 'Qatarienne',
-  'Roumaine', 'Russe', 'Rwandaise', 'Salvadorienne', 'São-Toméenne',
-  'Sénégalaise', 'Serbe', 'Sierra-Léonaise', 'Singapourienne', 'Slovaque',
-  'Slovène', 'Somalienne', 'Soudanaise', 'Sri-Lankaise', 'Sud-Africaine',
-  'Sud-Soudanaise', 'Suédoise', 'Suisse', 'Syrienne', 'Tadjike',
-  'Tanzanienne', 'Tchadienne', 'Tchèque', 'Thaïlandaise', 'Togolaise',
-  'Trinidadienne', 'Tunisienne', 'Turque', 'Ukrainienne', 'Uruguayenne',
-  'Vénézuélienne', 'Vietnamienne', 'Yéménite', 'Zambienne', 'Zimbabwéenne',
-]
 
 // Les 54 pays d'Afrique, chacun avec ses principales villes (chef-lieu inclus).
 // La ville "Autre (préciser)…" est ajoutée automatiquement à l'affichage.

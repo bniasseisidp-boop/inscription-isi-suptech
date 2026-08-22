@@ -67,6 +67,35 @@ class AccueilPedagogiqueController extends Controller
             'filiere_id'     => 'required|exists:filieres,id',
             'license_id'     => 'required|exists:licenses,id',
             'photo'          => 'nullable|image|max:3072',
+            // Académique
+            'annee_bac'             => 'nullable|string|max:20',
+            'numero_pv_bac'         => 'nullable|string|max:50',
+            'serie_college'         => 'nullable|string|max:50',
+            'region_bac'            => 'nullable|string|max:100',
+            'dernier_diplome'       => 'nullable|string|max:150',
+            'annee_dernier_diplome' => 'nullable|string|max:20',
+            'dernier_etablissement' => 'nullable|string|max:150',
+            'numero_ine'            => 'nullable|string|max:50',
+            // Tuteur 1
+            'tuteur_nom'            => 'nullable|string|max:150',
+            'tuteur_profession'     => 'nullable|string|max:150',
+            'tuteur_telephone'      => 'nullable|string|max:30',
+            'tuteur_email'          => 'nullable|email|max:150',
+            'tuteur_identite'       => 'nullable|string|max:50',
+            // Tuteur 2
+            'tuteur2_nom'           => 'nullable|string|max:150',
+            'tuteur2_profession'    => 'nullable|string|max:150',
+            'tuteur2_telephone'     => 'nullable|string|max:30',
+            'tuteur2_email'         => 'nullable|email|max:150',
+            // Urgence & médical
+            'contact_urgence1'      => 'nullable|string|max:150',
+            'tel_urgence1'          => 'nullable|string|max:30',
+            'contact_urgence2'      => 'nullable|string|max:150',
+            'tel_urgence2'          => 'nullable|string|max:30',
+            'traitement_medical'    => 'nullable|string|max:255',
+            'allergies'             => 'nullable|string|max:255',
+            'medecin_famille'       => 'nullable|string|max:150',
+            'tel_medecin'           => 'nullable|string|max:30',
         ]);
 
         $photoPath = $request->hasFile('photo')

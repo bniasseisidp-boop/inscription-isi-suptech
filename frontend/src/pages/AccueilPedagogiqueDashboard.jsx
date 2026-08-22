@@ -24,6 +24,7 @@ import {
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 import CurriculumManager from '../components/CurriculumManager'
+import { NATIONALITES } from '../data/nationalites'
 
 const STATUT_COLORS = {
   accepte:             'text-green-700 bg-green-500/10 border-green-300',
@@ -512,8 +513,18 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
   const [form, setForm] = useState({
     nom: '', prenom: '', email: '', telephone: '', sexe: 'M',
     date_naissance: '', lieu_naissance: '', adresse: '',
-    nationalite: 'Sénégalais(e)', pays_residence: 'Sénégal',
+    nationalite: 'Sénégalaise', pays_residence: 'Sénégal',
     filiere_id: defaultFiliereId || '', license_id: '',
+    // Académique
+    annee_bac: '', numero_pv_bac: '', serie_college: '', region_bac: '',
+    dernier_diplome: '', annee_dernier_diplome: '', dernier_etablissement: '', numero_ine: '',
+    // Tuteur 1
+    tuteur_nom: '', tuteur_profession: '', tuteur_telephone: '', tuteur_email: '', tuteur_identite: '',
+    // Tuteur 2
+    tuteur2_nom: '', tuteur2_profession: '', tuteur2_telephone: '', tuteur2_email: '',
+    // Urgence & médical
+    contact_urgence1: '', tel_urgence1: '', contact_urgence2: '', tel_urgence2: '',
+    traitement_medical: '', allergies: '', medecin_famille: '', tel_medecin: '',
   })
   const [photo, setPhoto] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -582,7 +593,12 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
             <AddStudentField form={form} set={set} label="Date de naissance" name="date_naissance" type="date" required/>
             <AddStudentField form={form} set={set} label="Lieu de naissance" name="lieu_naissance" required placeholder="Dakar"/>
             <AddStudentField form={form} set={set} label="Adresse" name="adresse" required placeholder="Dakar, Médina..."/>
-            <AddStudentField form={form} set={set} label="Nationalité" name="nationalite" placeholder="Sénégalais(e)"/>
+            <div>
+              <label className="form-label-light text-xs">Nationalité</label>
+              <select className="form-input-light text-sm py-2" value={form.nationalite} onChange={e => set('nationalite', e.target.value)}>
+                {NATIONALITES.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
             <AddStudentField form={form} set={set} label="Pays de résidence" name="pays_residence" placeholder="Sénégal"/>
 
             <div>
@@ -602,6 +618,43 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
                 {selectedFiliere?.licenses?.map(l => <option key={l.id} value={l.id}>{l.nom}</option>)}
               </select>
             </div>
+          </div>
+
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 pt-2 border-t border-slate-200">Infos académiques (optionnel)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <AddStudentField form={form} set={set} label="Année du bac" name="annee_bac" placeholder="2024"/>
+            <AddStudentField form={form} set={set} label="N° PV bac" name="numero_pv_bac"/>
+            <AddStudentField form={form} set={set} label="Série" name="serie_college"/>
+            <AddStudentField form={form} set={set} label="Région du bac" name="region_bac"/>
+            <AddStudentField form={form} set={set} label="Dernier diplôme" name="dernier_diplome"/>
+            <AddStudentField form={form} set={set} label="Année du dernier diplôme" name="annee_dernier_diplome"/>
+            <AddStudentField form={form} set={set} label="Dernier établissement" name="dernier_etablissement"/>
+            <AddStudentField form={form} set={set} label="Numéro INE" name="numero_ine"/>
+          </div>
+
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 pt-2 border-t border-slate-200">Tuteur(s) (optionnel)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <AddStudentField form={form} set={set} label="Tuteur 1 — Nom" name="tuteur_nom"/>
+            <AddStudentField form={form} set={set} label="Tuteur 1 — Profession" name="tuteur_profession"/>
+            <AddStudentField form={form} set={set} label="Tuteur 1 — Téléphone" name="tuteur_telephone"/>
+            <AddStudentField form={form} set={set} label="Tuteur 1 — Email" name="tuteur_email" type="email"/>
+            <AddStudentField form={form} set={set} label="Tuteur 1 — N° Pièce identité" name="tuteur_identite"/>
+            <AddStudentField form={form} set={set} label="Tuteur 2 — Nom" name="tuteur2_nom"/>
+            <AddStudentField form={form} set={set} label="Tuteur 2 — Profession" name="tuteur2_profession"/>
+            <AddStudentField form={form} set={set} label="Tuteur 2 — Téléphone" name="tuteur2_telephone"/>
+            <AddStudentField form={form} set={set} label="Tuteur 2 — Email" name="tuteur2_email" type="email"/>
+          </div>
+
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 pt-2 border-t border-slate-200">Urgence & médical (optionnel)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <AddStudentField form={form} set={set} label="Contact urgence 1" name="contact_urgence1"/>
+            <AddStudentField form={form} set={set} label="Téléphone urgence 1" name="tel_urgence1"/>
+            <AddStudentField form={form} set={set} label="Contact urgence 2" name="contact_urgence2"/>
+            <AddStudentField form={form} set={set} label="Téléphone urgence 2" name="tel_urgence2"/>
+            <AddStudentField form={form} set={set} label="Traitement médical" name="traitement_medical"/>
+            <AddStudentField form={form} set={set} label="Allergies" name="allergies"/>
+            <AddStudentField form={form} set={set} label="Médecin de famille" name="medecin_famille"/>
+            <AddStudentField form={form} set={set} label="Téléphone médecin" name="tel_medecin"/>
           </div>
 
           <div className="flex gap-3 pt-2 border-t border-slate-200">
