@@ -10,7 +10,7 @@ import {
   MessageSquare, Mail, Share2, Trash2, ThumbsUp, Star, Send,
   GraduationCap, Building2, Sun, Moon, Menu, ChevronRight,
   TrendingUp, Shield, Calendar, Download, ExternalLink, ToggleLeft, ToggleRight, Wallet, Lock, AlertTriangle, Upload,
-  KeyRound, Activity, Power, ShieldCheck, UserCog, Camera, Image as ImageIcon
+  KeyRound, Activity, Power, ShieldCheck, UserCog, Camera, Image as ImageIcon, UserCheck
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import CurriculumManager from '../components/CurriculumManager'
