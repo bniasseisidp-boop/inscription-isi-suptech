@@ -189,8 +189,7 @@ function StatCard({ label, value, icon: Icon, color = 'brand', sub, isDark }) {
       <div className={`text-3xl font-black ${textMain}`}>{value ?? '—'}</div>
       <div className={`text-sm mt-1 ${textSub}`}>{label}</div>
       {sub && <div className={`text-xs mt-0.5 ${isDark?'text-white/30':'text-slate-400'}`}>{sub}</div>}
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
-    </div>
+      </div>
   )
 }
 
@@ -319,8 +318,7 @@ function ActionModal({ student, action, onClose, onDone, isDark }) {
           </button>
         </div>
       </motion.div>
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
-    </div>
+      </div>
   )
 }
 
@@ -345,8 +343,7 @@ function DocPreviewModal({ url, label, onClose }) {
             : <img src={url} className="max-w-full max-h-full object-contain" alt={label}/>}
         </div>
       </motion.div>
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
-    </div>
+      </div>
   )
 }
 
@@ -2871,7 +2868,7 @@ export default function AdminDashboard() {
             onClose={() => setDrawerStudent(null)} onRefresh={loadStudents}/>
         )}
       </AnimatePresence>
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
+        <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
     </div>
   )
 }

@@ -507,8 +507,7 @@ function AddStudentField({ form, set, label, name, type = 'text', placeholder = 
       <label className="form-label-light text-xs">{label}{required && <span className="text-red-500"> *</span>}</label>
       <input className="form-input-light text-sm py-2" type={type} placeholder={placeholder}
         value={form[name]} onChange={e => set(name, e.target.value)} required={required}/>
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
-    </div>
+      </div>
   )
 }
 
@@ -1480,7 +1479,7 @@ export default function AccueilPedagogiqueDashboard() {
           />
         )}
       </AnimatePresence>
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
+        <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
     </div>
   )
 }
