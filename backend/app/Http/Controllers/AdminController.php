@@ -1180,23 +1180,150 @@ class AdminController extends Controller
      */
     public function getStudentDossierHistorique(Student $student)
     {
-        $student->loadMissing(['filiere', 'license', 'payments', 'notes.matiere.module.semestre']);
+        $student->loadMissing(['filiere', 'license.semestres.modules.matieres', 'payments', 'notes.matiere.module.semestre', 'user']);
 
+        $notes = $student->notes;
+        $notesByMatiere = [];
+        foreach ($notes as $n) {
+            $notesByMatiere[$n->matiere_id] = $n;
+        }
+
+        $semestresData = [];
+        $license = $student->license;
+
+        if ($license && $license->semestres) {
+            foreach ($license->semestres->sortBy('numero') as $sem) {
+                $modulesData = [];
+                $semTotalPond = 0;
+                $semTotalCoeff = 0;
+                $semCreditsObtenus = 0;
+                $semCreditsTotal = $sem->credits_requis ?: 30;
+
+                foreach ($sem->modules->sortBy('ordre') as $mod) {
+                    $matieresData = [];
+                    $ueTotalPond = 0;
+                    $ueTotalCoeff = 0;
+                    $ueCredits = floatval($mod->credits ?: 6);
+
+                    foreach ($mod->matieres->sortBy('ordre') as $mat) {
+                        $note = $notesByMatiere[$mat->id] ?? null;
+                        $coeff = floatval($mat->coef ?: 1.0);
+                        $cc = $note ? floatval($note->mcc) : null;
+                        $exam = $note ? floatval($note->examen) : null;
+                        
+                        $moy = null;
+                        $valide = false;
+                        $appreciation = 'Non évalué';
+
+                        if ($cc !== null || $exam !== null) {
+                            $c = $cc ?? 0;
+                            $e = $exam ?? 0;
+                            $moy = round(($c * 0.4) + ($e * 0.6), 2);
+                            $valide = $moy >= 10.0;
+                            if ($moy >= 16) $appreciation = 'Très bien';
+                            elseif ($moy >= 14) $appreciation = 'Bien';
+                            elseif ($moy >= 12) $appreciation = 'Assez bien';
+                            elseif ($moy >= 10) $appreciation = 'Passable';
+                            else $appreciation = 'Insuffisant / Ajourné';
+
+                            $ueTotalPond += ($moy * $coeff);
+                            $ueTotalCoeff += $coeff;
+                        }
+
+                        $matieresData[] = [
+                            'id' => $mat->id,
+                            'nom' => $mat->nom,
+                            'code' => $mat->code,
+                            'coeff' => $coeff,
+                            'credits' => floatval($mat->credits ?: 2.0),
+                            'cc' => $cc,
+                            'examen' => $exam,
+                            'moyenne' => $moy,
+                            'valide' => $valide,
+                            'appreciation' => $appreciation,
+                        ];
+                    }
+
+                    $moyUe = $ueTotalCoeff > 0 ? round($ueTotalPond / $ueTotalCoeff, 2) : 0;
+                    $ueValide = $moyUe >= 10.0;
+                    $statutUe = $ueValide ? 'MODULE VALIDÉ' : ($moyUe > 0 ? 'AJOURNÉ' : 'EN COURS');
+
+                    if ($ueValide) {
+                        $semCreditsObtenus += $ueCredits;
+                    }
+
+                    if ($ueTotalCoeff > 0) {
+                        $semTotalPond += ($moyUe * $ueCredits);
+                        $semTotalCoeff += $ueCredits;
+                    }
+
+                    $modulesData[] = [
+                        'id' => $mod->id,
+                        'nom' => $mod->nom,
+                        'code' => $mod->code,
+                        'credits' => $ueCredits,
+                        'moyenne_ue' => $moyUe,
+                        'statut_ue' => $statutUe,
+                        'valide' => $ueValide,
+                        'matieres' => $matieresData,
+                    ];
+                }
+
+                $moySem = $semTotalCoeff > 0 ? round($semTotalPond / $semTotalCoeff, 2) : 0;
+                $semValide = $moySem >= 10.0;
+
+                $semestresData[] = [
+                    'id' => $sem->id,
+                    'numero' => $sem->numero,
+                    'libelle' => $sem->libelle,
+                    'credits_requis' => $semCreditsTotal,
+                    'credits_obtenus' => $semCreditsObtenus,
+                    'moyenne_semestre' => $moySem,
+                    'valide' => $semValide,
+                    'decision' => $semValide ? 'Validé' : ($moySem > 0 ? 'Ajourné' : 'En cours'),
+                    'modules' => $modulesData,
+                ];
+            }
+        }
+
+        // Financial calculations
         $totalPaye = $student->payments->where('statut', 'complete')->sum('montant');
-        $moisPayes = $student->payments->where('statut', 'complete')->whereNotNull('mois')->pluck('mois')->toArray();
-        $notesGrouped = $student->notes->groupBy('annee_scolaire');
+        if ($totalPaye == 0 && floatval($student->avance_paiement ?? 0) > 0) {
+            $totalPaye = floatval($student->avance_paiement);
+        }
+        $scolariteDue = floatval($student->frais_scolarite_total ?? 0);
+        $soldeRestant = max(0, $scolariteDue - $totalPaye);
 
         return response()->json([
             'student'          => $student,
+            'semestres_data'   => $semestresData,
+            'caisse_data'      => [
+                'total_du'       => $scolariteDue,
+                'total_paye'     => $totalPaye,
+                'solde_restant'  => $soldeRestant,
+                'est_en_regle'   => $student->estEnRegle(),
+                'mois_non_payes' => $student->mois_non_payes,
+                'paiements'      => $student->payments->map(function ($p) {
+                    return [
+                        'id'       => $p->id,
+                        'date'     => $p->date_paiement ? $p->date_paiement->format('d/m/Y') : $p->created_at->format('d/m/Y'),
+                        'montant'  => $p->montant,
+                        'type'     => $p->type,
+                        'mois'     => $p->mois,
+                        'methode'  => $p->methode,
+                        'statut'   => $p->statut,
+                        'recu_url' => $p->recu_pdf_path ? asset('storage/' . $p->recu_pdf_path) : null,
+                    ];
+                }),
+            ],
             'total_paye'       => $totalPaye,
-            'mois_payes'       => $moisPayes,
+            'mois_payes'       => $student->mois_payes_cle,
             'mois_non_payes'   => $student->mois_non_payes,
             'est_en_regle'     => $student->estEnRegle(),
-            'notes_par_annee'  => $notesGrouped,
+            'notes_par_annee'  => $notes->groupBy('annee_scolaire'),
             'total_paiements'  => $student->payments->count(),
         ]);
     }
-
     public function getAnneesScolaires()
     {
         $years = DB::table('students')->select('annee_scolaire')->distinct()->whereNotNull('annee_scolaire')->orderBy('annee_scolaire', 'desc')->pluck('annee_scolaire');

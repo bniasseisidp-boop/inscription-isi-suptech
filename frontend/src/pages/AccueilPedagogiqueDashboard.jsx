@@ -25,6 +25,7 @@ import {
 import LightPremiumBackground from '../components/LightPremiumBackground'
 import CurriculumManager from '../components/CurriculumManager'
 import ReinscriptionModal from '../components/ReinscriptionModal'
+import StudentHistoricalDossierModal from '../components/StudentHistoricalDossierModal'
 import { sendStudentInvite } from '../services/api'
 import { NATIONALITES } from '../data/nationalites'
 
@@ -675,6 +676,8 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
 /* ── Page principale ──────────────────────────────────────────────────────── */
 export default function AccueilPedagogiqueDashboard() {
   const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
+  const [showDossierModal, setShowDossierModal] = useState(false)
+  const [dossierStudent, setDossierStudent] = useState(null)
   const { logout, user, updateUser } = useAuth()
   const navigate = useNavigate()
 
@@ -1517,7 +1520,17 @@ export default function AccueilPedagogiqueDashboard() {
           />
         )}
       </AnimatePresence>
-        <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
+              <StudentHistoricalDossierModal
+        isOpen={showDossierModal}
+        onClose={() => { setShowDossierModal(false); setDossierStudent(null); }}
+        student={dossierStudent}
+        onOpenReinscription={(st) => {
+          setSelectedStudentForReins(st)
+          setShowReinscriptionModal(true)
+        }}
+      />
+
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
     </div>
   )
 }

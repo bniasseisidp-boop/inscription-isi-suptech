@@ -308,3 +308,16 @@ export const sendStudentInvite = (id) => api.post(`/admin/etudiants/${id}/send-i
 export const getStudentDossierHistorique = (id) => api.get(`/admin/etudiants/${id}/historique-dossier`)
 
 export const getAcademicYears = () => api.get('/admin/annees-scolaires')
+
+
+export const downloadBulletinBlob = (studentId, semestreId, params = {}) =>
+  api.post(`/curriculum/semestres/${semestreId}/etudiants/${studentId}/bulletin-pdf`, params, { responseType: 'blob' })
+
+export const downloadAttestationInscriptionBlob = (studentId) =>
+  api.get(`/admin/etudiants/${studentId}/attestation-inscription`, { responseType: 'blob' })
+
+export const downloadCertificatScolariteBlob = (studentId) =>
+  api.get(`/admin/etudiants/${studentId}/certificat-scolarite`, { responseType: 'blob' })
+
+export const downloadFicheInscriptionBlob = (studentId) =>
+  api.get(`/admin/etudiants/${studentId}/fiche-inscription`, { responseType: 'blob' })

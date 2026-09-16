@@ -21,6 +21,7 @@ import {
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 import ReinscriptionModal from '../components/ReinscriptionModal'
+import StudentHistoricalDossierModal from '../components/StudentHistoricalDossierModal'
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 function fmt(n) { return Number(n || 0).toLocaleString('fr-FR') }
@@ -554,6 +555,8 @@ export default function CashierDashboard() {
   // Academic Year State
   const [selectedAnnee, setSelectedAnnee] = useState('2026-2027')
   const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
+  const [showDossierModal, setShowDossierModal] = useState(false)
+  const [dossierStudent, setDossierStudent] = useState(null)
   const [selectedStudentForReins, setSelectedStudentForReins] = useState(null)
   const [availableYears, setAvailableYears] = useState(['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018'])
 

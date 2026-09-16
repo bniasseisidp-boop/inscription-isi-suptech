@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import CurriculumManager from '../components/CurriculumManager'
 import ReinscriptionModal from '../components/ReinscriptionModal'
+import StudentHistoricalDossierModal from '../components/StudentHistoricalDossierModal'
 import { sendStudentInvite } from '../services/api'
 import {
   getAcademicYears,
@@ -910,6 +911,8 @@ export default function AdminDashboard() {
   const [newLicense, setNewLicense]   = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false })
   const [showCreateStudent, setShowCreateStudent] = useState(false)
   const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
+  const [showDossierModal, setShowDossierModal] = useState(false)
+  const [dossierStudent, setDossierStudent] = useState(null)
     const [availableYears, setAvailableYears] = useState(['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018'])
 
   useEffect(() => {
@@ -3074,7 +3077,18 @@ export default function AdminDashboard() {
             onClose={() => setDrawerStudent(null)} onRefresh={loadStudents}/>
         )}
       </AnimatePresence>
-        <ReinscriptionModal isOpen={showReinscriptionModal} initialStudent={selectedStudentForReins} onClose={() => { setShowReinscriptionModal(false); setSelectedStudentForReins(null) }} onSuccess={() => { loadStudents(); loadAnciens() }} isDark={isDark} />
+              <StudentHistoricalDossierModal
+        isOpen={showDossierModal}
+        onClose={() => { setShowDossierModal(false); setDossierStudent(null); }}
+        student={dossierStudent}
+        onOpenReinscription={(st) => {
+          setSelectedStudentForReins(st)
+          setShowReinscriptionModal(true)
+        }}
+        isDark={isDark}
+      />
+
+      <ReinscriptionModal isOpen={showReinscriptionModal} initialStudent={selectedStudentForReins} onClose={() => { setShowReinscriptionModal(false); setSelectedStudentForReins(null) }} onSuccess={() => { loadStudents(); loadAnciens() }} isDark={isDark} />
     </div>
   )
 }
