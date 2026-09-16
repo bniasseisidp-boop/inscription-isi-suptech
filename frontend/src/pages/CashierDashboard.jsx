@@ -19,6 +19,7 @@ import {
   updateMyPassword, updateMyPhoto, downloadFactureProformaBlob,
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
+import ReinscriptionModal from '../components/ReinscriptionModal'
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 function fmt(n) { return Number(n || 0).toLocaleString('fr-FR') }
@@ -551,6 +552,8 @@ export default function CashierDashboard() {
   
   // Academic Year State
   const [selectedAnnee, setSelectedAnnee] = useState('2026-2027')
+  const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
+  const [selectedStudentForReins, setSelectedStudentForReins] = useState(null)
   const [availableYears, setAvailableYears] = useState(['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018'])
 
   useEffect(() => {
@@ -787,7 +790,8 @@ export default function CashierDashboard() {
 
   const NAV = [
     { id: 'dashboard',  label: 'Tableau de bord',  icon: LayoutDashboard },
-    { id: 'etudiants',  label: 'Étudiants',         icon: UserSearch },
+    { id: 'etudiants',  label: 'Étudiants (En cours)', icon: UserSearch },
+    { id: 'anciens',    label: 'Anciens Étudiants',   icon: Clock },
     { id: 'paiements',  label: 'Paiements',         icon: TrendingUp },
     { id: 'saisie',     label: 'Saisir paiement',   icon: Plus },
     { id: 'impayes',    label: 'Impayés du mois',   icon: AlertTriangle },
@@ -938,7 +942,23 @@ export default function CashierDashboard() {
               {NAV.find(n => n.id === active)?.label}
             </h1>
           </div>
-          <div className="text-isigold-600 text-xs font-semibold uppercase tracking-wider flex-shrink-0">Caisse</div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-center gap-1.5 bg-isiblue-50 border border-isiblue-200 rounded-xl px-2.5 py-1">
+                <Calendar size={13} className="text-isiblue-600"/>
+                <select
+                  value={selectedAnnee}
+                  onChange={e => setSelectedAnnee(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-isiblue-700 outline-none cursor-pointer"
+                >
+                  <option value="2026-2027">2026-2027 (En cours)</option>
+                  {availableYears.filter(y => y !== "2026-2027").map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                  <option value="ALL">Toutes les années (Global)</option>
+                </select>
+              </div>
+              <div className="text-isigold-600 text-xs font-semibold uppercase tracking-wider flex-shrink-0">Caisse</div>
+            </div>
         </div>
 
         <div className="p-6">

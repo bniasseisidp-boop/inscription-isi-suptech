@@ -168,6 +168,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Cashier routes ──────────────────────────────────────────────────────
     Route::middleware('role:cashier,admin')->prefix('caisse')->group(function () {
+        // Réinscription & Historique Ancien Étudiant
+        Route::post('/etudiants/reinscrire',                  [AdminController::class, 'reinscrireStudent']);
+        Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);
+        Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+
         Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
         Route::get('/paiements', [PaymentController::class, 'index']);
         Route::post('/paiement', [PaymentController::class, 'manualPayment']);

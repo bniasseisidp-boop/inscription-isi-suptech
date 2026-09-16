@@ -11,7 +11,7 @@ import {
   getStudentDossierHistorique
 } from '../services/api'
 
-export default function ReinscriptionModal({ isOpen, onClose, onSuccess, isDark = false }) {
+export default function ReinscriptionModal({ isOpen, onClose, onSuccess, initialStudent = null, isDark = false }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searchResults, setSearchResults] = useState([])
@@ -24,19 +24,32 @@ export default function ReinscriptionModal({ isOpen, onClose, onSuccess, isDark 
   const [targetLicenseId, setTargetLicenseId] = useState('')
   const [targetAnnee, setTargetAnnee] = useState('2026-2027')
   const [fraisReinscription, setFraisReinscription] = useState('')
+  const [studentEmail, setStudentEmail] = useState('')
   const [sendEmail, setSendEmail] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  // Load filieres
+  // Load filieres & initial student
   useEffect(() => {
     if (isOpen) {
       getFilieres().then(({ data }) => setFilieres(data)).catch(() => {})
-      setSelectedStudent(null)
-      setHistoryData(null)
-      setSearchQuery('')
-      setSearchResults([])
+      if (initialStudent) {
+        setSelectedStudent(initialStudent)
+        setStudentEmail(initialStudent.email || '')
+        if (initialStudent.filiere_id) setTargetFiliereId(initialStudent.filiere_id)
+        if (initialStudent.license_id) setTargetLicenseId(initialStudent.license_id)
+        setLoadingHistory(true)
+        getStudentDossierHistorique(initialStudent.id)
+          .then(({ data }) => setHistoryData(data))
+          .catch(() => {})
+          .finally(() => setLoadingHistory(false))
+      } else {
+        setSelectedStudent(null)
+        setHistoryData(null)
+        setSearchQuery('')
+        setSearchResults([])
+      }
     }
-  }, [isOpen])
+  }, [isOpen, initialStudent])
 
   // Live search for students
   useEffect(() => {
@@ -118,6 +131,7 @@ export default function ReinscriptionModal({ isOpen, onClose, onSuccess, isDark 
         license_id: targetLicenseId,
         annee_scolaire: targetAnnee,
         frais_reinscription: fraisReinscription ? parseFloat(fraisReinscription) : null,
+        email: studentEmail,
         send_email: sendEmail,
       }
       const { data } = await reinscrireStudent(payload)
@@ -362,6 +376,19 @@ export default function ReinscriptionModal({ isOpen, onClose, onSuccess, isDark 
                     </div>
                   </div>
                 </div>
+
+                <div className="md:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Email de l'étudiant (pour envoi des identifiants & accès portail)
+                    </label>
+                    <input
+                      type="email"
+                      value={studentEmail}
+                      onChange={(e) => setStudentEmail(e.target.value)}
+                      placeholder="etudiant@suptech.sn ou email personnel"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-isiblue-500"
+                    />
+                  </div>
 
                 {/* Email Portal Invite Option */}
                 <div className="pt-2 border-t border-slate-100 flex items-center justify-between">

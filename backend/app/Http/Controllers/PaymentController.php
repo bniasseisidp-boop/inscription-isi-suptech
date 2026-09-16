@@ -647,6 +647,8 @@ class PaymentController extends Controller
     {
         $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
         $today = now()->toDateString();
+        $thisMonth = now()->month;
+        $thisYear  = now()->year;
         
         $pQuery = Payment::where('statut', 'complete');
         if ($annee && $annee !== 'ALL') {
@@ -654,11 +656,11 @@ class PaymentController extends Controller
         }
 
         return response()->json([
-            'total_jour'     => Payment::where('statut', 'complete')->whereDate('date_paiement', $today)->sum('montant'),
-            'total_mois'     => Payment::where('statut', 'complete')->whereMonth('date_paiement', now()->month)->sum('montant'),
+            'total_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
+            'total_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),
             'total_annee'    => (clone $pQuery)->sum('montant'),
-            'count_jour'     => Payment::where('statut', 'complete')->whereDate('date_paiement', $today)->count(),
-            'count_mois'     => Payment::where('statut', 'complete')->whereMonth('date_paiement', now()->month)->count(),
+            'count_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
+            'count_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
             'count_annee'    => (clone $pQuery)->count(),
             'total_attente'  => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
             'total_inscrits' => Student::where('statut_inscription', 'accepte')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),

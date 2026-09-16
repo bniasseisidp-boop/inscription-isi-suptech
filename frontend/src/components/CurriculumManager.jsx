@@ -693,7 +693,8 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
   const [results, setResults] = useState([])
   const [student, setStudent] = useState(null)
   const [notesForm, setNotesForm] = useState({})
-  const [anneeScolaire, setAnneeScolaire] = useState(`${new Date().getFullYear()}-${new Date().getFullYear() + 1}`)
+  const [anneeScolaire, setAnneeScolaire] = useState('2026-2027')
+  const availableYears = ['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']
   const [saving, setSaving] = useState(false)
   const [bulletin, setBulletin] = useState(null)
   const [downloading, setDownloading] = useState(false)
@@ -703,7 +704,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
   useEffect(() => {
     if (search.length < 2 || !searchStudents) { setResults([]); return }
     const t = setTimeout(() => {
-      searchStudents(search).then(list => setResults(list || [])).catch(() => {})
+      searchStudents(search, anneeScolaire).then(list => setResults(list || [])).catch(() => {})
     }, 350)
     return () => clearTimeout(t)
   }, [search, searchStudents])

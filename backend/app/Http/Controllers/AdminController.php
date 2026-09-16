@@ -47,7 +47,7 @@ class AdminController extends Controller
         $rejetes           = (clone $sQuery)->where('statut_inscription', 'rejete')->count();
         $inscritsPayes     = (clone $sQuery)->where('statut_inscription', 'accepte')->where('inscription_payee', true)->count();
         $recettesTotales   = (clone $pQuery)->sum('montant');
-        $recettesMois      = (clone $pQuery)->whereMonth('date_paiement', now()->month)->sum('montant');
+        $recettesMois      = (clone $pQuery)->whereYear('date_paiement', now()->year)->whereMonth('date_paiement', now()->month)->sum('montant');
 
         return response()->json([
             'total_candidatures'    => $totalCandidatures,

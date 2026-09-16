@@ -62,7 +62,8 @@ const YEARS_DIPLOMA = (() => { const y = new Date().getFullYear(); const arr = [
 
 const NAV = [
   { id: 'dashboard',   label: 'Tableau de bord',   icon: LayoutDashboard, color: 'text-isiblue-400',  badge: null },
-  { id: 'etudiants',   label: 'Étudiants',          icon: Users,           color: 'text-isiblue-400',  badge: null },
+  { id: 'etudiants',   label: 'Étudiants (En cours)', icon: Users,         color: 'text-isiblue-400',  badge: null },
+  { id: 'anciens',     label: 'Anciens Étudiants',   icon: Clock,           color: 'text-amber-400',    badge: 'Archive' },
   { id: 'paiements',   label: 'Paiements',           icon: CreditCard,      color: 'text-isigold-500',  badge: null },
   { id: 'caisse',      label: 'Enregistrer un paiement', icon: Wallet,      color: 'text-isigold-500',  badge: null, external: '/caisse' },
   { id: 'pedagogique', label: 'Accueil Pédagogique', icon: UserCog,      color: 'text-isigold-500',  badge: null, external: '/pedagogique' },
@@ -909,6 +910,13 @@ export default function AdminDashboard() {
   const [newLicense, setNewLicense]   = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false })
   const [showCreateStudent, setShowCreateStudent] = useState(false)
   const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
+  const [searchAnciens, setSearchAnciens] = useState('')
+  const [filterAnneeAnciens, setFilterAnneeAnciens] = useState('ALL')
+  const [filterFiliereAnciens, setFilterFiliereAnciens] = useState('')
+  const [anciensList, setAnciensList] = useState([])
+  const [anciensPagination, setAnciensPagination] = useState({})
+  const [anciensLoading, setAnciensLoading] = useState(false)
+  const [selectedStudentForReins, setSelectedStudentForReins] = useState(null)
   const [savingStudent, setSavingStudent] = useState(false)
   const [newStudent, setNewStudent] = useState({
       nom: '', prenom: '', email: '', telephone: '', sexe: 'M', date_naissance: '', lieu_naissance: '',
@@ -992,6 +1000,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (active === 'dashboard')  { setLoading(true); getAdminStats().then(({ data }) => setStats(data)).catch(() => {}).finally(() => setLoading(false)) }
+    if (active === 'anciens')   loadAnciens()
     if (active === 'etudiants')  {
       loadStudents()
       if (filieres.length === 0) {
@@ -1138,6 +1147,27 @@ export default function AdminDashboard() {
       setSendingAnnounce(false)
     }
   }
+
+    const loadAnciens = async (page = 1) => {
+    setAnciensLoading(true)
+    try {
+      const params = { page }
+      if (searchAnciens) params.search = searchAnciens
+      if (filterFiliereAnciens) params.filiere_id = filterFiliereAnciens
+      if (filterAnneeAnciens && filterAnneeAnciens !== 'ALL') params.annee_scolaire = filterAnneeAnciens
+      else params.annee_scolaire = 'ALL'
+      const { data } = await getAdminStudents(params)
+      setAnciensList(data.data || [])
+      setAnciensPagination({ current: data.current_page, last: data.last_page, total: data.total })
+    } catch {} finally { setAnciensLoading(false) }
+  }
+
+  useEffect(() => {
+    if (active === 'anciens') {
+      const t = setTimeout(() => loadAnciens(), 350)
+      return () => clearTimeout(t)
+    }
+  }, [active, searchAnciens, filterAnneeAnciens, filterFiliereAnciens])
 
   const loadStudents = async (page = 1) => {
     setLoading(true)
@@ -2053,7 +2083,173 @@ export default function AdminDashboard() {
                 }}/>
               )}
 
-              {/* STAFF */}
+              
+                {/* ANCIENS ETUDIANTS & ARCHIVES MULTI-ANNEES */}
+                {active === 'anciens' && (
+                  <div className="space-y-4">
+                    {/* Header Controls */}
+                    <div className="flex flex-wrap gap-3 items-center justify-between">
+                      <div className="flex flex-wrap gap-3 flex-1 min-w-0">
+                        <div className="relative flex-1 min-w-48">
+                          <Search size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${T.mute}`}/>
+                          <input
+                            className={`${T.input} pl-9 py-2`}
+                            placeholder="Rechercher un ancien (Nom, Prénom, Matricule, Téléphone)..."
+                            value={searchAnciens}
+                            onChange={e => setSearchAnciens(e.target.value)}
+                          />
+                        </div>
+                        <select
+                          className={`${T.input} py-2 w-auto font-bold text-amber-500`}
+                          value={filterAnneeAnciens}
+                          onChange={e => setFilterAnneeAnciens(e.target.value)}
+                        >
+                          <option value="ALL">📅 Toutes les années académiques</option>
+                          {availableYears.map(y => (
+                            <option key={y} value={y}>🎓 Année {y}</option>
+                          ))}
+                        </select>
+                        <select
+                          className={`${T.input} py-2 w-auto`}
+                          value={filterFiliereAnciens}
+                          onChange={e => setFilterFiliereAnciens(e.target.value)}
+                        >
+                          <option value="">Toutes les filières</option>
+                          {filieres.map(f => (
+                            <option key={f.id} value={f.id}>{f.nom} ({f.code})</option>
+                          ))}
+                        </select>
+                        <button onClick={() => loadAnciens()} className="btn-secondary text-sm py-2 px-4 flex items-center gap-2">
+                          <RefreshCw size={14}/> Actualiser
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => { setSelectedStudentForReins(null); setShowReinscriptionModal(true) }}
+                        className="btn-primary text-sm py-2 px-4 flex items-center gap-2 bg-gradient-to-r from-amber-600 to-isiblue-600"
+                      >
+                        <UserCheck size={15}/> Réinscrire un étudiant
+                      </button>
+                    </div>
+
+                    {/* Table of Ancient Students */}
+                    <div className={`${T.card} overflow-hidden shadow-sm`}>
+                      <div className="p-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        <span>📚 Base d'archives complète · Total trouvé : {anciensPagination.total ?? anciensList.length} étudiant(s)</span>
+                        <span>Filtre actif : {filterAnneeAnciens === 'ALL' ? 'Toutes les années (2017-2027)' : `Année ${filterAnneeAnciens}`}</span>
+                      </div>
+                      <table className={T.table}>
+                        <thead>
+                          <tr>
+                            {['Étudiant / Matricule', 'Année Scolaire', 'Filière & Cursus', 'Contact', 'Statut', 'Actions'].map(h => (
+                              <th key={h} className={isDark ? '' : T.th}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {anciensLoading ? (
+                            <tr><td colSpan={6} className="py-12 text-center text-slate-400"><div className="spinner mx-auto mb-2"/> Chargement des anciens étudiants...</td></tr>
+                          ) : anciensList.length === 0 ? (
+                            <tr><td colSpan={6} className="py-12 text-center text-slate-400">Aucun ancien étudiant trouvé pour ces critères.</td></tr>
+                          ) : anciensList.map(s => (
+                            <tr key={s.id} className={isDark ? '' : T.tr}>
+                              <td className={isDark ? '' : T.td}>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-xl bg-isiblue-500/10 text-isiblue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                    {(s.prenom?.[0] || 'E') + (s.nom?.[0] || '')}
+                                  </div>
+                                  <div>
+                                    <div className={`font-semibold text-sm ${T.title}`}>{s.prenom} {s.nom}</div>
+                                    <div className="font-mono text-xs text-isiblue-500">{s.matricule || 'Sans matricule'}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className={isDark ? '' : T.td}>
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-600 border border-amber-500/30">
+                                  {s.annee_scolaire || '2026-2027'}
+                                </span>
+                              </td>
+                              <td className={isDark ? '' : T.td}>
+                                <div className={`text-xs font-semibold ${T.title}`}>{s.filiere?.nom || 'Filière non définie'}</div>
+                                <div className={`text-[11px] ${T.mute}`}>{s.license?.nom || 'Niveau non défini'}</div>
+                              </td>
+                              <td className={isDark ? '' : T.td}>
+                                <div className="text-xs text-slate-600 dark:text-slate-300">{s.telephone || '—'}</div>
+                                <div className="text-[11px] text-slate-400 truncate max-w-[150px]">{s.email || 'Pas d\'email'}</div>
+                              </td>
+                              <td className={isDark ? '' : T.td}>
+                                <span className={s.statut_inscription === 'accepte' ? 'badge-accepted' : 'badge-pending'}>
+                                  {s.statut_inscription === 'accepte' ? 'Inscrit' : s.statut_inscription}
+                                </span>
+                              </td>
+                              <td className={isDark ? '' : T.td}>
+                                <div className="flex items-center gap-1.5">
+                                  {/* Réinscrire */}
+                                  <button
+                                    onClick={() => { setSelectedStudentForReins(s); setShowReinscriptionModal(true) }}
+                                    className="px-2.5 py-1 rounded-lg bg-isiblue-500/10 text-isiblue-600 hover:bg-isiblue-500 hover:text-white text-xs font-bold flex items-center gap-1 transition-all"
+                                    title="Réinscrire pour 2026-2027"
+                                  >
+                                    <UserCheck size={13}/> Réinscrire
+                                  </button>
+
+                                  {/* Voir Dossier Complet */}
+                                  <button
+                                    onClick={() => setDrawerStudent(s)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-isiblue-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
+                                    title="Consulter le dossier & historique"
+                                  >
+                                    <Eye size={15}/>
+                                  </button>
+
+                                  {/* Envoyer Accès Portail */}
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await sendStudentInvite(s.id)
+                                        toast.success(`Identifiants & accès envoyés à ${s.prenom} ${s.nom} !`)
+                                      } catch (e) {
+                                        toast.error(e.response?.data?.message || 'Erreur lors de l\'envoi de l\'invitation')
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-lg text-amber-500 hover:text-amber-700 hover:bg-amber-500/10 transition-all"
+                                    title="Envoyer / réinitialiser les identifiants d'accès étudiant par email"
+                                  >
+                                    <Send size={14}/>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Pagination */}
+                      {anciensPagination.last > 1 && (
+                        <div className="p-3 border-t border-slate-200 dark:border-white/10 flex justify-between items-center text-xs">
+                          <span className={T.mute}>Page {anciensPagination.current} sur {anciensPagination.last}</span>
+                          <div className="flex gap-2">
+                            <button
+                              disabled={anciensPagination.current <= 1}
+                              onClick={() => loadAnciens(anciensPagination.current - 1)}
+                              className="btn-secondary text-xs px-3 py-1 disabled:opacity-40"
+                            >
+                              Précédent
+                            </button>
+                            <button
+                              disabled={anciensPagination.current >= anciensPagination.last}
+                              onClick={() => loadAnciens(anciensPagination.current + 1)}
+                              className="btn-secondary text-xs px-3 py-1 disabled:opacity-40"
+                            >
+                              Suivant
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* STAFF */}
               {active === 'staff' && (
                 <div className="space-y-4">
                   <button onClick={() => setShowCreateStaff(true)} className="btn-primary flex items-center gap-2"><UserPlus size={16}/> Créer un compte</button>
@@ -2869,7 +3065,7 @@ export default function AdminDashboard() {
             onClose={() => setDrawerStudent(null)} onRefresh={loadStudents}/>
         )}
       </AnimatePresence>
-        <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
+        <ReinscriptionModal isOpen={showReinscriptionModal} initialStudent={selectedStudentForReins} onClose={() => { setShowReinscriptionModal(false); setSelectedStudentForReins(null) }} onSuccess={() => { loadStudents(); loadAnciens() }} isDark={isDark} />
     </div>
   )
 }
