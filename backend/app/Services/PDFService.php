@@ -178,7 +178,7 @@ class PDFService
         $totalAbsences = \App\Models\Presence::whereIn('matiere_id', $matiereIds)
             ->where('student_id', $student->id)->where('present', false)->count();
 
-        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . ($student->matricule ?? $student->id) . '-S' . $semestre->numero_global, 100);
+        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '-S' . $semestre->numero_global, 100);
 
         $pdf = Pdf::loadView('pdf.bulletin_notes_simple', [
             'student' => $student, 'semestre' => $semestre, 'detail' => $detail,
@@ -186,7 +186,7 @@ class PDFService
             'appreciationConseil' => $appreciationConseil, 'qrBase64' => $qrBase64,
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'bulletin_' . ($student->matricule ?? $student->id) . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'bulletin_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
         $path = 'bulletins/' . $filename;
 
         Storage::disk('public')->put($path, $pdf->output());
@@ -364,7 +364,7 @@ class PDFService
         $pdf = Pdf::loadView('pdf.acceptance', ['student' => $student])
             ->setPaper('a4', 'portrait');
 
-        $filename = 'acceptation_' . ($student->matricule ?? $student->id) . '.pdf';
+        $filename = 'acceptation_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf';
         $path     = 'letters/' . $filename;
 
         Storage::disk('public')->put($path, $pdf->output());
@@ -417,7 +417,7 @@ class PDFService
             'barcodeSegments' => $barcodeSegments,
         ])->setPaper([0, 0, 245, 155], 'portrait');
 
-        $filename = 'carte_' . $student->matricule . '.pdf';
+        $filename = 'carte_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $student->matricule ?? $student->id) . '.pdf';
         $path     = 'cards/' . $filename;
 
         Storage::disk('public')->put($path, $pdf->output());
@@ -482,7 +482,7 @@ class PDFService
         $student->load(['filiere', 'license']);
         $pdf = Pdf::loadView('pdf.attestation_scolarite', compact('student'))->setPaper('a4', 'portrait');
 
-        $filename = 'attestation_scolarite_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'attestation_scolarite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
 
         Storage::disk('public')->put($path, $pdf->output());
@@ -495,7 +495,7 @@ class PDFService
         $student->load(['filiere', 'license']);
         $pdf = Pdf::loadView('pdf.attestation_inscription', compact('student'))->setPaper('a4', 'portrait');
 
-        $filename = 'attestation_inscription_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'attestation_inscription_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
 
         Storage::disk('public')->put($path, $pdf->output());
@@ -521,7 +521,7 @@ class PDFService
         $pdf = Pdf::loadView('pdf.fiche_inscription', compact('student', 'siteSettings', 'photoBase64'))
             ->setPaper('a4', 'portrait');
 
-        $filename = 'fiche_inscription_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'fiche_inscription_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'fiches/' . $filename;
 
         Storage::disk('public')->put($path, $pdf->output());
@@ -666,12 +666,12 @@ class PDFService
         $student->load(['filiere', 'license']);
         $anneeAcademique = $this->anneeAcademiqueDe($student);
         $domaine         = $this->inferDomaine($student);
-        $qrBase64        = $this->generateQrPngBase64('ISI-REUSSITE-' . ($student->matricule ?? $student->id), 100);
+        $qrBase64        = $this->generateQrPngBase64('ISI-REUSSITE-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)), 100);
 
         $pdf = Pdf::loadView('pdf.attestation_reussite', compact('student', 'anneeAcademique', 'domaine', 'mention', 'qrBase64'))
             ->setPaper('a4', 'portrait');
 
-        $filename = 'attestation_reussite_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'attestation_reussite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
@@ -692,7 +692,7 @@ class PDFService
         $pdf = Pdf::loadView('pdf.attestation_formation', compact('student', 'anneeAcademique', 'anneesListe'))
             ->setPaper('a4', 'portrait');
 
-        $filename = 'attestation_formation_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'attestation_formation_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
@@ -703,12 +703,12 @@ class PDFService
     {
         $student->load(['filiere', 'license']);
         $anneeAcademique = $this->anneeAcademiqueDe($student);
-        $qrBase64        = $this->generateQrPngBase64('ISI-SCOLARITE-' . ($student->matricule ?? $student->id), 100);
+        $qrBase64        = $this->generateQrPngBase64('ISI-SCOLARITE-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)), 100);
 
         $pdf = Pdf::loadView('pdf.certificat_scolarite', compact('student', 'anneeAcademique', 'qrBase64'))
             ->setPaper('a4', 'portrait');
 
-        $filename = 'certificat_scolarite_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'certificat_scolarite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
@@ -723,7 +723,7 @@ class PDFService
         $pdf = Pdf::loadView('pdf.attestation_non_soutenance', compact('student', 'anneeAcademique'))
             ->setPaper('a4', 'portrait');
 
-        $filename = 'attestation_non_soutenance_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'attestation_non_soutenance_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
@@ -739,7 +739,7 @@ class PDFService
         $pdf = Pdf::loadView('pdf.attestation_encouragement', compact('student', 'anneeAcademique', 'moyenne', 'periode', 'classeLabel'))
             ->setPaper('a4', 'landscape');
 
-        $filename = 'attestation_encouragement_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'attestation_encouragement_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'attestations/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
@@ -754,7 +754,7 @@ class PDFService
         $pdf = Pdf::loadView('pdf.diplome_licence', compact('student', 'anneeAcademique', 'mention'))
             ->setPaper('a4', 'landscape');
 
-        $filename = 'diplome_licence_' . ($student->matricule ?? $student->id) . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'diplome_licence_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = 'diplomes/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
@@ -785,7 +785,7 @@ class PDFService
         $domaine = str_contains($this->inferDomaine($student), 'Gestion') ? 'Sciences Économiques et de Gestion' : 'NTIC';
         $mentionFiliere = str_contains($this->inferDomaine($student), 'Gestion') ? 'Gestion' : 'Informatique';
         $grade = $this->inferGrade($student);
-        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . ($student->matricule ?? $student->id) . '-S' . $semestre->numero_global, 100);
+        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '-S' . $semestre->numero_global, 100);
 
         $pdf = Pdf::loadView('pdf.bulletin_notes', [
             'student' => $student, 'semestre' => $semestre, 'anneeScolaire' => $anneeScolaire,
@@ -793,7 +793,7 @@ class PDFService
             'grade' => $grade, 'appreciationConseil' => $appreciationConseil, 'qrBase64' => $qrBase64,
         ])->setPaper('a4', 'portrait');
 
-        $filename = 'bulletin_' . ($student->matricule ?? $student->id) . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
+        $filename = 'bulletin_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_S' . $semestre->numero_global . '_' . now()->format('YmdHis') . '.pdf';
         $path = 'bulletins/' . $filename;
         Storage::disk('public')->put($path, $pdf->output());
         return $path;

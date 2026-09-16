@@ -777,6 +777,27 @@ export default function AccueilPedagogiqueDashboard() {
       .finally(() => setLoadingStudents(false))
   }, [selectedFiliere, selectedLicense])
 
+  const loadAnciens = async (page = 1) => {
+    setAnciensLoading(true)
+    try {
+      const params = { page }
+      if (searchAnciens) params.search = searchAnciens
+      if (filterFiliereAnciens) params.filiere_id = filterFiliereAnciens
+      if (filterAnneeAnciens && filterAnneeAnciens !== 'ALL') params.annee_scolaire = filterAnneeAnciens
+      else params.annee_scolaire = 'ALL'
+      const { data } = await getPedagogiqueStudents(params)
+      setAnciensList(data.data || data || [])
+      setAnciensPagination({ current: data.current_page || 1, last: data.last_page || 1, total: data.total || (data.data?.length ?? data.length) })
+    } catch {} finally { setAnciensLoading(false) }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'anciens') {
+      const t = setTimeout(() => loadAnciens(), 350)
+      return () => clearTimeout(t)
+    }
+  }, [activeTab, searchAnciens, filterAnneeAnciens, filterFiliereAnciens])
+
   // Charger candidats en attente
   useEffect(() => {
     if (activeTab !== 'candidats') return
@@ -1074,6 +1095,7 @@ export default function AccueilPedagogiqueDashboard() {
                 {[
                   { id: 'inscrits',  label: 'Inscrits', icon: UserCheck },
                   { id: 'candidats', label: 'Candidats en attente', icon: Clock },
+                    { id: 'anciens',   label: 'Anciens Étudiants & Archives', icon: BookOpen },
                 ].map(({ id, label, icon: Icon }) => (
                   <button key={id} onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${

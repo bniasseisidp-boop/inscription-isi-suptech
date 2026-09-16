@@ -916,6 +916,7 @@ export default function AdminDashboard() {
     getAcademicYears().then(({ data }) => {
       if (Array.isArray(data) && data.length > 0) setAvailableYears(data)
     }).catch(() => {})
+    getFilieres().then(({ data }) => setFilieres(data)).catch(() => {})
   }, [])
 
   const [searchAnciens, setSearchAnciens] = useState('')
@@ -1008,7 +1009,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (active === 'dashboard')  { setLoading(true); getAdminStats().then(({ data }) => setStats(data)).catch(() => {}).finally(() => setLoading(false)) }
-    if (active === 'anciens')   loadAnciens()
+    if (active === 'anciens')   { loadAnciens(); if (filieres.length === 0) getFilieres().then(({ data }) => setFilieres(data)).catch(() => {}); }
     if (active === 'etudiants')  {
       loadStudents()
       if (filieres.length === 0) {

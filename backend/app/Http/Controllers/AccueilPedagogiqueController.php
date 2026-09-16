@@ -246,7 +246,7 @@ class AccueilPedagogiqueController extends Controller
 
         return response()->download(
             Storage::disk('public')->path($path),
-            'attestation_scolarite_' . ($student->matricule ?? $student->id) . '.pdf',
+            'attestation_scolarite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -262,7 +262,7 @@ class AccueilPedagogiqueController extends Controller
 
         return response()->download(
             Storage::disk('public')->path($path),
-            'attestation_inscription_' . ($student->matricule ?? $student->id) . '.pdf',
+            'attestation_inscription_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -278,7 +278,7 @@ class AccueilPedagogiqueController extends Controller
 
         return response()->download(
             Storage::disk('public')->path($path),
-            'fiche_inscription_' . ($student->matricule ?? $student->id) . '.pdf',
+            'fiche_inscription_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -292,7 +292,7 @@ class AccueilPedagogiqueController extends Controller
         $path = $this->pdfService->generateCertificatScolarite($student);
         return response()->download(
             Storage::disk('public')->path($path),
-            'certificat_scolarite_' . ($student->matricule ?? $student->id) . '.pdf',
+            'certificat_scolarite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -306,7 +306,7 @@ class AccueilPedagogiqueController extends Controller
         $path = $this->pdfService->generateAttestationFormation($student);
         return response()->download(
             Storage::disk('public')->path($path),
-            'attestation_formation_' . ($student->matricule ?? $student->id) . '.pdf',
+            'attestation_formation_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -320,7 +320,7 @@ class AccueilPedagogiqueController extends Controller
         $path = $this->pdfService->generateAttestationNonSoutenance($student);
         return response()->download(
             Storage::disk('public')->path($path),
-            'attestation_non_soutenance_' . ($student->matricule ?? $student->id) . '.pdf',
+            'attestation_non_soutenance_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -338,7 +338,7 @@ class AccueilPedagogiqueController extends Controller
         $path = $this->pdfService->generateAttestationReussite($student, $validated['mention']);
         return response()->download(
             Storage::disk('public')->path($path),
-            'attestation_reussite_' . ($student->matricule ?? $student->id) . '.pdf',
+            'attestation_reussite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -359,7 +359,7 @@ class AccueilPedagogiqueController extends Controller
         $path = $this->pdfService->generateAttestationEncouragement($student, $validated['moyenne'], $validated['periode']);
         return response()->download(
             Storage::disk('public')->path($path),
-            'attestation_encouragement_' . ($student->matricule ?? $student->id) . '.pdf',
+            'attestation_encouragement_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }
@@ -377,7 +377,7 @@ class AccueilPedagogiqueController extends Controller
         $path = $this->pdfService->generateDiplomeLicence($student, $validated['mention']);
         return response()->download(
             Storage::disk('public')->path($path),
-            'diplome_licence_' . ($student->matricule ?? $student->id) . '.pdf',
+            'diplome_licence_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf',
             ['Content-Type' => 'application/pdf']
         );
     }

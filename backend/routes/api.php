@@ -74,6 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Admin routes ────────────────────────────────────────────────────────
     Route::middleware('role:admin')->prefix('admin')->group(function () {
+        // Inscriptions, Réinscriptions & Invitations
+        Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);
+        Route::post('/etudiants/reinscrire',                  [AdminController::class, 'reinscrireStudent']);
+        Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+
         Route::get('/stats', [AdminController::class, 'stats']);
         Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
         // Étudiants

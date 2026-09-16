@@ -438,7 +438,7 @@ class AdminController extends Controller
         if ($err = $this->checkAccepte($student)) return $err;
         $path = $this->pdfService->generateAttestationScolarite($student);
         return response()->download(Storage::disk('public')->path($path),
-            'attestation_scolarite_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'attestation_scolarite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function downloadAttestationInscription(Student $student)
@@ -446,7 +446,7 @@ class AdminController extends Controller
         if ($err = $this->checkAccepte($student)) return $err;
         $path = $this->pdfService->generateAttestationInscription($student);
         return response()->download(Storage::disk('public')->path($path),
-            'attestation_inscription_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'attestation_inscription_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function downloadFicheInscription(Student $student)
@@ -454,7 +454,7 @@ class AdminController extends Controller
         if ($err = $this->checkAccepte($student)) return $err;
         $path = $this->pdfService->generateFicheInscription($student);
         return response()->download(Storage::disk('public')->path($path),
-            'fiche_inscription_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'fiche_inscription_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function downloadCertificatScolarite(Student $student)
@@ -462,7 +462,7 @@ class AdminController extends Controller
         if ($err = $this->checkAccepte($student)) return $err;
         $path = $this->pdfService->generateCertificatScolarite($student);
         return response()->download(Storage::disk('public')->path($path),
-            'certificat_scolarite_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'certificat_scolarite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function downloadAttestationFormation(Student $student)
@@ -470,7 +470,7 @@ class AdminController extends Controller
         if ($err = $this->checkAccepte($student)) return $err;
         $path = $this->pdfService->generateAttestationFormation($student);
         return response()->download(Storage::disk('public')->path($path),
-            'attestation_formation_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'attestation_formation_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function downloadAttestationNonSoutenance(Student $student)
@@ -478,7 +478,7 @@ class AdminController extends Controller
         if ($err = $this->checkAccepte($student)) return $err;
         $path = $this->pdfService->generateAttestationNonSoutenance($student);
         return response()->download(Storage::disk('public')->path($path),
-            'attestation_non_soutenance_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'attestation_non_soutenance_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     /** Mention saisie manuellement — pas encore de module bulletin/notes en base. */
@@ -488,7 +488,7 @@ class AdminController extends Controller
         $validated = $request->validate(['mention' => 'required|string|max:50']);
         $path = $this->pdfService->generateAttestationReussite($student, $validated['mention']);
         return response()->download(Storage::disk('public')->path($path),
-            'attestation_reussite_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'attestation_reussite_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     /** Moyenne saisie manuellement — pas encore de module bulletin/notes en base. */
@@ -498,7 +498,7 @@ class AdminController extends Controller
         $validated = $request->validate(['moyenne' => 'required|string|max:10', 'periode' => 'required|string|max:50']);
         $path = $this->pdfService->generateAttestationEncouragement($student, $validated['moyenne'], $validated['periode']);
         return response()->download(Storage::disk('public')->path($path),
-            'attestation_encouragement_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'attestation_encouragement_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     /** Mention saisie manuellement — pas encore de module bulletin/notes en base. */
@@ -508,7 +508,7 @@ class AdminController extends Controller
         $validated = $request->validate(['mention' => 'required|string|max:50']);
         $path = $this->pdfService->generateDiplomeLicence($student, $validated['mention']);
         return response()->download(Storage::disk('public')->path($path),
-            'diplome_licence_' . ($student->matricule ?? $student->id) . '.pdf', ['Content-Type' => 'application/pdf']);
+            'diplome_licence_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     /** Manage filieres and licenses */
@@ -1123,31 +1123,55 @@ class AdminController extends Controller
         $user = $student->user;
         $tempPassword = \Illuminate\Support\Str::random(8);
 
-        if (!$user) {
-            $userEmail = $student->email ?: strtolower($student->prenom . '.' . $student->nom . '@suptech.sn');
-            $user = User::create([
-                'name'     => trim($student->prenom . ' ' . $student->nom),
-                'email'    => $userEmail,
-                'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
-                'role'     => 'student',
-            ]);
-            $student->update(['user_id' => $user->id]);
-        } else {
-            $user->update(['password' => \Illuminate\Support\Facades\Hash::make($tempPassword)]);
+        // Si l'étudiant n'a pas d'email, lui générer un email institutionnel suptech
+        $email = $student->email ?: ($user?->email ?: strtolower(preg_replace('/[^a-z0-9]/', '', $student->prenom) . '.' . preg_replace('/[^a-z0-9]/', '', $student->nom) . ($student->id) . '@suptech.sn'));
+
+        if (!$student->email) {
+            $student->update(['email' => $email]);
         }
 
-        $destinataire = $student->email ?: $user->email;
-        if (!$destinataire) {
-            return response()->json(['message' => "L'étudiant n'a pas d'adresse email valide."], 422);
+        if (!$user) {
+            // Vérifier si un compte avec cet email existe déjà
+            $existingUser = User::where('email', $email)->first();
+            if ($existingUser) {
+                $user = $existingUser;
+                $user->update([
+                    'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+                    'role'     => 'student'
+                ]);
+            } else {
+                $user = User::create([
+                    'name'     => trim($student->prenom . ' ' . $student->nom),
+                    'email'    => $email,
+                    'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+                    'role'     => 'student',
+                ]);
+            }
+            $student->update(['user_id' => $user->id]);
+        } else {
+            $user->update([
+                'email'    => $email,
+                'password' => \Illuminate\Support\Facades\Hash::make($tempPassword)
+            ]);
         }
 
         try {
-            \Illuminate\Support\Facades\Mail::to($destinataire)->send(
+            \Illuminate\Support\Facades\Mail::to($email)->send(
                 new \App\Mail\StaffInvite($user, $tempPassword)
             );
-            return response()->json(['message' => "Invitation et identifiants envoyés avec succès à {$destinataire}."]);
+            return response()->json([
+                'message' => "Invitation et identifiants envoyés avec succès à {$email}. Identifiants : Login: {$email} | Mot de passe : {$tempPassword}",
+                'email'   => $email,
+                'password' => $tempPassword
+            ]);
         } catch (\Exception $e) {
-            return response()->json(['message' => "Erreur lors de l'envoi de l'email : " . $e->getMessage()], 500);
+            \Log::warning("Mail invite: " . $e->getMessage());
+            // Retourner quand même le mot de passe généré pour que l'admin puisse le transmettre manuellement si besoin
+            return response()->json([
+                'message' => "Compte étudiant configuré pour {$email}. (Email en attente de passerelle SMTP : MDP temporaire = {$tempPassword})",
+                'email'   => $email,
+                'password' => $tempPassword
+            ]);
         }
     }
 
