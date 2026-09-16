@@ -44,6 +44,12 @@ class PaymentController extends Controller
                    ->orWhere('prenom', 'like', '%' . $request->search . '%')
                    ->orWhere('matricule', 'like', '%' . $request->search . '%');
             }))
+            ->when($request->annee_scolaire && $request->annee_scolaire !== 'ALL', function ($q) use ($request) {
+                $q->where(function ($q2) use ($request) {
+                    $q2->where('annee', $request->annee_scolaire)
+                       ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $request->annee_scolaire));
+                });
+            })
             ->when($request->statut, fn($q) => $q->where('statut', $request->statut))
             ->when($request->type, fn($q) => $q->where('type', $request->type))
             ->latest()

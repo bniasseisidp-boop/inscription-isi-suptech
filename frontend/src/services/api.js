@@ -300,3 +300,9 @@ export const getProfNotes         = (matiereId, params) => api.get(`/prof/matier
 export const saisirProfNotes      = (matiereId, data) => api.post(`/prof/matieres/${matiereId}/notes`, data)
 
 export default api
+
+
+// Réinscription, Invitation & Historique Ancien Étudiant
+export const reinscrireStudent = (data) => api.post('/admin/etudiants/reinscrire', data)
+export const sendStudentInvite = (id) => api.post(`/admin/etudiants/${id}/send-invite`)
+export const getStudentDossierHistorique = (id) => api.get(`/admin/etudiants/${id}/historique-dossier`)

@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import CurriculumManager from '../components/CurriculumManager'
+import ReinscriptionModal from '../components/ReinscriptionModal'
+import { sendStudentInvite } from '../services/api'
 import {
   getAdminStats, getAdminStudents, acceptStudent, rejectStudent,
   deleteStudent, getTrashedStudents, restoreStudent, forceDeleteStudent,
@@ -187,6 +189,7 @@ function StatCard({ label, value, icon: Icon, color = 'brand', sub, isDark }) {
       <div className={`text-3xl font-black ${textMain}`}>{value ?? '—'}</div>
       <div className={`text-sm mt-1 ${textSub}`}>{label}</div>
       {sub && <div className={`text-xs mt-0.5 ${isDark?'text-white/30':'text-slate-400'}`}>{sub}</div>}
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
     </div>
   )
 }
@@ -316,6 +319,7 @@ function ActionModal({ student, action, onClose, onDone, isDark }) {
           </button>
         </div>
       </motion.div>
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
     </div>
   )
 }
@@ -341,6 +345,7 @@ function DocPreviewModal({ url, label, onClose }) {
             : <img src={url} className="max-w-full max-h-full object-contain" alt={label}/>}
         </div>
       </motion.div>
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
     </div>
   )
 }
@@ -905,6 +910,7 @@ export default function AdminDashboard() {
   const [newFiliere, setNewFiliere]   = useState({ nom: '', code: '', description: '' })
   const [newLicense, setNewLicense]   = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false })
   const [showCreateStudent, setShowCreateStudent] = useState(false)
+  const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
   const [savingStudent, setSavingStudent] = useState(false)
   const [newStudent, setNewStudent] = useState({
       nom: '', prenom: '', email: '', telephone: '', sexe: 'M', date_naissance: '', lieu_naissance: '',
@@ -1957,7 +1963,7 @@ export default function AdminDashboard() {
                                       <button onClick={() => setListMenuFor(`l${l.id}`)} disabled={dlListId === `l${l.id}`} className={`p-1 rounded transition-colors ${isDark?'text-isiblue-400 hover:bg-isiblue-500/10':'text-isiblue-600 hover:bg-isiblue-50'} disabled:opacity-50`} title="Liste PDF"><Download size={12}/></button>
                                       <ListMenu id={`l${l.id}`} filiereId={f.id} licenseId={l.id} filiereName={f.code} licenseName={l.code}/>
                                     </div>
-                                    <button onClick={() => setEditingLicense({ id: l.id, filiere_id: l.filiere_id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_mensuel: l.frais_mensuel, calcul_simple: !!l.calcul_simple })} className="p-1 rounded hover:bg-amber-500/10 text-amber-400 transition-colors" title="Modifier"><Pencil size={12}/></button>
+                                    <button onClick={() => setEditingLicense({ id: l.id, filiere_id: l.filiere_id, nom: l.nom, mois_debut: l.mois_debut||9, mois_fin: l.mois_fin||6, frais_inscription: l.frais_inscription, frais_reinscription: l.frais_reinscription, frais_mensuel: l.frais_mensuel, calcul_simple: !!l.calcul_simple })} className="p-1 rounded hover:bg-amber-500/10 text-amber-400 transition-colors" title="Modifier"><Pencil size={12}/></button>
                                     <button onClick={() => handleDeleteLicense(l.id)} className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors" title="Supprimer"><Trash2 size={12}/></button>
                                   </div>
                                 </div>
@@ -2001,6 +2007,7 @@ export default function AdminDashboard() {
                             </select>
                           </div>
                           <div><label className={T.label}>Frais inscription (FCFA)</label><input className={T.input} type="number" value={editingLicense.frais_inscription} onChange={e => setEditingLicense({...editingLicense, frais_inscription: e.target.value})}/></div>
+        <div><label className={T.label}>Frais réinscription (FCFA)</label><input className={T.input} type="number" value={editingLicense.frais_reinscription || ''} onChange={e => setEditingLicense({...editingLicense, frais_reinscription: e.target.value})}/></div>
                           <div><label className={T.label}>Mensualité (FCFA)</label><input className={T.input} type="number" value={editingLicense.frais_mensuel} onChange={e => setEditingLicense({...editingLicense, frais_mensuel: e.target.value})}/></div>
                         </div>
                         <label className="flex items-center gap-2 text-xs cursor-pointer mt-1">
@@ -2864,6 +2871,7 @@ export default function AdminDashboard() {
             onClose={() => setDrawerStudent(null)} onRefresh={loadStudents}/>
         )}
       </AnimatePresence>
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} isDark={isDark} />
     </div>
   )
 }

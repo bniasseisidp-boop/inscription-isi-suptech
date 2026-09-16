@@ -519,7 +519,8 @@ class AdminController extends Controller
             'duree_annees'      => 'required|integer|min:1|max:5',
             'mois_debut'        => 'required|integer|min:1|max:12',
             'mois_fin'          => 'required|integer|min:1|max:12',
-            'frais_inscription' => 'required|numeric|min:0',
+            'frais_inscription'   => 'required|numeric|min:0',
+            'frais_reinscription' => 'nullable|numeric|min:0',
             'frais_mensuel'     => 'required|numeric|min:0',
             'calcul_simple'     => 'sometimes|boolean',
         ]);
@@ -571,7 +572,8 @@ class AdminController extends Controller
             'nom'               => 'required|string|max:100',
             'mois_debut'        => 'required|integer|min:1|max:12',
             'mois_fin'          => 'required|integer|min:1|max:12',
-            'frais_inscription' => 'required|numeric|min:0',
+            'frais_inscription'   => 'required|numeric|min:0',
+            'frais_reinscription' => 'nullable|numeric|min:0',
             'frais_mensuel'     => 'required|numeric|min:0',
             'calcul_simple'     => 'sometimes|boolean',
         ]);
@@ -1023,6 +1025,134 @@ class AdminController extends Controller
             'since'           => $since,
             'total_comptes'   => $total,
             'comptes_verifies'=> $confirmes,
+        ]);
+    }
+
+    /**
+     * Réinscrire un ancien étudiant vers une nouvelle classe / année scolaire
+     */
+    public function reinscrireStudent(Request $request)
+    {
+        $validated = $request->validate([
+            'student_id'          => 'required|exists:students,id',
+            'filiere_id'          => 'required|exists:filieres,id',
+            'license_id'          => 'required|exists:licenses,id',
+            'annee_scolaire'      => 'required|string|max:20',
+            'frais_reinscription' => 'nullable|numeric|min:0',
+            'send_email'          => 'nullable|boolean',
+        ]);
+
+        $student = Student::with(['filiere', 'license', 'user'])->findOrFail($validated['student_id']);
+        $license = License::with('filiere')->findOrFail($validated['license_id']);
+
+        // Sauvegarder l'ancien parcours dans notes_admin ou champ historique
+        $ancienParcours = "Réinscription effectuée le " . now()->format('d/m/Y H:i') . " vers " . ($license->nom ?? 'Nouveau Niveau') . " (" . $validated['annee_scolaire'] . "). Ancien niveau : " . ($student->license?->nom ?? 'Non défini') . " (" . ($student->annee_scolaire ?? 'N/A') . ").";
+        $notesAdmin = trim(($student->notes_admin ? $student->notes_admin . "
+" : "") . $ancienParcours);
+
+        // Déterminer les frais de réinscription applicables
+        $fraisAppliques = $validated['frais_reinscription'] !== null 
+            ? floatval($validated['frais_reinscription']) 
+            : floatval($license->frais_reinscription ?: $license->frais_inscription ?: 0);
+
+        // Mettre à jour l'étudiant
+        $student->update([
+            'filiere_id'          => $validated['filiere_id'],
+            'license_id'          => $validated['license_id'],
+            'annee_scolaire'      => $validated['annee_scolaire'],
+            'statut_inscription'  => 'accepte',
+            'inscription_payee'   => false, // Doit être validé ou payé à la caisse
+            'notes_admin'         => $notesAdmin,
+        ]);
+
+        // Assurer l'existence du compte utilisateur
+        $user = $student->user;
+        $tempPassword = null;
+        if (!$user) {
+            $tempPassword = \Illuminate\Support\Str::random(8);
+            $userEmail = $student->email ?: strtolower($student->prenom . '.' . $student->nom . '@suptech.sn');
+            $user = User::create([
+                'name'     => trim($student->prenom . ' ' . $student->nom),
+                'email'    => $userEmail,
+                'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+                'role'     => 'student',
+            ]);
+            $student->update(['user_id' => $user->id]);
+        }
+
+        // Envoyer email d'invitation si demandé
+        if (!empty($validated['send_email']) && $student->email) {
+            try {
+                \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                    new \App\Mail\StaffInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel')
+                );
+            } catch (\Exception $e) {
+                \Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'message'             => "Étudiant {$student->nom_complet} réinscrit avec succès pour {$validated['annee_scolaire']} !",
+            'student'             => $student->fresh(['filiere', 'license', 'user']),
+            'frais_reinscription' => $fraisAppliques,
+        ]);
+    }
+
+    /**
+     * Envoie ou renvoie un email d'invitation à l'étudiant avec ses accès
+     */
+    public function sendStudentInvite(Student $student)
+    {
+        $user = $student->user;
+        $tempPassword = \Illuminate\Support\Str::random(8);
+
+        if (!$user) {
+            $userEmail = $student->email ?: strtolower($student->prenom . '.' . $student->nom . '@suptech.sn');
+            $user = User::create([
+                'name'     => trim($student->prenom . ' ' . $student->nom),
+                'email'    => $userEmail,
+                'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
+                'role'     => 'student',
+            ]);
+            $student->update(['user_id' => $user->id]);
+        } else {
+            $user->update(['password' => \Illuminate\Support\Facades\Hash::make($tempPassword)]);
+        }
+
+        $destinataire = $student->email ?: $user->email;
+        if (!$destinataire) {
+            return response()->json(['message' => "L'étudiant n'a pas d'adresse email valide."], 422);
+        }
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($destinataire)->send(
+                new \App\Mail\StaffInvite($user, $tempPassword)
+            );
+            return response()->json(['message' => "Invitation et identifiants envoyés avec succès à {$destinataire}."]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => "Erreur lors de l'envoi de l'email : " . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Récupère l'historique complet (académique + financier) d'un étudiant
+     */
+    public function getStudentDossierHistorique(Student $student)
+    {
+        $student->loadMissing(['filiere', 'license', 'payments', 'notes.matiere.module.semestre']);
+
+        $totalPaye = $student->payments->where('statut', 'complete')->sum('montant');
+        $moisPayes = $student->payments->where('statut', 'complete')->whereNotNull('mois')->pluck('mois')->toArray();
+        $notesGrouped = $student->notes->groupBy('annee_scolaire');
+
+        return response()->json([
+            'student'          => $student,
+            'total_paye'       => $totalPaye,
+            'mois_payes'       => $moisPayes,
+            'mois_non_payes'   => $student->mois_non_payes,
+            'est_en_regle'     => $student->estEnRegle(),
+            'notes_par_annee'  => $notesGrouped,
+            'total_paiements'  => $student->payments->count(),
         ]);
     }
 }

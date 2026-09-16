@@ -1,0 +1,416 @@
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import toast from 'react-hot-toast'
+import {
+  X, Search, UserCheck, AlertTriangle, CheckCircle2,
+  GraduationCap, Wallet, Mail, ArrowRight, RefreshCw,
+  BookOpen, ShieldCheck, User, Clock
+} from 'lucide-react'
+import {
+  getAdminStudents, getFilieres, reinscrireStudent,
+  getStudentDossierHistorique
+} from '../services/api'
+
+export default function ReinscriptionModal({ isOpen, onClose, onSuccess, isDark = false }) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [searchResults, setSearchResults] = useState([])
+  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const [historyData, setHistoryData] = useState(null)
+
+  const [filieres, setFilieres] = useState([])
+  const [targetFiliereId, setTargetFiliereId] = useState('')
+  const [targetLicenseId, setTargetLicenseId] = useState('')
+  const [targetAnnee, setTargetAnnee] = useState('2026-2027')
+  const [fraisReinscription, setFraisReinscription] = useState('')
+  const [sendEmail, setSendEmail] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+
+  // Load filieres
+  useEffect(() => {
+    if (isOpen) {
+      getFilieres().then(({ data }) => setFilieres(data)).catch(() => {})
+      setSelectedStudent(null)
+      setHistoryData(null)
+      setSearchQuery('')
+      setSearchResults([])
+    }
+  }, [isOpen])
+
+  // Live search for students
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    const timer = setTimeout(() => {
+      setSearching(true)
+      getAdminStudents({ search: searchQuery.trim(), per_page: 10 })
+        .then(({ data }) => {
+          const list = data.data || data || []
+          setSearchResults(list)
+        })
+        .catch(() => {})
+        .finally(() => setSearching(false))
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // When a student is selected
+  const handleSelectStudent = (student) => {
+    setSelectedStudent(student)
+    setSearchResults([])
+    setSearchQuery(`${student.prenom} ${student.nom} (${student.matricule})`)
+    setLoadingHistory(true)
+
+    // Pre-fill target filiere and search for next level
+    if (student.filiere_id) {
+      setTargetFiliereId(String(student.filiere_id))
+    }
+
+    getStudentDossierHistorique(student.id)
+      .then(({ data }) => {
+        setHistoryData(data)
+      })
+      .catch(() => toast.error('Erreur chargement historique'))
+      .finally(() => setLoadingHistory(false))
+  }
+
+  // Update available licenses for chosen filiere
+  const selectedFiliere = filieres.find(f => String(f.id) === String(targetFiliereId))
+  const availableLicenses = selectedFiliere?.licenses || []
+
+  // Auto-switch fee when license/filiere changes
+  useEffect(() => {
+    if (targetLicenseId) {
+      const lic = availableLicenses.find(l => String(l.id) === String(targetLicenseId))
+      if (lic) {
+        const montant = lic.frais_reinscription || lic.frais_inscription || 0
+        setFraisReinscription(String(montant))
+      }
+    } else {
+      setFraisReinscription('')
+    }
+  }, [targetLicenseId, availableLicenses])
+
+  // Submit re-inscription
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!selectedStudent) {
+      toast.error('Veuillez sélectionner un étudiant.')
+      return
+    }
+    if (!targetFiliereId || !targetLicenseId) {
+      toast.error('Veuillez sélectionner la filière et la nouvelle classe.')
+      return
+    }
+    if (!targetAnnee) {
+      toast.error("Veuillez spécifier l'année académique de réinscription.")
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const payload = {
+        student_id: selectedStudent.id,
+        filiere_id: targetFiliereId,
+        license_id: targetLicenseId,
+        annee_scolaire: targetAnnee,
+        frais_reinscription: fraisReinscription ? parseFloat(fraisReinscription) : null,
+        send_email: sendEmail,
+      }
+      const { data } = await reinscrireStudent(payload)
+      toast.success(data.message || 'Réinscription effectuée avec succès !', { duration: 5000 })
+      onSuccess?.()
+      onClose()
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Erreur lors de la réinscription')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="relative w-full max-w-3xl my-8 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-isiblue-700 via-isiblue-600 to-indigo-700 px-6 py-5 text-white flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white shadow-inner">
+              <RefreshCw size={22} className="animate-spin-slow" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">Réinscription d'un Ancien Étudiant</h2>
+              <p className="text-xs text-blue-100">Passage de niveau, contrôle financier & bascule de filière</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+          {/* Step 1: Search & Select */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              1. Rechercher l'étudiant à réinscrire
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (selectedStudent) setSelectedStudent(null)
+                }}
+                placeholder="Tapez le nom, prénom ou matricule (ex: ISI-2024-...)"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-isiblue-500 focus:bg-white transition"
+              />
+              {searching && (
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-isiblue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Results dropdown */}
+            {searchResults.length > 0 && !selectedStudent && (
+              <div className="border border-slate-200 rounded-xl bg-white shadow-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
+                {searchResults.map((st) => (
+                  <div
+                    key={st.id}
+                    onClick={() => handleSelectStudent(st)}
+                    className="p-3 hover:bg-isiblue-50/60 cursor-pointer flex items-center justify-between transition"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-isiblue-100 text-isiblue-700 font-bold text-xs flex items-center justify-center">
+                        {(st.prenom?.[0] || '') + (st.nom?.[0] || '')}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">{st.nom_complet || `${st.prenom} ${st.nom}`}</div>
+                        <div className="text-xs text-slate-500">{st.matricule} • {st.filiere?.nom || 'Filière N/A'} ({st.annee_scolaire || 'N/A'})</div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                      {st.license?.nom || 'Classe N/A'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Student details & financial check */}
+          {selectedStudent && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              {/* Profile Card */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-isiblue-600 to-indigo-600 text-white font-black text-base flex items-center justify-center shadow-md">
+                    {(selectedStudent.prenom?.[0] || '') + (selectedStudent.nom?.[0] || '')}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">{selectedStudent.prenom} {selectedStudent.nom}</h3>
+                    <p className="text-xs text-slate-500">
+                      Matricule : <span className="font-mono font-bold text-isiblue-600">{selectedStudent.matricule}</span> • 
+                      Classe actuelle : <span className="font-semibold text-slate-700">{selectedStudent.license?.nom || 'N/A'}</span> ({selectedStudent.annee_scolaire})
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedStudent(null); setHistoryData(null); setSearchQuery(''); }}
+                  className="text-xs text-slate-500 hover:text-red-600 underline font-medium"
+                >
+                  Changer d'étudiant
+                </button>
+              </div>
+
+              {/* Financial Clearance Audit */}
+              {loadingHistory ? (
+                <div className="p-4 border border-slate-200 rounded-xl bg-slate-50 flex items-center justify-center gap-2 text-xs text-slate-500">
+                  <div className="w-4 h-4 border-2 border-isiblue-600 border-t-transparent rounded-full animate-spin" />
+                  Vérification de la situation financière antérieure...
+                </div>
+              ) : historyData ? (
+                <div>
+                  {historyData.mois_non_payes && historyData.mois_non_payes.length > 0 ? (
+                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-start gap-3">
+                      <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                      <div className="text-xs space-y-1">
+                        <div className="font-bold text-amber-800">
+                          ⚠️ Attention : Arriérés détectés sur les années précédentes
+                        </div>
+                        <div>
+                          Il reste <span className="font-bold">{historyData.mois_non_payes.length} mois impayé(s)</span> sur son dossier : 
+                          <span className="font-mono ml-1 font-semibold text-amber-950">
+                            {historyData.mois_non_payes.join(', ')}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-amber-700">
+                          Total déjà réglé : {(historyData.total_paye || 0).toLocaleString()} FCFA ({historyData.total_paiements || 0} reçus).
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 flex items-center gap-2.5">
+                      <CheckCircle2 className="text-emerald-600 shrink-0" size={18} />
+                      <div className="text-xs">
+                        <span className="font-bold">Situation financière antérieure en règle :</span> Aucun mois impayé détecté. Total réglé : {(historyData.total_paye || 0).toLocaleString()} FCFA.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {/* Step 2: Choose Target Class & Progression */}
+              <div className="p-4 border border-slate-200 rounded-xl bg-white space-y-4">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 block">
+                  2. Nouvelle Inscription pour l'année 2026-2027
+                </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Filiere */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Filière de réinscription
+                    </label>
+                    <select
+                      value={targetFiliereId}
+                      onChange={(e) => {
+                        setTargetFiliereId(e.target.value)
+                        setTargetLicenseId('')
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-isiblue-500"
+                      required
+                    >
+                      <option value="">-- Sélectionner une filière --</option>
+                      {filieres.map((f) => (
+                        <option key={f.id} value={f.id}>{f.nom} ({f.code})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Level / Class */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Nouvelle Classe / Niveau
+                    </label>
+                    <select
+                      value={targetLicenseId}
+                      onChange={(e) => setTargetLicenseId(e.target.value)}
+                      disabled={!targetFiliereId}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-isiblue-500 disabled:opacity-50"
+                      required
+                    >
+                      <option value="">-- Choisir la classe --</option>
+                      {availableLicenses.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.nom} {l.frais_reinscription ? `(Réinsc: ${Number(l.frais_reinscription).toLocaleString()} FCFA)` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Academic Year */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Année Académique
+                    </label>
+                    <input
+                      type="text"
+                      value={targetAnnee}
+                      onChange={(e) => setTargetAnnee(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-800"
+                      required
+                    />
+                  </div>
+
+                  {/* Reinscription Fee */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Montant Frais de Réinscription (FCFA)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={fraisReinscription}
+                        onChange={(e) => setFraisReinscription(e.target.value)}
+                        placeholder="200000"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-isiblue-700"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                        FCFA
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email Portal Invite Option */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <label className="flex items-center gap-2.5 cursor-pointer text-xs font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={sendEmail}
+                      onChange={(e) => setSendEmail(e.target.checked)}
+                      className="w-4 h-4 rounded text-isiblue-600 focus:ring-isiblue-500 border-slate-300"
+                    />
+                    <span>Envoyer automatiquement un email d'invitation avec accès au portail étudiant</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    Email : {selectedStudent.email || 'Automatique'}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Footer Buttons */}
+          <div className="pt-4 border-t border-slate-200 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition"
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={submitting || !selectedStudent || !targetLicenseId}
+              className="px-6 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-isiblue-600 to-indigo-600 hover:from-isiblue-700 hover:to-indigo-700 rounded-xl shadow-md disabled:opacity-50 flex items-center gap-2 transition"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Réinscription en cours...
+                </>
+              ) : (
+                <>
+                  <UserCheck size={16} />
+                  Valider la Réinscription 2026-2027
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  )
+}

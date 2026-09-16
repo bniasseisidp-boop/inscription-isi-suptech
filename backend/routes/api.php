@@ -223,6 +223,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/document',          [AdminController::class, 'uploadDocument']);
         Route::put('/etudiants/{student}',                    [AdminController::class, 'updateStudentProfile']);
         Route::get('/candidats',                              [AccueilPedagogiqueController::class, 'pendingStudents']);
+        
+        // Réinscription & Historique Ancien Étudiant
+        Route::post('/etudiants/reinscrire',                  [AdminController::class, 'reinscrireStudent']);
+        Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);
+        Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
         Route::post('/candidats/{student}/accepter',          [AccueilPedagogiqueController::class, 'acceptStudent']);
         // Paramètres pédagogique (lecture seule)
         Route::get('/settings',                               [AdminController::class, 'getPedagogiqueSettings']);

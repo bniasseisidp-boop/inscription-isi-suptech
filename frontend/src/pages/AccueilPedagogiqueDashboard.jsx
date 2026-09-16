@@ -24,6 +24,8 @@ import {
 } from '../services/api'
 import LightPremiumBackground from '../components/LightPremiumBackground'
 import CurriculumManager from '../components/CurriculumManager'
+import ReinscriptionModal from '../components/ReinscriptionModal'
+import { sendStudentInvite } from '../services/api'
 import { NATIONALITES } from '../data/nationalites'
 
 const STATUT_COLORS = {
@@ -505,6 +507,7 @@ function AddStudentField({ form, set, label, name, type = 'text', placeholder = 
       <label className="form-label-light text-xs">{label}{required && <span className="text-red-500"> *</span>}</label>
       <input className="form-input-light text-sm py-2" type={type} placeholder={placeholder}
         value={form[name]} onChange={e => set(name, e.target.value)} required={required}/>
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
     </div>
   )
 }
@@ -672,6 +675,7 @@ function AddStudentModal({ filieres, defaultFiliereId, onClose, onAdded }) {
 
 /* ── Page principale ──────────────────────────────────────────────────────── */
 export default function AccueilPedagogiqueDashboard() {
+  const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
   const { logout, user, updateUser } = useAuth()
   const navigate = useNavigate()
 
@@ -1476,6 +1480,7 @@ export default function AccueilPedagogiqueDashboard() {
           />
         )}
       </AnimatePresence>
+      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
     </div>
   )
 }
