@@ -240,7 +240,7 @@ export const deleteAllAccounts = () => api.post('/admin/delete-all-accounts', { 
 export const verifyMatriculeAccueil = (matricule) => api.get(`/accueil/verify-matricule/${encodeURIComponent(matricule)}`)
 
 // Accueil Pédagogique
-export const getPedagogiqueClasses        = ()       => api.get('/pedagogique/classes')
+export const getPedagogiqueClasses        = (params) => api.get('/pedagogique/classes', { params })
 export const getPedagogiqueStudents       = (params) => api.get('/pedagogique/etudiants', { params })
 export const addPedagogiqueStudent        = (data)   => api.post('/pedagogique/etudiants', data, { headers: { 'Content-Type': 'multipart/form-data' } })
 export const getPedagogiqueStudentDetail  = (id)     => api.get(`/pedagogique/etudiants/${id}`)
