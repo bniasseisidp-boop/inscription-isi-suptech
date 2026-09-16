@@ -910,6 +910,14 @@ export default function AdminDashboard() {
   const [newLicense, setNewLicense]   = useState({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false })
   const [showCreateStudent, setShowCreateStudent] = useState(false)
   const [showReinscriptionModal, setShowReinscriptionModal] = useState(false)
+    const [availableYears, setAvailableYears] = useState(['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018'])
+
+  useEffect(() => {
+    getAcademicYears().then(({ data }) => {
+      if (Array.isArray(data) && data.length > 0) setAvailableYears(data)
+    }).catch(() => {})
+  }, [])
+
   const [searchAnciens, setSearchAnciens] = useState('')
   const [filterAnneeAnciens, setFilterAnneeAnciens] = useState('ALL')
   const [filterFiliereAnciens, setFilterFiliereAnciens] = useState('')
