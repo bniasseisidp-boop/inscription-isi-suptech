@@ -36,7 +36,9 @@ class AccueilPedagogiqueController extends Controller
     /** Étudiants filtrés par filière / niveau */
     public function students(Request $request)
     {
+        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
         $query = Student::with(['filiere', 'license', 'card'])
+            ->when($annee && $annee !== 'ALL', fn ($q) => $q->where('annee_scolaire', $annee))
             ->when($request->filiere_id, fn ($q) => $q->where('filiere_id', $request->filiere_id))
             ->when($request->license_id, fn ($q) => $q->where('license_id', $request->license_id))
             ->when($request->statut,     fn ($q) => $q->where('statut_inscription', $request->statut))
@@ -428,6 +430,7 @@ class AccueilPedagogiqueController extends Controller
     /** Candidats en attente (pré-inscriptions) */
     public function pendingStudents(Request $request)
     {
+        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
         $students = Student::with(['filiere', 'license'])
             ->where('statut_inscription', 'en_attente')
             ->when($request->filiere_id, fn ($q) => $q->where('filiere_id', $request->filiere_id))

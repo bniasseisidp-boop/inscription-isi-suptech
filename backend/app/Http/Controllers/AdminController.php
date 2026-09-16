@@ -28,35 +28,36 @@ class AdminController extends Controller
     /** Dashboard stats — candidatures annulées exclues du total */
     public function stats(Request $request)
     {
-        $annee = $request->query('annee_scolaire', '2026-2027');
-
-        $queryStudents = Student::query();
-        $queryPayments = Payment::where('statut', 'complete');
-
-        if ($annee && $annee !== 'ALL') {
-            $queryStudents->where('annee_scolaire', $annee);
-            $queryPayments->where(function($q) use ($annee) {
-                $q->where('annee', $annee)
-                  ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
-            });
+        $annee = $request->annee_scolaire ?? '2026-2027';
+        
+        $sQuery = Student::query();
+        if ($annee !== 'ALL') {
+            $sQuery->where('annee_scolaire', $annee);
         }
 
-        $actifs = (clone $queryStudents)->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
+        $pQuery = Payment::where('statut', 'complete');
+        if ($annee !== 'ALL') {
+            $pQuery->where('annee', $annee);
+        }
+
+        $totalCandidatures = (clone $sQuery)->where('statut_inscription', '!=', 'rejete')->count();
+        $enAttente         = (clone $sQuery)->where('statut_inscription', 'en_attente')->count();
+        $enAttentePaiement = (clone $sQuery)->where('statut_inscription', 'en_attente_paiement')->count();
+        $acceptes          = (clone $sQuery)->where('statut_inscription', 'accepte')->count();
+        $rejetes           = (clone $sQuery)->where('statut_inscription', 'rejete')->count();
+        $inscritsPayes     = (clone $sQuery)->where('statut_inscription', 'accepte')->where('inscription_payee', true)->count();
+        $recettesTotales   = (clone $pQuery)->sum('montant');
+        $recettesMois      = (clone $pQuery)->whereMonth('date_paiement', now()->month)->sum('montant');
 
         return response()->json([
-            'annee_scolaire'         => $annee,
-            'total_etudiants'        => (clone $actifs)->count(),
-            'en_attente'             => (clone $queryStudents)->where('statut_inscription', 'en_attente')->count(),
-            'en_attente_paiement'    => (clone $queryStudents)->where('statut_inscription', 'en_attente_paiement')->count(),
-            'acceptes'               => (clone $queryStudents)->where('statut_inscription', 'accepte')->count(),
-            'rejetes'                => (clone $queryStudents)->where('statut_inscription', 'rejete')->count(),
-            'inscriptions_payees'    => (clone $queryStudents)->where('inscription_payee', true)->count(),
-            'total_paiements'        => (clone $queryPayments)->sum('montant'),
-            'paiements_ce_mois'      => (clone $queryPayments)->whereMonth('date_paiement', now()->month)->sum('montant'),
-            'par_filiere'            => (clone $queryStudents)->whereIn('statut_inscription', ['en_attente_paiement', 'accepte'])
-                ->with('filiere')->get()
-                ->groupBy(fn($s) => $s->filiere?->nom ?? 'Autre')
-                ->map->count(),
+            'total_candidatures'    => $totalCandidatures,
+            'en_attente'            => $enAttente,
+            'en_attente_paiement'   => $enAttentePaiement,
+            'acceptes'              => $acceptes,
+            'rejetes'               => $rejetes,
+            'inscrits_payes'        => $inscritsPayes,
+            'recettes_totales'      => $recettesTotales,
+            'recettes_mois'         => $recettesMois,
         ]);
     }
 

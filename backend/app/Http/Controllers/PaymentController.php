@@ -479,8 +479,10 @@ class PaymentController extends Controller
     /** Students waiting for payment (statut en_attente_paiement) */
     public function etudiantsAttentePaiement(Request $request)
     {
+        $annee = $request->annee_scolaire ?? '2026-2027';
         $query = Student::with(['filiere', 'license', 'user'])
             ->where('statut_inscription', 'en_attente_paiement')
+            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
                 $q2->where('nom', 'like', '%' . $request->search . '%')
                    ->orWhere('prenom', 'like', '%' . $request->search . '%')
@@ -621,191 +623,46 @@ class PaymentController extends Controller
     /** List students for cashier browser — inclut en_attente pour que le caissier trouve tout étudiant pré-inscrit */
     public function etudiantsList(Request $request)
     {
+        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
         $statutsDisponibles = ['accepte', 'en_attente_paiement', 'en_attente'];
         $statuts = ($request->statut && in_array($request->statut, $statutsDisponibles))
             ? [$request->statut]
-            : $statutsDisponibles;
+            : ['accepte'];
 
         $query = Student::with(['filiere', 'license', 'user'])
             ->whereIn('statut_inscription', $statuts)
+            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->when($request->filiere_id, fn($q) => $q->where('filiere_id', $request->filiere_id))
             ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
                 $q2->where('nom', 'like', '%' . $request->search . '%')
                    ->orWhere('prenom', 'like', '%' . $request->search . '%')
-                   ->orWhere('matricule', 'like', '%' . $request->search . '%')
-                   ->orWhere('telephone', 'like', '%' . $request->search . '%');
+                   ->orWhere('matricule', 'like', '%' . $request->search . '%');
             }))
-            ->orderBy('nom')
-            ->paginate(60);
+            ->latest();
 
-        return response()->json($query);
+        return response()->json($query->paginate($request->per_page ?? 15));
     }
 
-    /** Get payment tracking for a student (cashier view — includes backpay) */
-    public function etudiantSuivi(Request $request, int $id)
+    public function stats(Request $request)
     {
-        $student = Student::with([
-            'license',
-            // 'partiel' inclus : un mois payé en partie doit rester bloqué (le déficit se
-            // reporte sur le mois suivant) — sinon il réapparaît comme non payé et
-            // sélectionnable dans le sélecteur de mois de la caisse.
-            'payments' => fn($q) => $q->whereIn('statut', ['complete', 'partiel'])->orderBy('created_at'),
-        ])->findOrFail($id);
-
-        $license      = $student->license;
-        $fraisMensuel = floatval($license?->frais_mensuel ?? 0);
-        $moisDebut    = intval($license?->mois_debut ?? 9);
-        $moisFin      = intval($license?->mois_fin ?? 6);
-        $now          = \Carbon\Carbon::now();
-
-        $anneeDebut     = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-        $anneeFinOffset = ($moisFin < $moisDebut) ? 1 : 0;
-        // Si toute l'année scolaire calculée est déjà terminée, avancer d'un an
-        $tentativeEnd = \Carbon\Carbon::create($anneeDebut + $anneeFinOffset, $moisFin, 1)->endOfMonth();
-        if ($tentativeEnd->lt($now)) {
-            $anneeDebut++;
-        }
-        $startDate  = \Carbon\Carbon::create($anneeDebut, $moisDebut, 1)->startOfMonth();
-        $endDate    = \Carbon\Carbon::create($anneeDebut + $anneeFinOffset, $moisFin, 1)->startOfMonth();
-        $moisTotal  = (int) $startDate->diffInMonths($endDate) + 1;
-
-        // Dernier mois inclus dans inscription (même logique d'année)
-        $dernierMoisCleS = ($anneeDebut + $anneeFinOffset) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
-
-        $paiementsMensuels = $student->payments->where('type', 'mensualite')->pluck('mois')->toArray();
-        $paiementsPartiels = $student->payments->where('type', 'mensualite')->where('statut', 'partiel')->pluck('mois')->toArray();
-        // Si inscription payée, le dernier mois est inclus — pas besoin de paiement séparé
-        if ($student->inscription_payee && $dernierMoisCleS && !in_array($dernierMoisCleS, $paiementsMensuels)) {
-            $paiementsMensuels[] = $dernierMoisCleS;
-        }
-
-        $mois    = [];
-        $current = $startDate->copy();
-
-        for ($i = 0; $i < $moisTotal; $i++) {
-            $cle      = $current->format('Y-m');
-            $estPasse = $current->lte($now);
-            $estActuel = $current->isSameMonth($now);
-            $estPaye  = in_array($cle, $paiementsMensuels);
-
-            $mois[] = [
-                'cle'       => $cle,
-                'label'     => $current->isoFormat('MMMM YYYY'),
-                'montant'   => $fraisMensuel,
-                'paye'      => $estPaye,
-                'partiel'   => in_array($cle, $paiementsPartiels),
-                'en_retard' => $estPasse && !$estPaye && !$estActuel,
-                'actuel'    => $estActuel,
-                'futur'     => !$estPasse,
-            ];
-
-            $current->addMonth();
-        }
-
-        $moisPayes    = count(array_filter($mois, fn($m) => $m['paye']));
-        $moisEnRetard = count(array_filter($mois, fn($m) => $m['en_retard']));
-
-        $avancePaiement = floatval($student->avance_paiement ?? 0);
-
-        // Pour le premier mois impayé, afficher le montant réel avec avance/déficit
-        $premierImpayeTrouve = false;
-        foreach ($mois as &$m) {
-            $m['montant_reel'] = $fraisMensuel;
-            $m['avance_appliquee'] = 0;
-            if (!$m['paye'] && !$m['futur'] && !$premierImpayeTrouve) {
-                $premierImpayeTrouve = true;
-                $m['montant_reel'] = max(0, round($fraisMensuel - $avancePaiement, 2));
-                $m['avance_appliquee'] = $avancePaiement;
-            }
-        }
-        unset($m);
-
-        // Frais annexes inscription (frais_inscription = TOTAL; scolarité = dérivée)
-        $settingsAvance = DB::table('site_settings')->pluck('valeur', 'cle');
-        $fraisAmeaS  = floatval($settingsAvance['frais_amea']      ?? 10000);
-        $fraisTenueS = floatval($settingsAvance['frais_tenue']     ?? 60000);
-        $fraisAssurS = floatval($settingsAvance['frais_assurance'] ?? 10000);
-        $dejaInscription = floatval(Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant'));
-        $totalInscDu     = floatval($license?->frais_inscription ?? 0);
-        $fraisScolariteS = max(0, $totalInscDu - $fraisAmeaS - $fraisTenueS - $fraisAssurS - $fraisMensuel);
-
-        return response()->json([
-            'student'           => $student,
-            'mois'              => $mois,
-            'frais_mensuel'     => $fraisMensuel,
-            'mois_payes'        => $moisPayes,
-            'mois_en_retard'    => $moisEnRetard,
-            'mois_total'        => $moisTotal,
-            'annee_scolaire'    => $anneeDebut . '-' . ($anneeDebut + 1),
-            'avance_paiement'   => $avancePaiement,
-            'inscription_detail'=> [
-                'frais_scolarite'    => $fraisScolariteS,
-                'frais_amea'         => $fraisAmeaS,
-                'frais_tenue'        => $fraisTenueS,
-                'frais_assurance'    => $fraisAssurS,
-                'frais_dernier_mois' => $fraisMensuel,
-                'total_du'           => $totalInscDu,
-                'deja_paye'          => $dejaInscription,
-                'restant'            => max(0, $totalInscDu - $dejaInscription),
-            ],
-        ]);
-    }
-
-    /** Fee breakdown for inscription — fetched before payment so cashier sees all items */
-    public function inscriptionDetails(Student $student)
-    {
-        $student->load('license');
-        $settings       = DB::table('site_settings')->pluck('valeur', 'cle');
-        $fraisAmea      = floatval($settings['frais_amea']      ?? 10000);
-        $fraisTenue     = floatval($settings['frais_tenue']     ?? 60000);
-        $fraisAssurance = floatval($settings['frais_assurance'] ?? 10000);
-        $fraisMensuel   = floatval($student->license?->frais_mensuel ?? 0);
-        // frais_inscription = TOTAL; scolarité = total - amea - tenue - assurance - dernier mois
-        $totalDu        = floatval($student->license?->frais_inscription ?? 0);
-        $fraisScolarite = max(0, $totalDu - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
-        $dejaPaye       = floatval(Payment::where('student_id', $student->id)->where('type', 'inscription')->sum('montant'));
-
-        $dernierMoisCle = null;
-        if ($student->license) {
-            $moisFin      = intval($student->license->mois_fin    ?? 6);
-            $moisDebut    = intval($student->license->mois_debut  ?? 9);
-            $nowD         = \Carbon\Carbon::now();
-            $anneeDebutD  = ($nowD->month >= $moisDebut) ? $nowD->year : $nowD->year - 1;
-            $anneeFinOffD = ($moisFin < $moisDebut) ? 1 : 0;
-            $tentEndD     = \Carbon\Carbon::create($anneeDebutD + $anneeFinOffD, $moisFin, 1)->endOfMonth();
-            if ($tentEndD->lt($nowD)) {
-                $anneeDebutD++;
-            }
-            $dernierMoisCle = ($anneeDebutD + $anneeFinOffD) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
-        }
-
-        return response()->json([
-            'frais_scolarite'    => $fraisScolarite,
-            'frais_amea'         => $fraisAmea,
-            'frais_tenue'        => $fraisTenue,
-            'frais_assurance'    => $fraisAssurance,
-            'frais_dernier_mois' => $fraisMensuel,
-            'dernier_mois_cle'   => $dernierMoisCle,
-            'total_du'           => $totalDu,
-            'deja_paye'          => $dejaPaye,
-            'restant'            => max(0, $totalDu - $dejaPaye),
-        ]);
-    }
-
-    /** Stats for cashier dashboard */
-    public function stats()
-    {
+        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
         $today = now()->toDateString();
+        
+        $pQuery = Payment::where('statut', 'complete');
+        if ($annee && $annee !== 'ALL') {
+            $pQuery->where('annee', $annee);
+        }
+
         return response()->json([
             'total_jour'     => Payment::where('statut', 'complete')->whereDate('date_paiement', $today)->sum('montant'),
             'total_mois'     => Payment::where('statut', 'complete')->whereMonth('date_paiement', now()->month)->sum('montant'),
+            'total_annee'    => (clone $pQuery)->sum('montant'),
             'count_jour'     => Payment::where('statut', 'complete')->whereDate('date_paiement', $today)->count(),
             'count_mois'     => Payment::where('statut', 'complete')->whereMonth('date_paiement', now()->month)->count(),
-            'en_attente'     => Payment::where('statut', 'en_attente')->count(),
-            'par_type'       => Payment::where('statut', 'complete')
-                ->selectRaw('type, SUM(montant) as total, COUNT(*) as count')
-                ->groupBy('type')
-                ->get(),
+            'count_annee'    => (clone $pQuery)->count(),
+            'total_attente'  => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
+            'total_inscrits' => Student::where('statut_inscription', 'accepte')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
         ]);
     }
+
 }
