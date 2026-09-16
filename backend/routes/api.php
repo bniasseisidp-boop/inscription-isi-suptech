@@ -75,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Admin routes ────────────────────────────────────────────────────────
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/stats', [AdminController::class, 'stats']);
+        Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
         // Étudiants
         Route::get('/etudiants', [AdminController::class, 'students']);
         Route::post('/etudiants', [AdminController::class, 'createStudent']);
@@ -167,6 +168,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Cashier routes ──────────────────────────────────────────────────────
     Route::middleware('role:cashier,admin')->prefix('caisse')->group(function () {
+        Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
         Route::get('/paiements', [PaymentController::class, 'index']);
         Route::post('/paiement', [PaymentController::class, 'manualPayment']);
         Route::put('/paiement/{payment}', [PaymentController::class, 'updatePayment']);
@@ -202,6 +204,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Accueil Pédagogique routes ──────────────────────────────────────────
     Route::middleware('role:pedagogique,admin')->prefix('pedagogique')->group(function () {
+        Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
         Route::get('/classes',                                [AccueilPedagogiqueController::class, 'classes']);
         Route::get('/classes/liste-pdf',                      [AccueilPedagogiqueController::class, 'classListPdf']);
         Route::get('/etudiants',                              [AccueilPedagogiqueController::class, 'students']);

@@ -26,21 +26,34 @@ class AdminController extends Controller
     ) {}
 
     /** Dashboard stats — candidatures annulées exclues du total */
-    public function stats()
+    public function stats(Request $request)
     {
-        $actifs = Student::whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
+        $annee = $request->query('annee_scolaire', '2026-2027');
+
+        $queryStudents = Student::query();
+        $queryPayments = Payment::where('statut', 'complete');
+
+        if ($annee && $annee !== 'ALL') {
+            $queryStudents->where('annee_scolaire', $annee);
+            $queryPayments->where(function($q) use ($annee) {
+                $q->where('annee', $annee)
+                  ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
+            });
+        }
+
+        $actifs = (clone $queryStudents)->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
 
         return response()->json([
+            'annee_scolaire'         => $annee,
             'total_etudiants'        => (clone $actifs)->count(),
-            'en_attente'             => Student::where('statut_inscription', 'en_attente')->count(),
-            'en_attente_paiement'    => Student::where('statut_inscription', 'en_attente_paiement')->count(),
-            'acceptes'               => Student::where('statut_inscription', 'accepte')->count(),
-            'rejetes'                => Student::where('statut_inscription', 'rejete')->count(),
-            'inscriptions_payees'    => Student::where('inscription_payee', true)->count(),
-            'total_paiements'        => Payment::where('statut', 'complete')->sum('montant'),
-            'paiements_ce_mois'      => Payment::where('statut', 'complete')
-                ->whereMonth('date_paiement', now()->month)->sum('montant'),
-            'par_filiere'            => Student::whereIn('statut_inscription', ['en_attente_paiement', 'accepte'])
+            'en_attente'             => (clone $queryStudents)->where('statut_inscription', 'en_attente')->count(),
+            'en_attente_paiement'    => (clone $queryStudents)->where('statut_inscription', 'en_attente_paiement')->count(),
+            'acceptes'               => (clone $queryStudents)->where('statut_inscription', 'accepte')->count(),
+            'rejetes'                => (clone $queryStudents)->where('statut_inscription', 'rejete')->count(),
+            'inscriptions_payees'    => (clone $queryStudents)->where('inscription_payee', true)->count(),
+            'total_paiements'        => (clone $queryPayments)->sum('montant'),
+            'paiements_ce_mois'      => (clone $queryPayments)->whereMonth('date_paiement', now()->month)->sum('montant'),
+            'par_filiere'            => (clone $queryStudents)->whereIn('statut_inscription', ['en_attente_paiement', 'accepte'])
                 ->with('filiere')->get()
                 ->groupBy(fn($s) => $s->filiere?->nom ?? 'Autre')
                 ->map->count(),
@@ -50,7 +63,10 @@ class AdminController extends Controller
     /** List all students with filters */
     public function students(Request $request)
     {
+        $annee = $request->query('annee_scolaire', '2026-2027');
+
         $query = Student::with(['filiere', 'license', 'user'])
+            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->when($request->statut, fn($q) => $q->where('statut_inscription', $request->statut))
             ->when($request->filiere_id, fn($q) => $q->where('filiere_id', $request->filiere_id))
             ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
@@ -1155,4 +1171,14 @@ class AdminController extends Controller
             'total_paiements'  => $student->payments->count(),
         ]);
     }
+
+    public function getAnneesScolaires()
+    {
+        $years = DB::table('students')->select('annee_scolaire')->distinct()->whereNotNull('annee_scolaire')->orderBy('annee_scolaire', 'desc')->pluck('annee_scolaire');
+        if (!$years->contains('2026-2027')) {
+            $years->prepend('2026-2027');
+        }
+        return response()->json($years);
+    }
+
 }

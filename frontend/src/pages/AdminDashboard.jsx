@@ -17,6 +17,7 @@ import CurriculumManager from '../components/CurriculumManager'
 import ReinscriptionModal from '../components/ReinscriptionModal'
 import { sendStudentInvite } from '../services/api'
 import {
+  getAcademicYears,
   getAdminStats, getAdminStudents, acceptStudent, rejectStudent,
   deleteStudent, getTrashedStudents, restoreStudent, forceDeleteStudent,
   generateStudentCard, downloadAdminCard, getAdminPayments, getFilieres, createAdminStudent, updateAdminStudent, createFiliere,

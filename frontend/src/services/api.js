@@ -81,7 +81,7 @@ export const updateStudentPhoto = (data) => api.post('/etudiant/profil/photo', d
 })
 
 // Admin
-export const getAdminStats = () => api.get('/admin/stats')
+export const getAdminStats = (params) => api.get('/admin/stats', { params })
 export const getAdminStudents = (params) => api.get('/admin/etudiants', { params })
 export const createAdminStudent = (data) => api.post('/admin/etudiants', data, {
   headers: { 'Content-Type': 'multipart/form-data' },
@@ -187,7 +187,7 @@ export const updateManualPayment = (id, data) => api.put(`/caisse/paiement/${id}
 export const demanderModificationPaiement = (id, data) => api.post(`/caisse/paiement/${id}/demander-modification`, data)
 export const getStatutDemandeModification = (id) => api.get(`/caisse/paiement/${id}/demande-modification`)
 export const recordManualPaymentMultiMois = (data) => api.post('/caisse/paiement/multi-mois', data)
-export const getCashierStats = () => api.get('/caisse/stats')
+export const getCashierStats = (params) => api.get('/caisse/stats', { params })
 export const downloadReceiptBlob = (id) => api.get(`/caisse/paiement/${id}/recu`, { responseType: 'blob' })
 export const getEtudiantsAttentePaiement = (params) => api.get('/caisse/etudiants-attente', { params })
 export const getMoisDesactives = () => api.get('/caisse/mois-desactives')
@@ -306,3 +306,5 @@ export default api
 export const reinscrireStudent = (data) => api.post('/admin/etudiants/reinscrire', data)
 export const sendStudentInvite = (id) => api.post(`/admin/etudiants/${id}/send-invite`)
 export const getStudentDossierHistorique = (id) => api.get(`/admin/etudiants/${id}/historique-dossier`)
+
+export const getAcademicYears = () => api.get('/admin/annees-scolaires')

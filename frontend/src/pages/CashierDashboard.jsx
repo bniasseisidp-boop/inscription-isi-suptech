@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import {
+  getAcademicYears,
   getCashierPayments, recordManualPayment, updateManualPayment, recordManualPaymentMultiMois, getCashierStats,
   getAdminStudents, getEtudiantsAttentePaiement, getMoisDesactives,
   downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob, downloadBrouillardBlob,
@@ -547,6 +548,17 @@ function PdfPreviewModal({ url, label, onClose }) {
 export default function CashierDashboard() {
   const { logout, user, updateUser } = useAuth()
   const navigate   = useNavigate()
+  
+  // Academic Year State
+  const [selectedAnnee, setSelectedAnnee] = useState('2026-2027')
+  const [availableYears, setAvailableYears] = useState(['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018'])
+
+  useEffect(() => {
+    getAcademicYears().then(({ data }) => {
+      if (Array.isArray(data) && data.length > 0) setAvailableYears(data)
+    }).catch(() => {})
+  }, [])
+
   const [active, setActive]       = useState('dashboard')
   const [stats, setStats]         = useState(null)
   const [payments, setPayments]   = useState([])
@@ -591,7 +603,7 @@ export default function CashierDashboard() {
   const handleLogout = async () => { await logout(); navigate('/') }
 
   const loadStats = useCallback(() => {
-    getCashierStats().then(({ data }) => setStats(data)).catch(() => {})
+    getCashierStats({ annee_scolaire: selectedAnnee }).then(({ data }) => setStats(data)).catch(() => {})
   }, [])
 
   const loadAttente = useCallback(() => {
@@ -604,7 +616,7 @@ export default function CashierDashboard() {
 
   const loadInscrits = useCallback(() => {
     setLoadingInscrits(true)
-    getCashierStudents({ statut: 'accepte' })
+    getCashierStudents({ statut: 'accepte', annee_scolaire: selectedAnnee })
       .then(({ data }) => setEtudiantsInscrits(data.data || []))
       .catch(() => {})
       .finally(() => setLoadingInscrits(false))
@@ -633,15 +645,16 @@ export default function CashierDashboard() {
   }, [])
 
   useEffect(() => {
+    loadStats()
     if (active === 'dashboard') { loadAttente(); loadInscrits() }
     if (active === 'paiements') loadPayments()
     if (active === 'impayes') loadImpayesMois(filtreImpMois)
     if (active === 'etudiants') loadBrowserStudents()
-  }, [active])
+  }, [active, selectedAnnee])
 
   const loadBrowserStudents = useCallback(() => {
     setBrowserLoading(true)
-    const params = {}
+    const params = { annee_scolaire: selectedAnnee }
     if (browserFiliereId) params.filiere_id = browserFiliereId
     if (browserSearch) params.search = browserSearch
     getCashierStudents(params)
