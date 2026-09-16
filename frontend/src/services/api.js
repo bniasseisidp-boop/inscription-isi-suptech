@@ -191,7 +191,7 @@ export const getCashierStats = (params) => api.get('/caisse/stats', { params })
 export const downloadReceiptBlob = (id) => api.get(`/caisse/paiement/${id}/recu`, { responseType: 'blob' })
 export const getEtudiantsAttentePaiement = (params) => api.get('/caisse/etudiants-attente', { params })
 export const getMoisDesactives = () => api.get('/caisse/mois-desactives')
-export const getImpayesMois = (mois) => api.get('/caisse/impayes-mois', { params: { mois } })
+export const getImpayesMois = (mois, params = {}) => api.get('/caisse/impayes-mois', { params: { mois, ...params } })
 
 // Admin — mois désactivés
 export const adminGetMoisDesactives = () => api.get('/admin/mois-desactives')
@@ -218,7 +218,7 @@ export const cancelStudentPayment = (id) => api.delete(`/etudiant/paiement/${id}
 export const downloadStudentReceiptBlob = (id) => api.get(`/etudiant/paiement/${id}/recu`, { responseType: 'blob' })
 
 // Cashier — impayés PDF
-export const downloadImpayesPdfBlob = (mois) => api.get(`/caisse/impayes-mois/pdf`, { params: { mois }, responseType: 'blob' })
+export const downloadImpayesPdfBlob = (mois, params = {}) => api.get(`/caisse/impayes-mois/pdf`, { params: { mois, ...params }, responseType: 'blob' })
 export const downloadBrouillardBlob = (date) => api.get(`/caisse/brouillard`, { params: { date }, responseType: 'blob' })
 export const downloadFactureProformaBlob = (data) => api.post('/caisse/facture-proforma', data, { responseType: 'blob' })
 

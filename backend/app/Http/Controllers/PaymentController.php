@@ -523,17 +523,16 @@ class PaymentController extends Controller
     /** List students who haven't paid the given month (default: current month, callable from 5th) */
     public function impayesMois(Request $request)
     {
-        $mois = $request->input('mois', now()->format('Y-m'));
+        $mois  = $request->input('mois', now()->format('Y-m'));
+        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
 
-        // All active students (inscription paid)
+        // All active students for this academic year
         $tous = \App\Models\Student::with(['filiere', 'license', 'payments'])
             ->where('inscription_payee', true)
             ->where('statut_inscription', 'accepte')
+            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->get();
 
-        // Un étudiant n'apparaît que si ce mois fait réellement partie de son cycle de
-        // paiement (ex. hors juillet/août pour un cycle sept-juin) — sinon on obtenait
-        // de faux impayés dès qu'on consultait le rapport pendant les vacances.
         $impaye = $tous->filter(fn ($s) => in_array($mois, $s->mois_non_payes, true))->values();
 
         return response()->json([
@@ -543,14 +542,15 @@ class PaymentController extends Controller
         ]);
     }
 
-    /** Download PDF list of unpaid students for a given month */
     public function impayesMoisPdf(Request $request)
     {
-        $mois = $request->input('mois', now()->format('Y-m'));
+        $mois  = $request->input('mois', now()->format('Y-m'));
+        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
 
         $tous = \App\Models\Student::with(['filiere', 'license', 'user', 'payments'])
             ->where('inscription_payee', true)
             ->where('statut_inscription', 'accepte')
+            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->get();
 
         $etudiants = $tous->filter(fn ($s) => in_array($mois, $s->mois_non_payes, true))->values()->toArray();
@@ -568,7 +568,6 @@ class PaymentController extends Controller
         ]);
     }
 
-    /** Brouillard d'encaissement du jour — récapitulatif des paiements encaissés à une date donnée */
     public function downloadBrouillard(Request $request)
     {
         $date = $request->input('date') ? \Carbon\Carbon::parse($request->input('date')) : now();
@@ -652,9 +651,24 @@ class PaymentController extends Controller
         
         $pQuery = Payment::where('statut', 'complete');
         if ($annee && $annee !== 'ALL') {
-            $pQuery->where('annee', $annee);
+            $pQuery->where(function ($q) use ($annee) {
+                $q->where('annee', $annee)
+                  ->orWhere('annee', substr($annee, 0, 4))
+                  ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
+            });
         }
 
+        return response()->json([
+            'total_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
+            'total_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),
+            'total_annee'    => (clone $pQuery)->sum('montant'),
+            'count_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
+            'count_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
+            'count_annee'    => (clone $pQuery)->count(),
+            'total_attente'  => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
+            'total_inscrits' => Student::where('statut_inscription', 'accepte')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
+        ]);
+    }
         return response()->json([
             'total_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
             'total_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),

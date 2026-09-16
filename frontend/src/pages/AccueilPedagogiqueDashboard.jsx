@@ -678,11 +678,14 @@ export default function AccueilPedagogiqueDashboard() {
   const { logout, user, updateUser } = useAuth()
   const navigate = useNavigate()
 
-  // Academic Years & Anciens Étudiants State
+  // Academic Year State
+  const [selectedAnnee, setSelectedAnnee] = useState('2026-2027')
   const [availableYears, setAvailableYears] = useState([
     '2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023',
     '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018'
   ])
+
+  // Anciens Étudiants State
   const [searchAnciens, setSearchAnciens] = useState('')
   const [filterAnneeAnciens, setFilterAnneeAnciens] = useState('ALL')
   const [filterFiliereAnciens, setFilterFiliereAnciens] = useState('')

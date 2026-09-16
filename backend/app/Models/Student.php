@@ -110,7 +110,7 @@ class Student extends Model
     }
 
     /**
-     * Clé Y-m du dernier mois de l'année scolaire en cours pour ce licence — ce mois est
+     * Clé Y-m du dernier mois de l'année scolaire pour cet étudiant — ce mois est
      * déjà réglé via les frais d'inscription (cf. PDFService::generateReceipt) et ne doit
      * jamais faire l'objet d'un paiement de mensualité séparé.
      */
@@ -122,13 +122,62 @@ class Student extends Model
         $moisFin     = intval($license->mois_fin   ?? 6);
         $moisDebut   = intval($license->mois_debut ?? 9);
         $now         = \Carbon\Carbon::now();
-        $anneeDebut  = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
-        $anneeFinOff = ($moisFin < $moisDebut) ? 1 : 0;
-        $tentativeEnd = \Carbon\Carbon::create($anneeDebut + $anneeFinOff, $moisFin, 1)->endOfMonth();
-        if ($tentativeEnd->lt($now)) {
-            $anneeDebut++;
+        if ($this->annee_scolaire && preg_match('/^(\d{4})-(\d{4})$/', $this->annee_scolaire, $m)) {
+            $anneeDebut = (int) $m[1];
+            $anneeFin   = (int) $m[2];
+        } else {
+            $anneeDebut  = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+            $anneeFin    = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
         }
-        return ($anneeDebut + $anneeFinOff) . '-' . str_pad($moisFin, 2, '0', STR_PAD_LEFT);
+        $anneeFinOff = ($moisFin < $moisDebut) ? ($anneeFin - $anneeDebut) : 0;
+        return sprintf('%04d-%02d', $anneeDebut + $anneeFinOff, $moisFin);
+    }
+
+    /**
+     * Liste normalisée des clés Y-m des mensualités payées par l'étudiant
+     */
+    public function getMoisPayesCleAttribute(): array
+    {
+        $license    = $this->license;
+        $moisDebut  = intval($license?->mois_debut ?? 9);
+        $moisFin    = intval($license?->mois_fin   ?? 6);
+
+        if ($this->annee_scolaire && preg_match('/^(\d{4})-(\d{4})$/', $this->annee_scolaire, $m)) {
+            $anneeDebut = (int) $m[1];
+            $anneeFin   = (int) $m[2];
+        } else {
+            $now = \Carbon\Carbon::now();
+            $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+            $anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
+        }
+
+        $frenchMonths = [
+            'janvier' => 1, 'fevrier' => 2, 'février' => 2, 'mars' => 3, 'avril' => 4,
+            'mai' => 5, 'juin' => 6, 'juillet' => 7, 'aout' => 8, 'août' => 8,
+            'septembre' => 9, 'octobre' => 10, 'novembre' => 11, 'decembre' => 12, 'décembre' => 12,
+        ];
+
+        $paidKeys = [];
+        foreach ($this->payments as $p) {
+            if ($p->statut !== 'complete' && $p->statut !== 'partiel') continue;
+            $raw = trim($p->mois ?? '');
+            if (!$raw) continue;
+
+            if (preg_match('/^\d{4}-\d{2}$/', $raw)) {
+                $paidKeys[] = $raw;
+                continue;
+            }
+
+            if (preg_match('/(janvier|fevrier|février|mars|avril|mai|juin|juillet|aout|août|septembre|octobre|novembre|decembre|décembre)/iu', $raw, $mat)) {
+                $monthWord = mb_strtolower($mat[1], 'UTF-8');
+                $mNum = $frenchMonths[$monthWord] ?? null;
+                if ($mNum !== null) {
+                    $y = ($mNum >= $moisDebut) ? $anneeDebut : $anneeFin;
+                    $paidKeys[] = sprintf('%04d-%02d', $y, $mNum);
+                }
+            }
+        }
+        return array_values(array_unique($paidKeys));
     }
 
     /** Months with unpaid mensualité up to current month (dernier mois exclu — déjà réglé via l'inscription) */
@@ -140,11 +189,9 @@ class Student extends Model
         $license    = $this->license;
         $moisDebut  = intval($license?->mois_debut ?? 9);
         $moisFin    = intval($license?->mois_fin   ?? 6);
+        $fraisMensuel = floatval($license?->frais_mensuel ?? 50000);
         $now        = \Carbon\Carbon::now();
-        // Priorité à l'année scolaire réelle de l'étudiant (ex. "2026-2027") : sinon, avant
-        // le mois de rentrée, le calcul par défaut retombe sur le cycle précédent et AUCUN
-        // mois du cycle en cours ne correspond plus — tout apparaît comme impayé alors que
-        // l'étudiant est à jour (cf. receipt.blade.php, même bug corrigé là-bas).
+
         if ($this->annee_scolaire && preg_match('/^(\d{4})-(\d{4})$/', $this->annee_scolaire, $m)) {
             $anneeDebut = (int) $m[1];
             $anneeFin   = (int) $m[2];
@@ -152,25 +199,57 @@ class Student extends Model
             $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
             $anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
         }
+
         $startDate  = \Carbon\Carbon::create($anneeDebut, $moisDebut, 1);
         $endDate    = \Carbon\Carbon::create($anneeFin, $moisFin, 1)->subMonth();
-        $dernierMoisCle = $this->dernier_mois_cle;
+        $dernierMoisCle = sprintf('%04d-%02d', $anneeFin, $moisFin);
 
-        // Toute mensualité déjà saisie (complète ou partielle) verrouille son mois —
-        // un déficit se reporte sur le mois suivant, pas sur un 2e paiement du même mois.
-        $paidMonths = $this->payments
-            ->where('type', 'mensualite')
-            ->pluck('mois')->toArray();
+        // Pour les années scolaires passées, le cycle complet s'arrête à endDate.
+        // Pour l'année en cours, il s'arrête au mois actuel ou à endDate.
+        $isPastYear = ($anneeFin < $now->year) || ($anneeFin == $now->year && $now->month > $moisFin);
+        $limitDate = $isPastYear ? $endDate : $now->copy()->min($endDate);
 
-        $nonPayes = [];
+        $cycleMonths = [];
         $cur = $startDate->copy();
-        while ($cur->lte($endDate) && $cur->lte($now)) {
+        while ($cur->lte($limitDate)) {
             $cle = $cur->format('Y-m');
-            if ($cle !== $dernierMoisCle && !in_array($cle, $paidMonths)) {
-                $nonPayes[] = $cle;
+            if ($cle !== $dernierMoisCle) {
+                $cycleMonths[] = $cle;
             }
             $cur->addMonth();
         }
+
+        // Total des mensualités payées
+        $totalMensualitesPayees = $this->payments
+            ->where('type', 'mensualite')
+            ->whereIn('statut', ['complete', 'partiel'])
+            ->sum('montant');
+
+        $fraisScolariteTotal = floatval($this->frais_scolarite_total ?? 0);
+        $allFraisTotal = $fraisScolariteTotal > 0 ? $fraisScolariteTotal : (count($cycleMonths) * $fraisMensuel);
+
+        // Si la scolarité totale est payée, aucun mois impayé
+        if ($allFraisTotal > 0 && $totalMensualitesPayees >= $allFraisTotal) {
+            return [];
+        }
+
+        $paidKeys = $this->mois_payes_cle;
+        $monthsCoveredByAmount = $fraisMensuel > 0 ? intval(floor($totalMensualitesPayees / $fraisMensuel)) : 0;
+
+        $nonPayes = [];
+        $coveredCount = 0;
+        foreach ($cycleMonths as $cle) {
+            if (in_array($cle, $paidKeys, true)) {
+                $coveredCount++;
+                continue;
+            }
+            if ($coveredCount < $monthsCoveredByAmount) {
+                $coveredCount++;
+                continue;
+            }
+            $nonPayes[] = $cle;
+        }
+
         return $nonPayes;
     }
 
@@ -193,13 +272,15 @@ class Student extends Model
         $moisDebut  = intval($license->mois_debut ?? 9);
         $moisFin    = intval($license->mois_fin   ?? 6);
         $now        = \Carbon\Carbon::now();
-        if ($this->annee_scolaire && preg_match('/^(\d{4})-\d{4}$/', $this->annee_scolaire, $m)) {
+        if ($this->annee_scolaire && preg_match('/^(\d{4})-(\d{4})$/', $this->annee_scolaire, $m)) {
             $anneeDebut = (int) $m[1];
+            $anneeFin   = (int) $m[2];
         } else {
             $anneeDebut = ($now->month >= $moisDebut) ? $now->year : $now->year - 1;
+            $anneeFin   = $anneeDebut + (($moisFin < $moisDebut) ? 1 : 0);
         }
         $startCle   = sprintf('%04d-%02d', $anneeDebut, $moisDebut);
-        $dernierMoisCle = $this->dernier_mois_cle;
+        $dernierMoisCle = sprintf('%04d-%02d', $anneeFin, $moisFin);
 
         if ($moisCle < $startCle || ($dernierMoisCle && $moisCle >= $dernierMoisCle)) {
             if ($dernierMoisCle && $moisCle === $dernierMoisCle) {
@@ -208,23 +289,17 @@ class Student extends Model
             return "Ce mois ne fait pas partie de l'année scolaire en cours — impossible de le payer.";
         }
 
-        $dejaPaye = $this->payments()->where('type', 'mensualite')->where('mois', $moisCle)->exists();
-        if ($dejaPaye) {
+        $paidKeys = $this->mois_payes_cle;
+        if (in_array($moisCle, $paidKeys, true)) {
             return "Ce mois a déjà été payé — impossible de payer deux fois le même mois.";
         }
 
-        // Interdit de sauter un mois impayé plus ancien pour payer un mois plus récent —
-        // même en paiement anticipé (le mois pas encore "arrivé" dans le calendrier réel
-        // n'est pas dans mois_non_payes, qui s'arrête à aujourd'hui : on doit donc rebalayer
-        // tout le cycle sept-juin, pas seulement jusqu'à maintenant). Le premier mois encore
-        // dû (hors ceux déjà validés dans ce même lot multi-mois) doit toujours être réglé
-        // avant tout mois qui le suit.
-        $paidMonths = $this->payments->where('type', 'mensualite')->pluck('mois')->toArray();
-        $premierNonPaye = null;
+        // Vérifier l'ordre chronologique des paiements
         $cur = \Carbon\Carbon::createFromFormat('Y-m-d', $startCle . '-01');
+        $premierNonPaye = null;
         while ($cur->format('Y-m') < $dernierMoisCle) {
             $cle = $cur->format('Y-m');
-            if (!in_array($cle, $paidMonths, true) && !in_array($cle, $moisSupposesPayes, true)) {
+            if (!in_array($cle, $paidKeys, true) && !in_array($cle, $moisSupposesPayes, true)) {
                 $premierNonPaye = $cle;
                 break;
             }
@@ -244,10 +319,7 @@ class Student extends Model
         return (bool) $this->inscription_payee && empty($this->mois_non_payes);
     }
 
-    /** Base sur le plus grand numero de matricule deja attribue cette annee (pas un simple
-     *  comptage) — un comptage se desynchronise des qu'il y a un ecart (etudiant supprime,
-     *  matricule attribue hors de cette methode...), ce qui provoquait des collisions
-     *  ("Duplicate entry ... students_matricule_unique") lors de la creation. */
+
     public static function generateMatricule(): string
     {
         $prefix = 'ISI-' . date('Y') . '-';
