@@ -1274,17 +1274,22 @@ class AdminController extends Controller
                 'notes_admin'         => $notesAdmin,
             ]);
 
-            // Assurer l'existence du compte utilisateur sans crash d'unicité
+            // Assurer l'existence du compte utilisateur et la mise à jour des identifiants
             $user = $student->user;
-            $tempPassword = null;
+            $tempPassword = \Illuminate\Support\Str::random(8);
+
             if (!$user) {
-                $tempPassword = \Illuminate\Support\Str::random(8);
                 $userEmail = $emailFinal ?: strtolower(preg_replace('/[^a-z0-9]/', '', $student->prenom) . '.' . preg_replace('/[^a-z0-9]/', '', $student->nom) . ($student->id) . '@suptech.sn');
                 
                 $existingUser = User::where('email', $userEmail)->first();
                 if ($existingUser) {
                     $user = $existingUser;
-                    $student->update(['user_id' => $user->id]);
+                    $user->password = \Illuminate\Support\Facades\Hash::make($tempPassword);
+                    if ($emailFinal && $user->email !== $emailFinal) {
+                        $user->email = $emailFinal;
+                    }
+                    $user->save();
+                    $student->update(['user_id' => $user->id, 'email' => $user->email]);
                 } else {
                     $user = User::create([
                         'name'     => trim($student->prenom . ' ' . $student->nom),
@@ -1294,23 +1299,32 @@ class AdminController extends Controller
                     ]);
                     $student->update(['user_id' => $user->id, 'email' => $userEmail]);
                 }
-            } elseif ($emailFinal && $user->email !== $emailFinal) {
-                $userCollision = User::where('email', $emailFinal)->where('id', '!=', $user->id)->first();
-                if (!$userCollision) {
-                    $user->update(['email' => $emailFinal]);
+            } else {
+                $user->password = \Illuminate\Support\Facades\Hash::make($tempPassword);
+                if ($emailFinal && $user->email !== $emailFinal) {
+                    $userCollision = User::where('email', $emailFinal)->where('id', '!=', $user->id)->first();
+                    if (!$userCollision) {
+                        $user->email = $emailFinal;
+                    }
+                }
+                $user->save();
+                if ($user->email) {
+                    $student->update(['email' => $user->email]);
                 }
             }
 
             \Illuminate\Support\Facades\DB::commit();
 
-            // Envoyer email d'invitation si demandé
-            if (!empty($validated['send_email']) && $student->email) {
+            // Envoyer email d'invitation avec les accès au portail étudiant
+            $destinataireEmail = $emailFinal ?: ($student->email ?: ($user?->email ?: null));
+            if ($destinataireEmail) {
                 try {
-                    \Illuminate\Support\Facades\Mail::to($student->email)->send(
-                        new \App\Mail\StudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
+                    \Illuminate\Support\Facades\Mail::to($destinataireEmail)->send(
+                        new \App\Mail\StudentInvite($user, $tempPassword, $student)
                     );
+                    \Illuminate\Support\Facades\Log::info("Email identifiants reinscription envoye a " . $destinataireEmail);
                 } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning("Erreur envoi email reinscription: " . $e->getMessage());
                 }
             }
 

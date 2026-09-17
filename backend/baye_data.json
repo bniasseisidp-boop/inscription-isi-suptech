@@ -1,0 +1,619 @@
+{
+  "id": 1825,
+  "id_cc": 1128,
+  "matricule": "411-25-1245/ISI SUPTECH",
+  "nom": "NIASSE",
+  "prenom": "Baye Assane",
+  "nom_complet": "Baye Assane NIASSE",
+  "sexe": "Masculin",
+  "date_naissance": "10/03/2005",
+  "lieu_naissance": "Kaolack",
+  "nationalite": "Sénégalaise",
+  "telephone": "78 456 78 93",
+  "telephone_tuteur": "77 270 23 28",
+  "email": "azotobrain7@gmail.com",
+  "adresse": "Golf Sud",
+  "date_inscription": "25/10/2024",
+  "annee": "2024-2025",
+  "niveau": "Licence 1 (L1) - Réseaux Informatiques (Cours du Jour) (2024-2025)",
+  "filiere": "Réseaux Informatiques",
+  "cycle": "Licence 1 (L1)",
+  "semestres_dossier": [
+    "S1",
+    "S2"
+  ],
+  "statut": "Inscrit Normal",
+  "statut_validation": "VALIDÉ / ADMIS (60/60 ECTS)",
+  "decision": "Admis(e) en classe supérieure",
+  "semestre1_label": "S1",
+  "semestre2_label": "S2",
+  "moyenne_s1": 15.63,
+  "moyenne_s2": 17.07,
+  "moyenne_generale": 16.35,
+  "credits_s1": 30,
+  "credits_s2": 30,
+  "credits_total": 60,
+  "appreciation_s1": "Bon Travail",
+  "appreciation_s2": "Très Bon travail",
+  "compta_scolarite_due": 630000,
+  "compta_frais_dossier": 70000,
+  "compta_frais_examen": 0,
+  "compta_debit_total": 780000,
+  "compta_total_paye": 780000,
+  "compta_solde_restant": 0,
+  "dernier_paiement_label": "Juin",
+  "modules": [
+    {
+      "semestre": "S1",
+      "ue_nom": "ALA 1101",
+      "ue_credits": 5,
+      "moy_ue": 15.08,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Algorithmique1",
+          "coeff": 3,
+          "credits": 2,
+          "cc": 13,
+          "exam": 17,
+          "rattrapage": null,
+          "moy": 15.4,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Bien"
+        },
+        {
+          "matiere": "programmation 1(langage c)",
+          "coeff": 2,
+          "credits": 3,
+          "cc": 14,
+          "exam": 15,
+          "rattrapage": null,
+          "moy": 14.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Bien"
+        }
+      ]
+    },
+    {
+      "semestre": "S1",
+      "ue_nom": "RAR1502",
+      "ue_credits": 8,
+      "moy_ue": 16.1,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Fondamentaux des réseaux 1",
+          "coeff": 4,
+          "credits": 4,
+          "cc": 13,
+          "exam": 14,
+          "rattrapage": null,
+          "moy": 13.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Assez bien"
+        },
+        {
+          "matiere": "systèmes d'exploitations 1",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 18,
+          "exam": 18,
+          "rattrapage": null,
+          "moy": 18,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        },
+        {
+          "matiere": "architecture et composants des ordinateurs 1",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 18,
+          "exam": 20,
+          "rattrapage": null,
+          "moy": 19.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        }
+      ]
+    },
+    {
+      "semestre": "S1",
+      "ue_nom": "EMA1103",
+      "ue_credits": 6,
+      "moy_ue": 17.73,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Maintenance informatique (IT Essentiels1)",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 16,
+          "exam": 19,
+          "rattrapage": null,
+          "moy": 17.8,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        },
+        {
+          "matiere": "electricité",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 19,
+          "exam": 17,
+          "rattrapage": null,
+          "moy": 17.8,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        },
+        {
+          "matiere": "electronique analogique",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 17,
+          "exam": 18,
+          "rattrapage": null,
+          "moy": 17.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        }
+      ]
+    },
+    {
+      "semestre": "S1",
+      "ue_nom": "SIN1104",
+      "ue_credits": 6,
+      "moy_ue": 14.92,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Analyse 1(Mérise)",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 13,
+          "exam": 12,
+          "rattrapage": null,
+          "moy": 12.4,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Assez bien"
+        },
+        {
+          "matiere": "technologies web 1 (html;css)",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 15,
+          "exam": 16,
+          "rattrapage": null,
+          "moy": 15.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Bien"
+        },
+        {
+          "matiere": "bureautique(word/excel)",
+          "coeff": 1,
+          "credits": 2,
+          "cc": 18,
+          "exam": 19,
+          "rattrapage": null,
+          "moy": 18.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        }
+      ]
+    },
+    {
+      "semestre": "S1",
+      "ue_nom": "CGE1105",
+      "ue_credits": 5,
+      "moy_ue": 13.64,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Mathématiques générales1",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 15,
+          "exam": 16,
+          "rattrapage": null,
+          "moy": 15.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Bien"
+        },
+        {
+          "matiere": "leadership et developpement personnel1",
+          "coeff": 1,
+          "credits": 1,
+          "cc": 10,
+          "exam": 11,
+          "rattrapage": null,
+          "moy": 10.6,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Passable"
+        },
+        {
+          "matiere": "Anglais",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 12,
+          "exam": 14,
+          "rattrapage": null,
+          "moy": 13.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Assez bien"
+        }
+      ]
+    },
+    {
+      "semestre": "S2",
+      "ue_nom": "ALA 1201",
+      "ue_credits": 6,
+      "moy_ue": 18.2,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Algorithmique2",
+          "coeff": 2,
+          "credits": 3,
+          "cc": 17,
+          "exam": 19,
+          "rattrapage": null,
+          "moy": 18.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        },
+        {
+          "matiere": "programmation2(lang c)",
+          "coeff": 2,
+          "credits": 3,
+          "cc": 17,
+          "exam": 19,
+          "rattrapage": null,
+          "moy": 18.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        }
+      ]
+    },
+    {
+      "semestre": "S2",
+      "ue_nom": "RAR1202",
+      "ue_credits": 9,
+      "moy_ue": 17.9,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Fondamentaux des réseaux 2(CCNA1)",
+          "coeff": 4,
+          "credits": 4,
+          "cc": 20,
+          "exam": 17,
+          "rattrapage": null,
+          "moy": 18.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        },
+        {
+          "matiere": "systèmes d'exploitations 2",
+          "coeff": 2,
+          "credits": 2.5,
+          "cc": 15,
+          "exam": 17,
+          "rattrapage": null,
+          "moy": 16.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        },
+        {
+          "matiere": "Architecture et composants des ordinateurs2",
+          "coeff": 2,
+          "credits": 2.5,
+          "cc": 19,
+          "exam": 19,
+          "rattrapage": null,
+          "moy": 19,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        }
+      ]
+    },
+    {
+      "semestre": "S2",
+      "ue_nom": "EMA1203",
+      "ue_credits": 5,
+      "moy_ue": 15.2,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Maintenace informatique (it essentiels 2)",
+          "coeff": 2,
+          "credits": 2.5,
+          "cc": 18,
+          "exam": 17,
+          "rattrapage": null,
+          "moy": 17.4,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        },
+        {
+          "matiere": "electronique digitale",
+          "coeff": 2,
+          "credits": 2.5,
+          "cc": 13,
+          "exam": 13,
+          "rattrapage": null,
+          "moy": 13,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Assez bien"
+        }
+      ]
+    },
+    {
+      "semestre": "S2",
+      "ue_nom": "SIN1204",
+      "ue_credits": 5,
+      "moy_ue": 18.8,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "Analyse 2(mérise)",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 17,
+          "exam": 17,
+          "rattrapage": null,
+          "moy": 17,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        },
+        {
+          "matiere": "technologies web 2(css;javascript)",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 20,
+          "exam": 20,
+          "rattrapage": null,
+          "moy": 20,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        },
+        {
+          "matiere": "Bureautique",
+          "coeff": 1,
+          "credits": 1,
+          "cc": 20,
+          "exam": 20,
+          "rattrapage": null,
+          "moy": 20,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Excellent"
+        }
+      ]
+    },
+    {
+      "semestre": "S2",
+      "ue_nom": "cge1205",
+      "ue_credits": 5,
+      "moy_ue": 14,
+      "statut_ue": "MODULE VALIDÉ",
+      "ue_valide": true,
+      "matieres": [
+        {
+          "matiere": "maths géné 2",
+          "coeff": 2,
+          "credits": 2,
+          "cc": 16,
+          "exam": 16,
+          "rattrapage": null,
+          "moy": 16,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Très bien"
+        },
+        {
+          "matiere": "leadership et developpement personnel2",
+          "coeff": 1,
+          "credits": 1.5,
+          "cc": 15,
+          "exam": 12,
+          "rattrapage": null,
+          "moy": 13.2,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Assez bien"
+        },
+        {
+          "matiere": "anglais2",
+          "coeff": 1,
+          "credits": 1.5,
+          "cc": 12,
+          "exam": 10,
+          "rattrapage": null,
+          "moy": 10.8,
+          "val": "VALIDÉ",
+          "badge_type": "valide",
+          "appreciation": "Passable"
+        }
+      ]
+    }
+  ],
+  "paiements": [
+    {
+      "id_recette": 13727,
+      "id_compte": 1825,
+      "date": "25/10/2024",
+      "heure": "09:43:00",
+      "montant": 150000,
+      "nature": "Inscription",
+      "mois": "Ouverture",
+      "mode": "Espèce",
+      "num_piece": "202585",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 13729,
+      "id_compte": 1825,
+      "date": "25/10/2024",
+      "heure": "09:43:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Juillet",
+      "mode": "Espèce",
+      "num_piece": "2025123",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 14213,
+      "id_compte": 1825,
+      "date": "29/11/2024",
+      "heure": "10:01:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Novembre",
+      "mode": "Espèce",
+      "num_piece": "VCDERTYUJKM",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 14732,
+      "id_compte": 1825,
+      "date": "06/01/2025",
+      "heure": "10:04:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Décembre",
+      "mode": "Espèce",
+      "num_piece": "RTUOKLJMBVCX",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 15146,
+      "id_compte": 1825,
+      "date": "03/02/2025",
+      "heure": "10:29:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Janvier",
+      "mode": "Espèce",
+      "num_piece": "67633",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 15495,
+      "id_compte": 1825,
+      "date": "03/03/2025",
+      "heure": "13:14:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Février",
+      "mode": "Espèce",
+      "num_piece": "0768909",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 15856,
+      "id_compte": 1825,
+      "date": "07/04/2025",
+      "heure": "10:03:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Mars",
+      "mode": "Espèce",
+      "num_piece": "POIYTHJ",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 16184,
+      "id_compte": 1825,
+      "date": "02/05/2025",
+      "heure": "10:06:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Avril",
+      "mode": "Espèce",
+      "num_piece": "76JGR",
+      "caissier": "SUPTECH-SN",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 16675,
+      "id_compte": 1825,
+      "date": "10/06/2025",
+      "heure": "10:18:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Mai",
+      "mode": "Espèce",
+      "num_piece": "9IHJVXGFN12",
+      "caissier": "SUPTECH-OG",
+      "verse_par": ""
+    },
+    {
+      "id_recette": 16984,
+      "id_compte": 1825,
+      "date": "02/07/2025",
+      "heure": "11:55:00",
+      "montant": 70000,
+      "nature": "Mensualité",
+      "mois": "Juin",
+      "mode": "Espèce",
+      "num_piece": "hbiuo8546",
+      "caissier": "SUPTECH-OG",
+      "verse_par": ""
+    }
+  ],
+  "dossiers_historique": [
+    {
+      "id_compte": 1825,
+      "annee": "2024-2025",
+      "classe": "Licence 1 (L1) - Réseaux Informatiques (Cours du Jour)",
+      "filiere": "Réseaux Informatiques",
+      "cycle": "Licence 1 (L1)"
+    },
+    {
+      "id_compte": 2076,
+      "annee": "2025-2026",
+      "classe": "Licence 2 (L2) - Réseaux Informatiques (Cours du Jour)",
+      "filiere": "Réseaux Informatiques",
+      "cycle": "Licence 2 (L2)"
+    }
+  ]
+}
