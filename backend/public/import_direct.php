@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Schema\Blueprint;
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== IMPORTATION RAPIDE & OPTIMISÉE (CHUNKED) ===\n\n";
+echo "=== IMPORTATION RAPIDE & OPTIMISÉE (CHUNKED & UPSERT SAFE) ===\n\n";
 
 ini_set('memory_limit', '512M');
 set_time_limit(900);
@@ -179,7 +179,7 @@ $skipped = 0;
 $pendingPayments = [];
 $pendingNotes = [];
 
-echo "4. Traitement par lots (Bulk Processing) pour éviter tout dépassement de mémoire...\n";
+echo "4. Traitement par lots sécurisé avec déduplication et insertOrIgnore...\n";
 
 $batchSize = 250;
 
@@ -286,7 +286,7 @@ foreach ($data as $idx => $item) {
         $imported++;
     }
 
-    // Accumulate Payments
+    // Accumulate Payments with deduplication
     if (!empty($item['paiements']) && is_array($item['paiements'])) {
         foreach ($item['paiements'] as $pay) {
             $montant = (float)($pay['montant'] ?? 0);
@@ -314,7 +314,7 @@ foreach ($data as $idx => $item) {
         }
     }
 
-    // Accumulate Notes & Modules
+    // Accumulate Notes & Modules with array deduplication
     if (!empty($item['modules']) && is_array($item['modules'])) {
         foreach ($item['modules'] as $mod) {
             if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
@@ -364,20 +364,22 @@ foreach ($data as $idx => $item) {
                     if ($hasNoteAnneeScol) $nRow['annee_scolaire'] = $annee;
                     if ($hasNoteAnnee) $nRow['annee'] = $annee;
 
-                    $pendingNotes[] = $nRow;
+                    // Deduplicate key by student + matiere + annee
+                    $uniqueNoteKey = "{$studentId}_{$matiereId}_{$annee}";
+                    $pendingNotes[$uniqueNoteKey] = $nRow;
                 }
             }
         }
     }
 
-    // Flush batches every 500 items
+    // Flush batches every 500 items using insertOrIgnore
     if (count($pendingPayments) >= 500) {
-        DB::table('payments')->insert($pendingPayments);
+        DB::table('payments')->insertOrIgnore(array_values($pendingPayments));
         $pendingPayments = [];
     }
 
     if (count($pendingNotes) >= 500) {
-        DB::table('notes')->insert($pendingNotes);
+        DB::table('notes')->insertOrIgnore(array_values($pendingNotes));
         $pendingNotes = [];
     }
 
@@ -389,12 +391,12 @@ foreach ($data as $idx => $item) {
 
 // Final flushes
 if (!empty($pendingPayments)) {
-    DB::table('payments')->insert($pendingPayments);
+    DB::table('payments')->insertOrIgnore(array_values($pendingPayments));
     $pendingPayments = [];
 }
 if (!empty($pendingNotes)) {
-    foreach (array_chunk($pendingNotes, 500) as $chunk) {
-        DB::table('notes')->insert($chunk);
+    foreach (array_chunk(array_values($pendingNotes), 500) as $chunk) {
+        DB::table('notes')->insertOrIgnore($chunk);
     }
     $pendingNotes = [];
 }
