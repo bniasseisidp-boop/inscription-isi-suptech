@@ -1,7 +1,8 @@
 <?php
 
-// Standalone direct import script that does a clean 100% sync of all 2 193 annual career records
-// while strictly preserving the 2026-2027 student applications.
+// Standalone direct import script that groups all 2 193 annual career records
+// into 1 162 unique student profiles with complete multi-year history, notes, and payments,
+// while strictly protecting all 2026-2027 admissions and candidatures.
 // Run via CLI: php import_direct.php
 
 $backendDir = __DIR__;
@@ -33,6 +34,9 @@ DB::disableQueryLog();
 echo "1. Vérification et synchronisation du schéma de base...\n";
 
 Schema::table('students', function (Blueprint $table) {
+    if (!Schema::hasColumn('students', 'dossiers_historique')) {
+        $table->json('dossiers_historique')->nullable();
+    }
     if (!Schema::hasColumn('students', 'compta_debit_total')) {
         $table->decimal('compta_debit_total', 14, 2)->default(0)->nullable();
     }
@@ -148,7 +152,7 @@ $protectedCount = DB::table('students')->where(function($q) {
 
 echo "-> Protection stricte activée : $protectedCount candidatures 2026-2027 protégées.\n";
 
-// Remove old historical students & notes to do a clean 100% rebuild of all 2193 annual records
+// Remove old historical students & notes to do a clean 100% rebuild
 $oldHistoricalIds = DB::table('students')
     ->where('annee_scolaire', '!=', '2026-2027')
     ->where('matricule', 'not like', 'ISI-2026-%')
@@ -202,33 +206,57 @@ $hasNoteAnneeUniv = Schema::hasColumn('notes', 'annee_universitaire');
 $hasNoteAnneeScol = Schema::hasColumn('notes', 'annee_scolaire');
 $hasNoteAnnee = Schema::hasColumn('notes', 'annee');
 
-$imported = 0;
-$skipped = 0;
+// 4. GROUP ALL 2,193 RECORDS BY UNIQUE MATRICULE (yields ~1,162 unique students)
+echo "4. Regroupement des 2 193 dossiers par matricule unique...\n";
 
-$pendingPayments = [];
-$pendingNotes = [];
-
-echo "4. Insertion de l'intégralité des 2 193 dossiers annuels avec notes et caisse...\n";
-
-$batchSize = 250;
-
-foreach ($data as $idx => $item) {
+$groupedStudents = [];
+foreach ($data as $item) {
     $matricule = trim($item['matricule'] ?? '');
     if (!$matricule) continue;
 
     $annee = trim($item['annee'] ?? $item['annee_universitaire'] ?? '2024-2025');
 
-    // Protéger les dossiers de 2026-2027
+    // Skip 2026-2027 from canonical data if any
     if (str_starts_with($matricule, 'ISI-2026-') || $annee === '2026-2027') {
-        $skipped++;
         continue;
     }
 
-    $idCc = !empty($item['id_cc']) ? intval($item['id_cc']) : (!empty($item['id']) ? intval($item['id']) : null);
-    $nom = trim($item['nom'] ?? '');
-    $prenom = trim($item['prenom'] ?? '');
-    $filiereNom = trim($item['filiere'] ?? 'Tronc Commun');
-    $niveau = trim($item['niveau'] ?? 'Licence 1');
+    if (!isset($groupedStudents[$matricule])) {
+        $groupedStudents[$matricule] = [
+            'matricule' => $matricule,
+            'records'   => [],
+        ];
+    }
+    $groupedStudents[$matricule]['records'][] = $item;
+}
+
+$uniqueCount = count($groupedStudents);
+echo "-> $uniqueCount étudiants uniques trouvés à partir des 2 193 inscriptions annuelles.\n\n";
+echo "5. Insertion des étudiants avec historique multi-années complet, notes et caisse...\n";
+
+$pendingPayments = [];
+$pendingNotes = [];
+$importedStudents = 0;
+$totalRecordsProcessed = 0;
+
+foreach ($groupedStudents as $matricule => $group) {
+    $records = $group['records'];
+    // Sort records by academic year ascending (e.g. 2017-2018, 2018-2019, ...)
+    usort($records, function ($a, $b) {
+        $ay = $a['annee'] ?? $a['annee_universitaire'] ?? '';
+        $by = $b['annee'] ?? $b['annee_universitaire'] ?? '';
+        return strcmp($ay, $by);
+    });
+
+    // Use latest record for primary profile info
+    $latest = end($records);
+
+    $nom = trim($latest['nom'] ?? '');
+    $prenom = trim($latest['prenom'] ?? '');
+    $filiereNom = trim($latest['filiere'] ?? 'Tronc Commun');
+    $niveau = trim($latest['niveau'] ?? 'Licence 1');
+    $latestAnnee = trim($latest['annee'] ?? $latest['annee_universitaire'] ?? '2024-2025');
+    $idCc = !empty($latest['id_cc']) ? intval($latest['id_cc']) : (!empty($latest['id']) ? intval($latest['id']) : null);
 
     // Filiere
     $filiereId = null;
@@ -250,7 +278,7 @@ foreach ($data as $idx => $item) {
     }
 
     // User Email
-    $email = trim($item['email'] ?? '');
+    $email = trim($latest['email'] ?? '');
     if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $safeMat = preg_replace('/[^A-Za-z0-9]/', '', strtolower($matricule));
         $email = "etudiant.{$safeMat}@isi-suptech.sn";
@@ -269,125 +297,158 @@ foreach ($data as $idx => $item) {
         $existingUsers[$email] = $userId;
     }
 
-    $debit = (float)($item['compta_debit_total'] ?? 0);
-    $paye = (float)($item['compta_total_paye'] ?? 0);
-    $solde = (float)($item['compta_solde_restant'] ?? 0);
-    $birthDate = !empty($item['date_naissance']) ? date('Y-m-d', strtotime(str_replace('/', '-', $item['date_naissance']))) : null;
+    // Aggregate totals across all career years
+    $cumulDebit = 0;
+    $cumulPaye = 0;
+    $cumulSolde = 0;
+    $historySummary = [];
+
+    foreach ($records as $r) {
+        $rAnnee = trim($r['annee'] ?? $r['annee_universitaire'] ?? '2024-2025');
+        $rDebit = (float)($r['compta_debit_total'] ?? 0);
+        $rPaye = (float)($r['compta_total_paye'] ?? 0);
+        $rSolde = (float)($r['compta_solde_restant'] ?? 0);
+        $cumulDebit += $rDebit;
+        $cumulPaye += $rPaye;
+        $cumulSolde += $rSolde;
+
+        $historySummary[] = [
+            'annee' => $rAnnee,
+            'annee_universitaire' => $rAnnee,
+            'filiere' => $r['filiere'] ?? $filiereNom,
+            'niveau' => $r['niveau'] ?? $niveau,
+            'moyenne_generale' => (float)($r['moyenne_generale'] ?? 0),
+            'credits_total' => (int)($r['credits_total'] ?? 0),
+            'compta_debit_total' => $rDebit,
+            'compta_total_paye' => $rPaye,
+            'compta_solde_restant' => $rSolde,
+            'modules_count' => count($r['modules'] ?? []),
+            'paiements_count' => count($r['paiements'] ?? []),
+        ];
+    }
+
+    $birthDate = !empty($latest['date_naissance']) ? date('Y-m-d', strtotime(str_replace('/', '-', $latest['date_naissance']))) : null;
 
     $studentRow = [
         'user_id' => $userId,
         'matricule' => $matricule,
         'nom' => $nom,
         'prenom' => $prenom,
-        'sexe' => ($item['sexe'] ?? 'M') === 'F' ? 'F' : 'M',
+        'sexe' => ($latest['sexe'] ?? 'M') === 'F' ? 'F' : 'M',
         'date_naissance' => $birthDate,
-        'lieu_naissance' => $item['lieu_naissance'] ?? 'Dakar',
-        'adresse' => $item['adresse'] ?? 'Dakar',
-        'nationalite' => $item['nationalite'] ?? 'Sénégalaise',
+        'lieu_naissance' => $latest['lieu_naissance'] ?? 'Dakar',
+        'adresse' => $latest['adresse'] ?? 'Dakar',
+        'nationalite' => $latest['nationalite'] ?? 'Sénégalaise',
         'pays_residence' => 'Sénégal',
-        'telephone' => $item['telephone'] ?? '+221',
+        'telephone' => $latest['telephone'] ?? '+221',
         'filiere_id' => $filiereId,
         'niveau_entree' => $niveau,
         'type_inscription' => 'Privée',
-        'annee_scolaire' => $annee,
+        'annee_scolaire' => $latestAnnee,
         'statut_inscription' => 'accepte',
         'inscription_payee' => 1,
         'statut_documents' => 'valide',
         'est_transfert' => 0,
         'profil_complet' => 1,
         'avance_paiement' => 0,
-        'compta_debit_total' => $debit,
-        'compta_total_paye' => $paye,
-        'compta_solde_restant' => $solde,
-        'compta_est_en_regle' => ($solde <= 0 ? 1 : 0),
-        'moyenne_generale' => (float)($item['moyenne_generale'] ?? 0),
-        'credits_total' => (int)($item['credits_total'] ?? 0),
+        'compta_debit_total' => $cumulDebit,
+        'compta_total_paye' => $cumulPaye,
+        'compta_solde_restant' => $cumulSolde,
+        'compta_est_en_regle' => ($cumulSolde <= 0 ? 1 : 0),
+        'moyenne_generale' => (float)($latest['moyenne_generale'] ?? 0),
+        'credits_total' => (int)($latest['credits_total'] ?? 0),
         'id_cc' => $idCc,
+        'dossiers_historique' => json_encode($historySummary, JSON_UNESCAPED_UNICODE),
         'created_at' => $now,
         'updated_at' => $now,
     ];
 
     $studentId = DB::table('students')->insertGetId($studentRow);
-    $imported++;
+    $importedStudents++;
 
-    // Accumulate Payments
-    if (!empty($item['paiements']) && is_array($item['paiements'])) {
-        foreach ($item['paiements'] as $pay) {
-            $montant = (float)($pay['montant'] ?? 0);
-            if ($montant <= 0) continue;
-            $txId = !empty($pay['id_recette']) ? "REC-{$pay['id_recette']}" : null;
+    // Process all years for this student
+    foreach ($records as $r) {
+        $rAnnee = trim($r['annee'] ?? $r['annee_universitaire'] ?? '2024-2025');
+        $totalRecordsProcessed++;
 
-            $datePay = !empty($pay['date']) ? date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $pay['date']) . ' ' . ($pay['heure'] ?? '12:00:00'))) : $now;
+        // Payments
+        if (!empty($r['paiements']) && is_array($r['paiements'])) {
+            foreach ($r['paiements'] as $pay) {
+                $montant = (float)($pay['montant'] ?? 0);
+                if ($montant <= 0) continue;
+                $txId = !empty($pay['id_recette']) ? "REC-{$pay['id_recette']}" : null;
+                $datePay = !empty($pay['date']) ? date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $pay['date']) . ' ' . ($pay['heure'] ?? '12:00:00'))) : $now;
 
-            $pendingPayments[] = [
-                'student_id' => $studentId,
-                'wave_transaction_id' => $txId,
-                'type' => (stripos($pay['nature'] ?? '', 'inscription') !== false) ? 'inscription' : 'mensualite',
-                'montant' => $montant,
-                'mois' => $pay['mois'] ?? 'Mensualité',
-                'annee' => $annee,
-                'statut' => 'complete',
-                'date_paiement' => $datePay,
-                'methode' => (stripos($pay['mode'] ?? '', 'ch') !== false) ? 'cheque' : ((stripos($pay['mode'] ?? '', 'vir') !== false) ? 'virement' : 'especes'),
-                'notes' => 'Nature: ' . ($pay['nature'] ?? 'Paiement') . ' | Caissier: ' . ($pay['caissier'] ?? 'superviseur'),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
+                $pendingPayments[] = [
+                    'student_id' => $studentId,
+                    'wave_transaction_id' => $txId,
+                    'type' => (stripos($pay['nature'] ?? '', 'inscription') !== false) ? 'inscription' : 'mensualite',
+                    'montant' => $montant,
+                    'mois' => $pay['mois'] ?? 'Mensualité',
+                    'annee' => $rAnnee,
+                    'statut' => 'complete',
+                    'date_paiement' => $datePay,
+                    'methode' => (stripos($pay['mode'] ?? '', 'ch') !== false) ? 'cheque' : ((stripos($pay['mode'] ?? '', 'vir') !== false) ? 'virement' : 'especes'),
+                    'notes' => 'Nature: ' . ($pay['nature'] ?? 'Paiement') . ' | Caissier: ' . ($pay['caissier'] ?? 'superviseur'),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
         }
-    }
 
-    // Accumulate Notes & Modules
-    if (!empty($item['modules']) && is_array($item['modules'])) {
-        foreach ($item['modules'] as $mod) {
-            if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
-                foreach ($mod['matieres'] as $mat) {
-                    $matNom = trim($mat['matiere'] ?? $mat['nom'] ?? '');
-                    if (!$matNom) continue;
+        // Notes & Modules
+        if (!empty($r['modules']) && is_array($r['modules'])) {
+            foreach ($r['modules'] as $mod) {
+                if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
+                    foreach ($mod['matieres'] as $mat) {
+                        $matNom = trim($mat['matiere'] ?? $mat['nom'] ?? '');
+                        if (!$matNom) continue;
 
-                    $matKey = strtoupper($matNom);
-                    if (isset($matiereMap[$matKey])) {
-                        $matiereId = $matiereMap[$matKey];
-                    } else {
-                        $code = substr(strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $matNom)), 0, 10);
-                        if (!$code) $code = 'MAT-' . rand(100, 999);
-                        $mRow = [
-                            'nom' => $matNom,
+                        $matKey = strtoupper($matNom);
+                        if (isset($matiereMap[$matKey])) {
+                            $matiereId = $matiereMap[$matKey];
+                        } else {
+                            $code = substr(strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $matNom)), 0, 10);
+                            if (!$code) $code = 'MAT-' . rand(100, 999);
+                            $mRow = [
+                                'nom' => $matNom,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                            ];
+                            if ($hasMatCode) $mRow['code'] = $code;
+                            if ($hasMatCoeff) $mRow['coefficient'] = (int)($mat['coeff'] ?? 2);
+                            elseif ($hasMatCoeffShort) $mRow['coeff'] = (int)($mat['coeff'] ?? 2);
+                            if ($hasMatFiliere) $mRow['filiere_id'] = $filiereId;
+
+                            $matiereId = DB::table('matieres')->insertGetId($mRow);
+                            $matiereMap[$matKey] = $matiereId;
+                        }
+
+                        $cc = isset($mat['cc']) && $mat['cc'] !== '' && $mat['cc'] !== null ? (float)$mat['cc'] : null;
+                        $exam = isset($mat['exam']) ? (float)$mat['exam'] : (isset($mat['examen']) ? (float)$mat['examen'] : null);
+                        $semestreVal = (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1';
+
+                        $nRow = [
+                            'student_id' => $studentId,
+                            'matiere_id' => $matiereId,
                             'created_at' => $now,
                             'updated_at' => $now,
                         ];
-                        if ($hasMatCode) $mRow['code'] = $code;
-                        if ($hasMatCoeff) $mRow['coefficient'] = (int)($mat['coeff'] ?? 2);
-                        elseif ($hasMatCoeffShort) $mRow['coeff'] = (int)($mat['coeff'] ?? 2);
-                        if ($hasMatFiliere) $mRow['filiere_id'] = $filiereId;
+                        if ($hasNoteCC) $nRow['note_cc'] = $cc;
+                        if ($hasNoteCCShort) $nRow['cc'] = $cc;
+                        if ($hasNoteExam) $nRow['note_examen'] = $exam;
+                        if ($hasNoteExamShort) $nRow['note_exam'] = $exam;
+                        if ($hasNoteExamen) $nRow['examen'] = $exam;
+                        if ($hasNoteDirect) $nRow['note'] = ($exam !== null ? $exam : $cc);
+                        if ($hasNoteValeur) $nRow['valeur'] = ($exam !== null ? $exam : $cc);
+                        if ($hasNoteSemestre) $nRow['semestre'] = $semestreVal;
+                        if ($hasNoteAnneeUniv) $nRow['annee_universitaire'] = $rAnnee;
+                        if ($hasNoteAnneeScol) $nRow['annee_scolaire'] = $rAnnee;
+                        if ($hasNoteAnnee) $nRow['annee'] = $rAnnee;
 
-                        $matiereId = DB::table('matieres')->insertGetId($mRow);
-                        $matiereMap[$matKey] = $matiereId;
+                        $uniqueNoteKey = "{$studentId}_{$matiereId}_{$rAnnee}";
+                        $pendingNotes[$uniqueNoteKey] = $nRow;
                     }
-
-                    $cc = isset($mat['cc']) && $mat['cc'] !== '' && $mat['cc'] !== null ? (float)$mat['cc'] : null;
-                    $exam = isset($mat['exam']) ? (float)$mat['exam'] : (isset($mat['examen']) ? (float)$mat['examen'] : null);
-                    $semestreVal = (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1';
-
-                    $nRow = [
-                        'student_id' => $studentId,
-                        'matiere_id' => $matiereId,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
-                    if ($hasNoteCC) $nRow['note_cc'] = $cc;
-                    if ($hasNoteCCShort) $nRow['cc'] = $cc;
-                    if ($hasNoteExam) $nRow['note_examen'] = $exam;
-                    if ($hasNoteExamShort) $nRow['note_exam'] = $exam;
-                    if ($hasNoteExamen) $nRow['examen'] = $exam;
-                    if ($hasNoteDirect) $nRow['note'] = ($exam !== null ? $exam : $cc);
-                    if ($hasNoteValeur) $nRow['valeur'] = ($exam !== null ? $exam : $cc);
-                    if ($hasNoteSemestre) $nRow['semestre'] = $semestreVal;
-                    if ($hasNoteAnneeUniv) $nRow['annee_universitaire'] = $annee;
-                    if ($hasNoteAnneeScol) $nRow['annee_scolaire'] = $annee;
-                    if ($hasNoteAnnee) $nRow['annee'] = $annee;
-
-                    $uniqueNoteKey = "{$studentId}_{$matiereId}_{$annee}";
-                    $pendingNotes[$uniqueNoteKey] = $nRow;
                 }
             }
         }
@@ -404,8 +465,8 @@ foreach ($data as $idx => $item) {
         $pendingNotes = [];
     }
 
-    if ($idx > 0 && $idx % $batchSize === 0) {
-        echo " -> Traité : $idx / $total dossiers annuels...\n";
+    if ($importedStudents % 200 === 0) {
+        echo " -> Traité : $importedStudents / $uniqueCount étudiants uniques ($totalRecordsProcessed dossiers annuels)...\n";
         gc_collect_cycles();
     }
 }
@@ -428,7 +489,8 @@ $finalPayments = DB::table('payments')->count();
 $finalNotes = DB::table('notes')->count();
 
 echo "\n🎉 SUCCÈS TOTAL !\n";
-echo "- Total dossiers annuels archivés (Anciens) : $totalHistorical\n";
+echo "- Total étudiants uniques archivés (Anciens) : $totalHistorical\n";
+echo "- Total dossiers annuels intégrés : $totalRecordsProcessed\n";
 echo "- Total candidatures 2026-2027 préservées : $totalProtected\n";
 echo "- Total paiements caisse : $finalPayments\n";
 echo "- Total notes enregistrées : $finalNotes\n";
