@@ -697,16 +697,16 @@ class PaymentController extends Controller
         if ($annee === '2026-2027' || !$annee) {
             $pQuery->where(function ($q) {
                 $q->where('annee', '2026-2027')
-                  ->orWhere('annee', '2026')
-                  ->orWhereNull('annee')
-                  ->orWhere('annee', '')
-                  ->orWhereHas('student', function ($sq) {
-                      $sq->where('annee_scolaire', '2026-2027')
-                         ->orWhere('matricule', 'like', 'ISI-2026-%')
-                         ->orWhereIn('statut_inscription', ['accepte', 'en_attente_paiement']);
+                  ->orWhere(function ($sub) {
+                      $sub->whereYear('date_paiement', 2026)
+                          ->whereHas('student', function ($sq) {
+                              $sq->where('matricule', 'like', 'ISI-2026-%')
+                                 ->orWhere('annee_scolaire', '2026-2027');
+                          });
                   });
             })->where(function ($q) {
-                $q->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
+                $q->where('annee', '2026-2027')
+                  ->orWhereYear('date_paiement', 2026);
             });
         } elseif ($annee !== 'ALL') {
             $pQuery->where('annee', $annee);

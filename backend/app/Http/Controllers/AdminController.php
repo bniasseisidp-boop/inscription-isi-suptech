@@ -33,24 +33,22 @@ class AdminController extends Controller
               ?? $request->query('annee') 
               ?? $request->input('annee_scolaire') 
               ?? $request->input('annee_universitaire') 
-              ?? $request->input('annee') 
-              ?? '2026-2027';
-        
+              ?? $request->input('annee');
+
         $sQuery = Student::query();
-        if ($annee === '2026-2027' || !$annee) {
-            $sQuery->where(function($q) {
-                $q->where('annee_scolaire', '2026-2027')
-                  ->orWhereNull('annee_scolaire')
-                  ->orWhere('annee_scolaire', '')
-                  ->orWhere('matricule', 'like', 'ISI-2026-%')
-                  ->orWhereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
-            })->where(function($q) {
-                $q->whereNull('dossiers_historique')
-                  ->orWhere('annee_scolaire', '2026-2027')
-                  ->orWhere('matricule', 'like', 'ISI-2026-%');
-            });
-        } elseif ($annee !== 'ALL') {
-            $sQuery->where('annee_scolaire', $annee);
+        if ($annee && $annee !== 'ALL') {
+            if ($annee === '2026-2027') {
+                $sQuery->where(function ($q) {
+                    $q->where('annee_scolaire', '2026-2027')
+                      ->orWhere('matricule', 'like', 'ISI-2026-%')
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('dossiers_historique')
+                              ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
+                      });
+                });
+            } else {
+                $sQuery->where('annee_scolaire', $annee);
+            }
         }
 
         $pQuery = Payment::query();
@@ -61,16 +59,16 @@ class AdminController extends Controller
         if ($annee === '2026-2027' || !$annee) {
             $pQuery->where(function ($q) {
                 $q->where('annee', '2026-2027')
-                  ->orWhere('annee', '2026')
-                  ->orWhereNull('annee')
-                  ->orWhere('annee', '')
-                  ->orWhereHas('student', function ($sq) {
-                      $sq->where('annee_scolaire', '2026-2027')
-                         ->orWhere('matricule', 'like', 'ISI-2026-%')
-                         ->orWhereIn('statut_inscription', ['accepte', 'en_attente_paiement']);
+                  ->orWhere(function ($sub) {
+                      $sub->whereYear('date_paiement', 2026)
+                          ->whereHas('student', function ($sq) {
+                              $sq->where('matricule', 'like', 'ISI-2026-%')
+                                 ->orWhere('annee_scolaire', '2026-2027');
+                          });
                   });
             })->where(function ($q) {
-                $q->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
+                $q->where('annee', '2026-2027')
+                  ->orWhereYear('date_paiement', 2026);
             });
         } elseif ($annee !== 'ALL') {
             $pQuery->where('annee', $annee);
@@ -126,7 +124,7 @@ class AdminController extends Controller
                       ->orWhere('dossiers_historique', 'like', '%"annee_universitaire":"' . $annee . '"%');
                 });
             } else {
-                // All historical promotions: must have historical dossier or not be active 2026-2027
+                // All historical promotions
                 $query->where(function($q) {
                     $q->whereNotNull('dossiers_historique')
                       ->orWhere(function($sub) {
@@ -140,14 +138,11 @@ class AdminController extends Controller
             if (!$annee || $annee === '2026-2027') {
                 $query->where(function($q) {
                     $q->where('annee_scolaire', '2026-2027')
-                      ->orWhereNull('annee_scolaire')
-                      ->orWhere('annee_scolaire', '')
                       ->orWhere('matricule', 'like', 'ISI-2026-%')
-                      ->orWhereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
-                })->where(function($q) {
-                    $q->whereNull('dossiers_historique')
-                      ->orWhere('annee_scolaire', '2026-2027')
-                      ->orWhere('matricule', 'like', 'ISI-2026-%');
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('dossiers_historique')
+                              ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
+                      });
                 });
             } elseif ($annee && $annee !== 'ALL') {
                 $query->where('annee_scolaire', $annee);
@@ -1155,6 +1150,7 @@ class AdminController extends Controller
             'license_id'          => 'required|exists:licenses,id',
             'annee_scolaire'      => 'required|string|max:20',
             'frais_reinscription' => 'nullable|numeric|min:0',
+            'email'               => 'nullable|string',
             'send_email'          => 'nullable|boolean',
         ]);
 
@@ -1174,9 +1170,40 @@ class AdminController extends Controller
             ? floatval($validated['frais_reinscription'])
             : $fraisAuto;
 
-        // Sauvegarder l'ancien parcours dans notes_admin ou historique
+        // Mettre à jour l'historique de parcours (dossiers_historique)
+        $historique = is_array($student->dossiers_historique)
+            ? $student->dossiers_historique
+            : (json_decode($student->dossiers_historique ?? '[]', true) ?: []);
+
+        $hasCurrent = false;
+        foreach ($historique as &$entry) {
+            if (($entry['annee'] ?? '') === $validated['annee_scolaire'] || ($entry['annee_universitaire'] ?? '') === $validated['annee_scolaire']) {
+                $entry['filiere_id'] = $validated['filiere_id'];
+                $entry['license_id'] = $validated['license_id'];
+                $entry['classe'] = $license->nom;
+                $entry['filiere'] = $license->filiere?->nom;
+                $entry['frais_reinscription'] = $fraisAppliques;
+                $hasCurrent = true;
+                break;
+            }
+        }
+        if (!$hasCurrent) {
+            $historique[] = [
+                'annee'               => $validated['annee_scolaire'],
+                'annee_universitaire' => $validated['annee_scolaire'],
+                'filiere_id'          => $validated['filiere_id'],
+                'license_id'          => $validated['license_id'],
+                'classe'              => $license->nom,
+                'filiere'             => $license->filiere?->nom,
+                'frais_reinscription' => $fraisAppliques,
+                'date_reinscription'  => now()->toDateString(),
+            ];
+        }
+
         $ancienParcours = "Réinscription effectuée le " . now()->format('d/m/Y H:i') . " vers " . ($license->nom ?? 'Nouveau Niveau') . " (" . $validated['annee_scolaire'] . ").";
         $notesAdmin = trim(($student->notes_admin ? $student->notes_admin . "\n" : "") . $ancienParcours);
+
+        $emailFinal = !empty($validated['email']) ? trim($validated['email']) : ($student->email ?: ($student->user?->email ?: null));
 
         // Mettre à jour l'étudiant
         $student->update([
@@ -1184,7 +1211,11 @@ class AdminController extends Controller
             'license_id'          => $validated['license_id'],
             'annee_scolaire'      => $validated['annee_scolaire'],
             'statut_inscription'  => 'accepte',
-            'inscription_payee'   => false, // Doit être validé ou payé à la caisse
+            'inscription_payee'   => false, // En attente de règlement à la caisse
+            'frais_scolarite_total' => $fraisAppliques,
+            'compta_solde_restant'  => $fraisAppliques,
+            'email'               => $emailFinal ?: $student->email,
+            'dossiers_historique' => $historique,
             'notes_admin'         => $notesAdmin,
         ]);
 
@@ -1193,21 +1224,23 @@ class AdminController extends Controller
         $tempPassword = null;
         if (!$user) {
             $tempPassword = \Illuminate\Support\Str::random(8);
-            $userEmail = $student->email ?: strtolower($student->prenom . '.' . $student->nom . '@suptech.sn');
+            $userEmail = $emailFinal ?: strtolower(preg_replace('/[^a-z0-9]/', '', $student->prenom) . '.' . preg_replace('/[^a-z0-9]/', '', $student->nom) . ($student->id) . '@suptech.sn');
             $user = User::create([
                 'name'     => trim($student->prenom . ' ' . $student->nom),
                 'email'    => $userEmail,
                 'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
                 'role'     => 'student',
             ]);
-            $student->update(['user_id' => $user->id]);
+            $student->update(['user_id' => $user->id, 'email' => $userEmail]);
+        } elseif ($emailFinal && $user->email !== $emailFinal) {
+            $user->update(['email' => $emailFinal]);
         }
 
         // Envoyer email d'invitation si demandé
         if (!empty($validated['send_email']) && $student->email) {
             try {
                 \Illuminate\Support\Facades\Mail::to($student->email)->send(
-                    new \App\Mail\StudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
+                    new \AppMailStudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
                 );
             } catch (\Exception $e) {
                 \Log::warning("Erreur envoi email réinscription: " . $e->getMessage());

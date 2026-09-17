@@ -303,12 +303,12 @@ export default api
 
 
 // Réinscription, Invitation & Historique Ancien Étudiant
-export const reinscrireStudent = (data) => api.post('/admin/etudiants/reinscrire', data)
-export const sendStudentInvite = (id) => api.post(`/admin/etudiants/${id}/send-invite`)
-export const getStudentDossierHistorique = (id, params = {}) => api.get(`/admin/etudiants/${id}/historique-dossier`, { params })
+export const reinscrireStudent = (data) => api.post('/etudiants/reinscrire', data)
+export const sendStudentInvite = (id) => api.post(`/etudiants/${id}/send-invite`)
+export const getStudentDossierHistorique = (id, params = {}) => api.get(`/etudiants/${id}/historique-dossier`, { params })
 export const updateStudentHistoricalNotes = (studentId, data) => api.post(`/admin/etudiants/${studentId}/modifier-notes-dossier`, data)
 
-export const getAcademicYears = () => api.get('/admin/annees-scolaires')
+export const getAcademicYears = () => api.get('/annees-scolaires')
 
 
 export const downloadBulletinBlob = (studentId, semestreId, params = {}) =>
