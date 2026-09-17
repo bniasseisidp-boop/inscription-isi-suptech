@@ -802,4 +802,35 @@ class PDFService
         Storage::disk('public')->put($path, $pdf->output());
         return $path;
     }
+
+    /**
+     * Génère un bulletin PDF officiel à partir d'une structure de données de bulletin
+     * (utilisé pour les bulletins historiques ou multi-années du cursus).
+     */
+    public function generateBulletinDataPdf(\App\Models\Student $student, object $semestre, array $bulletin, string $anneeScolaire, ?string $appreciationConseil = null): string
+    {
+        $student->loadMissing(['filiere', 'license']);
+        $domaine = str_contains($this->inferDomaine($student), 'Gestion') ? 'Sciences Économiques et de Gestion' : 'NTIC';
+        $mentionFiliere = str_contains($this->inferDomaine($student), 'Gestion') ? 'Gestion' : 'Informatique';
+        $grade = $this->inferGrade($student);
+        $semNum = $semestre->numero_global ?? ($semestre->numero ?? 1);
+        $qrBase64 = $this->generateQrPngBase64('ISI-BULLETIN-' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '-S' . $semNum, 100);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.bulletin_notes', [
+            'student'            => $student,
+            'semestre'           => $semestre,
+            'anneeScolaire'      => $anneeScolaire,
+            'bulletin'           => $bulletin,
+            'domaine'            => $domaine,
+            'mentionFiliere'     => $mentionFiliere,
+            'grade'              => $grade,
+            'appreciationConseil'=> $appreciationConseil,
+            'qrBase64'           => $qrBase64,
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'bulletin_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_S' . $semNum . '_' . preg_replace('/[^0-9]/', '', $anneeScolaire) . '_' . now()->format('YmdHis') . '.pdf';
+        $path = 'bulletins/' . $filename;
+        \Illuminate\Support\Facades\Storage::disk('public')->put($path, $pdf->output());
+        return $path;
+    }
 }

@@ -623,6 +623,7 @@ export default function StudentPortal() {
   const [emploiDuTemps, setEmploiDuTemps] = useState(null)
   const [loadingEmploi, setLoadingEmploi] = useState(false)
   const [bulletins, setBulletins] = useState(null)
+  const [selectedBulletinYear, setSelectedBulletinYear] = useState('')
   const [loadingBulletins, setLoadingBulletins] = useState(false)
   const [downloadingBulletin, setDownloadingBulletin] = useState(null)
 
@@ -682,10 +683,11 @@ export default function StudentPortal() {
     }
   }, [activeSection])
 
-  const handleDownloadBulletin = async (semestreId) => {
+  const handleDownloadBulletin = async (semestreId, annee = null) => {
     setDownloadingBulletin(semestreId)
+    const anneeToUse = annee || selectedBulletinYear || bulletins?.annee_scolaire || '2024-2025'
     try {
-      const { data } = await downloadMonBulletinPdf(semestreId)
+      const { data } = await downloadMonBulletinPdf(semestreId, { annee_scolaire: anneeToUse })
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
       window.open(url, '_blank')
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
@@ -1344,75 +1346,201 @@ export default function StudentPortal() {
 
               {/* ── MES BULLETINS ──────────────────────────────────────────── */}
               {activeSection === 'bulletins' && (
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* Cursus Header & Year Selector */}
+                  <div className="light-card p-5 border border-slate-200">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Award className="text-isiblue-600" size={22} />
+                          <h3 className="text-lg font-bold text-slate-800">Relevés de Notes & Bulletins du Cursus</h3>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          Consultez et téléchargez vos bulletins officiels pour chaque année académique de votre parcours à ISI SUPTECH.
+                        </p>
+                      </div>
+
+                      {/* Year Selector Tabs */}
+                      {bulletins?.annees_cursus?.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                          {bulletins.annees_cursus.map((ac) => {
+                            const isSelected = (selectedBulletinYear || bulletins.annee_scolaire) === ac.annee
+                            return (
+                              <button
+                                key={ac.annee}
+                                onClick={() => {
+                                  setSelectedBulletinYear(ac.annee)
+                                  setLoadingBulletins(true)
+                                  getMesBulletins({ annee_scolaire: ac.annee })
+                                    .then(({ data }) => setBulletins(data))
+                                    .catch(() => {})
+                                    .finally(() => setLoadingBulletins(false))
+                                }}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                  isSelected
+                                    ? 'bg-isiblue-700 text-white shadow-sm'
+                                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                                }`}
+                              >
+                                {ac.annee} {ac.classe ? `(${ac.classe.split('-')[0].trim()})` : ''}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bulletins Content */}
                   {loadingBulletins ? (
-                    <div className="flex justify-center py-16"><div className="spinner"/></div>
+                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="spinner mb-3" />
+                      <p className="text-sm font-semibold text-slate-500">Chargement de vos bulletins...</p>
+                    </div>
                   ) : !bulletins?.bulletins?.length ? (
-                    <div className="light-card p-10 text-center border border-slate-200">
-                      <Award size={48} className="text-slate-300 mx-auto mb-4"/>
-                      <div className="text-slate-600 text-sm">Aucun bulletin n'est encore disponible pour votre niveau.</div>
+                    <div className="light-card p-12 text-center border border-slate-200">
+                      <Award size={52} className="text-slate-300 mx-auto mb-4" />
+                      <h4 className="text-base font-bold text-slate-700 mb-1">Aucun bulletin disponible pour cette session</h4>
+                      <p className="text-xs text-slate-400">Les délibérations pour cette année ou ce semestre ne sont pas encore publiées.</p>
                     </div>
                   ) : (
                     bulletins.bulletins.map((b) => (
-                      <div key={b.semestre.id} className="light-card p-4">
-                        <div className="flex items-center justify-between mb-3">
+                      <div key={b.semestre?.id || b.semestre?.numero || Math.random()} className="light-card p-6 border border-slate-200 space-y-5">
+                        {/* Semester Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                           <div>
-                            <h4 className="font-bold text-isiblue-700">{b.semestre.libelle}</h4>
-                            <div className="text-xs text-slate-400">Année {bulletins.annee_scolaire}</div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-2.5 h-2.5 rounded-full bg-isiblue-600"></span>
+                              <h4 className="text-base font-bold text-isiblue-900">{b.semestre?.libelle || `Semestre ${b.semestre?.numero}`}</h4>
+                              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-isiblue-50 text-isiblue-700 border border-isiblue-100">
+                                Session {bulletins.annee_scolaire}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1 pl-5">
+                              {b.appreciation || (b.valide ? 'Semestre validé avec succès' : 'En cours de validation')}
+                            </p>
                           </div>
-                          <button onClick={() => handleDownloadBulletin(b.semestre.id)} disabled={downloadingBulletin === b.semestre.id}
-                            className="btn-secondary-light text-xs flex items-center gap-1.5 disabled:opacity-50">
-                            <Download size={13}/> {downloadingBulletin === b.semestre.id ? 'Génération...' : 'Télécharger le PDF'}
+
+                          <button
+                            onClick={() => handleDownloadBulletin(b.semestre?.id || `S${b.semestre?.numero}`, bulletins.annee_scolaire)}
+                            disabled={downloadingBulletin === (b.semestre?.id || `S${b.semestre?.numero}`)}
+                            className="btn-primary text-xs py-2 px-4 flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
+                          >
+                            <Download size={14} />
+                            {downloadingBulletin === (b.semestre?.id || `S${b.semestre?.numero}`)
+                              ? 'Génération du PDF...'
+                              : `Télécharger le Bulletin PDF (${b.semestre?.id || 'S' + b.semestre?.numero})`}
                           </button>
                         </div>
-                        {bulletins.calcul_simple ? (
-                          <>
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne du semestre</div><div className="text-lg font-black text-slate-800">{b.moyenne_semestre ?? '—'} / 20</div></div>
-                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Mention</div><div className="text-lg font-black text-slate-800">{b.mention ?? '—'}</div></div>
+
+                        {/* Semester Metrics */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Moyenne Générale</div>
+                            <div className="text-xl font-black text-slate-800 mt-0.5">
+                              {b.moyenne_semestre ?? b.moyenne_generale ?? '-'} <span className="text-xs font-normal text-slate-400">/ 20</span>
                             </div>
-                            <div className="overflow-x-auto">
-                            <table className="data-table-light">
-                              <thead><tr><th>Matière</th><th>Moy Cont</th><th>Compo</th><th>Moy Géné</th><th>Appréciation</th></tr></thead>
-                              <tbody>
-                                {(b.lignes || []).map((l, i) => (
-                                  <tr key={i}>
-                                    <td className="text-sm">{l.matiere?.nom}</td>
-                                    <td className="text-sm">{l.moy_cont ?? '—'}</td>
-                                    <td className="text-sm">{l.compo ?? '—'}</td>
-                                    <td className="text-sm font-bold">{l.moyenne_generale ?? '—'}</td>
-                                    <td className="text-xs">{l.appreciation ?? '—'}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mention</div>
+                            <div className="text-base font-bold text-isiblue-700 mt-1">
+                              {b.mention || (b.moyenne_semestre >= 16 ? 'Très Bien' : (b.moyenne_semestre >= 14 ? 'Bien' : (b.moyenne_semestre >= 12 ? 'Assez Bien' : (b.moyenne_semestre >= 10 ? 'Passable' : 'Ajourné'))))}
                             </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="grid grid-cols-3 gap-3 mb-3">
-                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne</div><div className="text-lg font-black text-slate-800">{b.moyenne_generale ?? '—'}</div></div>
-                              <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Crédits</div><div className="text-lg font-black text-slate-800">{b.credits_obtenus} / {b.credits_requis}</div></div>
-                              <div className={`rounded-xl p-3 ${b.valide ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                                <div className="text-xs text-slate-400">Statut</div>
-                                <div className={`text-lg font-black ${b.valide ? 'text-emerald-600' : 'text-red-600'}`}>{b.valide ? 'Validé' : 'Non validé'}</div>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Crédits ECTS</div>
+                            <div className="text-xl font-black text-slate-800 mt-0.5">
+                              {b.credits_obtenus ?? 30} <span className="text-xs font-normal text-slate-400">/ {b.credits_requis ?? 30}</span>
+                            </div>
+                          </div>
+
+                          <div className={`rounded-xl p-3.5 border ${b.valide ? 'bg-emerald-50/70 border-emerald-200 text-emerald-800' : 'bg-amber-50/70 border-amber-200 text-amber-800'}`}>
+                            <div className="text-[11px] font-semibold opacity-70 uppercase tracking-wider">Statut</div>
+                            <div className="text-base font-black mt-1">
+                              {b.valide ? '✓ Semestre Validé' : 'Non Validé'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Detailed Table (Modules & Matieres) */}
+                        {b.modules && b.modules.length > 0 ? (
+                          <div className="space-y-4 pt-2">
+                            {b.modules.map((m, mIdx) => (
+                              <div key={mIdx} className="bg-slate-50/60 rounded-xl p-3.5 border border-slate-200/80">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="font-bold text-xs text-isiblue-800 flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-isiblue-100 text-isiblue-800 font-mono text-[10px]">
+                                      {m.module?.code || m.module?.id || `UE ${mIdx + 1}`}
+                                    </span>
+                                    <span>{m.module?.nom || "Unité d'Enseignement"}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs">
+                                    <span className="text-slate-500 font-medium">Crédits : <b>{m.module?.credits ?? 6}</b></span>
+                                    <span className="text-slate-700 font-bold">Moyenne : <b>{m.moyenne_ue ?? '-'} / 20</b></span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${m.valide ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                      {m.valide ? 'Validé' : 'Non validé'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {m.lignes && m.lignes.length > 0 && (
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-xs text-left border-collapse">
+                                      <thead>
+                                        <tr className="border-b border-slate-200 text-slate-400 font-semibold text-[11px]">
+                                          <th className="py-1.5 px-2">Élément Constitutif (Matière)</th>
+                                          <th className="py-1.5 px-2 text-center">Coef</th>
+                                          <th className="py-1.5 px-2 text-center">Contrôle (40%)</th>
+                                          <th className="py-1.5 px-2 text-center">Examen (60%)</th>
+                                          <th className="py-1.5 px-2 text-center">Moyenne</th>
+                                          <th className="py-1.5 px-2 text-right">Appréciation</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {m.lignes.map((l, lIdx) => (
+                                          <tr key={lIdx} className="hover:bg-white/80">
+                                            <td className="py-1.5 px-2 font-medium text-slate-800">{l.matiere?.nom}</td>
+                                            <td className="py-1.5 px-2 text-center text-slate-500">{l.matiere?.coef ?? 2}</td>
+                                            <td className="py-1.5 px-2 text-center text-slate-700 font-mono">{l.mcc !== null ? l.mcc : '-'}</td>
+                                            <td className="py-1.5 px-2 text-center text-slate-700 font-mono">{l.examen !== null ? l.examen : '-'}</td>
+                                            <td className="py-1.5 px-2 text-center font-bold text-slate-900 font-mono">{l.moyenne_generale ?? l.moyenne_ec ?? '-'}</td>
+                                            <td className="py-1.5 px-2 text-right text-slate-500">{l.appreciation || '-'}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                            <div className="overflow-x-auto">
-                            <table className="data-table-light">
-                              <thead><tr><th>UE</th><th>Moyenne</th><th>Statut</th></tr></thead>
+                            ))}
+                          </div>
+                        ) : (b.lignes && b.lignes.length > 0) && (
+                          <div className="overflow-x-auto pt-2">
+                            <table className="data-table-light w-full">
+                              <thead>
+                                <tr>
+                                  <th>Matière</th>
+                                  <th className="text-center">Moy Cont</th>
+                                  <th className="text-center">Compo</th>
+                                  <th className="text-center">Moyenne</th>
+                                  <th>Appréciation</th>
+                                </tr>
+                              </thead>
                               <tbody>
-                                {(b.modules || []).map((m, i) => (
-                                  <tr key={i}>
-                                    <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
-                                    <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
-                                    <td>{m.valide ? <span className="badge-accepted">Validé</span> : <span className="badge-pending">Non validé</span>}</td>
+                                {b.lignes.map((l, lIdx) => (
+                                  <tr key={lIdx}>
+                                    <td className="text-sm font-medium">{l.matiere?.nom}</td>
+                                    <td className="text-sm text-center font-mono">{l.moy_cont ?? '-'}</td>
+                                    <td className="text-sm text-center font-mono">{l.compo ?? '-'}</td>
+                                    <td className="text-sm text-center font-bold font-mono">{l.moyenne_generale ?? '-'}</td>
+                                    <td className="text-xs text-slate-500">{l.appreciation ?? '-'}</td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
-                            </div>
-                          </>
+                          </div>
                         )}
                       </div>
                     ))
@@ -1420,7 +1548,8 @@ export default function StudentPortal() {
                 </div>
               )}
 
-              {/* ── PAIEMENTS ──────────────────────────────────────────────── */}
+
+              {/* ── MES PAIEMENTS ── */}
               {activeSection === 'paiements' && (
                 <div className="space-y-6">
                   {inscriptionPayee && waveEnabled && (

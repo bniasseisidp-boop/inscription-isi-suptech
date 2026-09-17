@@ -341,52 +341,268 @@ class CurriculumController extends Controller
     }
 
     /** Liste des bulletins (calculés à la volée) de l'étudiant connecté, un par semestre de son niveau. */
+        /**
+     * Récupère tous les bulletins du cursus complet de l'étudiant connecté (multi-années).
+     */
     public function mesBulletins(Request $request, BulletinService $bulletinService)
     {
-        $student = Student::where('user_id', $request->user()->id)->with('license')->firstOrFail();
-        if (!$student->license_id) return response()->json([]);
+        $student = Student::where('user_id', $request->user()->id)->with(['license.semestres.modules.matieres', 'filiere', 'notes.matiere'])->firstOrFail();
+        
+        // 1. Récupérer l'ensemble des années disponibles dans son cursus
+        $jsonPath = file_exists(storage_path('app/canonical_all_students.json')) 
+            ? storage_path('app/canonical_all_students.json') 
+            : (file_exists(storage_path('canonical_all_students.json')) ? storage_path('canonical_all_students.json') : base_path('storage/app/canonical_all_students.json'));
+        
+        static $canonicalCache = null;
+        if ($canonicalCache === null && file_exists($jsonPath)) {
+            $canonicalCache = json_decode(file_get_contents($jsonPath), true) ?: [];
+        }
 
-        $anneeScolaire = $student->annee_scolaire ?? (date('Y') . '-' . (date('Y') + 1));
-        $semestres = Semestre::where('license_id', $student->license_id)->orderBy('numero_global')->get();
+        $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+        $matchedRecords = [];
+        if (!empty($canonicalCache)) {
+            foreach ($canonicalCache as $c) {
+                $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $c['matricule'] ?? ''));
+                $cName = strtolower(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')));
+                $studentName = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
+                if ((!empty($mat) && $mat === $cMat) || ($studentName && $studentName === $cName)) {
+                    $matchedRecords[] = $c;
+                }
+            }
+        }
+
+        if (empty($matchedRecords) && !empty($student->dossiers_historique)) {
+            $matchedRecords = is_array($student->dossiers_historique) ? $student->dossiers_historique : json_decode($student->dossiers_historique, true);
+        }
+
+        // Liste des années cursus
+        $anneesCursus = [];
+        $dossiersByYear = [];
+        if (!empty($matchedRecords)) {
+            foreach ($matchedRecords as $r) {
+                $yr = trim($r['annee'] ?? $r['annee_universitaire'] ?? '2024-2025');
+                $niv = trim($r['classe'] ?? $r['niveau'] ?? ($student->license?->nom ?? 'Licence'));
+                $fil = trim($r['filiere'] ?? ($student->filiere?->nom ?? 'Informatique'));
+                $moy = floatval($r['moyenne_generale'] ?? $student->moyenne_generale ?? 0);
+                $anneesCursus[$yr] = [
+                    'annee'   => $yr,
+                    'classe'  => $niv,
+                    'filiere' => $fil,
+                    'moyenne' => $moy,
+                    'credits' => intval($r['credits_total'] ?? 60),
+                ];
+                $dossiersByYear[$yr] = $r;
+            }
+        }
+
+        // Ajouter l'année courante si non présente
+        $currYear = $student->annee_scolaire ?: '2026-2027';
+        if (!isset($anneesCursus[$currYear])) {
+            $anneesCursus[$currYear] = [
+                'annee'   => $currYear,
+                'classe'  => $student->license?->nom ?? 'Licence',
+                'filiere' => $student->filiere?->nom ?? 'Informatique',
+                'moyenne' => floatval($student->moyenne_generale ?? 0),
+                'credits' => intval($student->credits_total ?? 60),
+            ];
+        }
+
+        $anneesCursusList = array_values($anneesCursus);
+
+        // Déterminer l'année demandée
+        $reqYear = $request->query('annee_scolaire') ?? $request->query('annee');
+        if (!$reqYear || !isset($anneesCursus[$reqYear])) {
+            $reqYear = !empty($dossiersByYear) ? array_key_first($dossiersByYear) : $currYear;
+        }
+
         $calculSimple = (bool) $student->license?->calcul_simple;
+        $bulletins = [];
 
-        $bulletins = $semestres->map(fn ($s) => $calculSimple
-            ? $bulletinService->detailSemestreSimple($student, $s, $anneeScolaire)
-            : $bulletinService->detailSemestre($student, $s, $anneeScolaire));
+        // Si l'année demandée est dans les dossiers historiques / canonical
+        if (isset($dossiersByYear[$reqYear])) {
+            $dossier = $dossiersByYear[$reqYear];
+            $semLabels = $dossier['semestres_dossier'] ?? ['S1', 'S2'];
+            
+            // Regrouper les matières/modules par semestre
+            $modulesBySem = [];
+            if (!empty($dossier['modules']) && is_array($dossier['modules'])) {
+                foreach ($dossier['modules'] as $m) {
+                    $sKey = trim($m['semestre'] ?? 'S1');
+                    $modulesBySem[$sKey][] = $m;
+                }
+            }
 
-        return response()->json(['annee_scolaire' => $anneeScolaire, 'calcul_simple' => $calculSimple, 'bulletins' => $bulletins]);
-    }
+            foreach ($semLabels as $sIdx => $sKey) {
+                $semNum = ($sIdx + 1);
+                $sAvg = ($sKey === 'S1' || $semNum === 1) ? floatval($dossier['moyenne_s1'] ?? 0) : floatval($dossier['moyenne_s2'] ?? 0);
+                $sCred = ($sKey === 'S1' || $semNum === 1) ? intval($dossier['credits_s1'] ?? 30) : intval($dossier['credits_s2'] ?? 30);
+                $sApp = ($sKey === 'S1' || $semNum === 1) ? ($dossier['appreciation_s1'] ?? 'Bon Travail') : ($dossier['appreciation_s2'] ?? 'Très Bon travail');
 
-    /** Téléchargement du PDF officiel d'un de ses propres bulletins par l'étudiant connecté. */
-    public function telechargerMonBulletin(Request $request, Semestre $semestre, \App\Services\PDFService $pdfService)
-    {
-        $student = Student::where('user_id', $request->user()->id)->with('license')->firstOrFail();
-        abort_if($student->license_id !== $semestre->license_id, 403, "Ce bulletin ne concerne pas votre niveau.");
+                $modsList = [];
+                $lignesSimples = [];
+                $modsRaw = $modulesBySem[$sKey] ?? [];
 
-        if (!$student->estEnRegle()) {
-            return response()->json([
-                'message' => "Votre bulletin ne peut pas être téléchargé : vous n'êtes pas à jour de vos paiements. Régularisez votre situation auprès de la caisse.",
-            ], 422);
+                foreach ($modsRaw as $modRaw) {
+                    $lignes = [];
+                    $totPondere = 0;
+                    $matieresRaw = $modRaw['matieres'] ?? [];
+                    foreach ($matieresRaw as $matRaw) {
+                        $cc = isset($matRaw['cc']) ? floatval($matRaw['cc']) : null;
+                        $exam = isset($matRaw['exam']) ? floatval($matRaw['exam']) : null;
+                        $moy = isset($matRaw['moy']) ? floatval($matRaw['moy']) : (($cc !== null && $exam !== null) ? round(($cc * 0.4) + ($exam * 0.6), 2) : null);
+                        $coef = floatval($matRaw['coeff'] ?? $matRaw['coef'] ?? 2);
+                        $cred = floatval($matRaw['credits'] ?? 2.5);
+                        $moyCoef = $moy !== null ? round($moy * $coef, 2) : null;
+                        $appr = $matRaw['appreciation'] ?? ($moy !== null ? $bulletinService->appreciationDe($moy) : '-');
+
+                        $ligneItem = [
+                            'matiere' => (object)[
+                                'id'      => $matRaw['id'] ?? null,
+                                'nom'     => $matRaw['matiere'] ?? 'Matière',
+                                'code'    => $matRaw['code'] ?? '',
+                                'coef'    => $coef,
+                                'credits' => $cred,
+                            ],
+                            'mcc'              => $cc,
+                            'examen'           => $exam,
+                            'compo'            => $exam,
+                            'moy_cont'         => $cc,
+                            'moyenne_ec'       => $moy,
+                            'moyenne_generale' => $moy,
+                            'moyenne_coef'     => $moyCoef,
+                            'appreciation'     => $appr,
+                            'val'              => $matRaw['val'] ?? ($moy >= 10 ? 'VALIDÉ' : 'NON VALIDÉ'),
+                        ];
+                        $lignes[] = $ligneItem;
+                        $lignesSimples[] = $ligneItem;
+                        if ($moyCoef !== null) $totPondere += $moyCoef;
+                    }
+
+                    $moyUe = floatval($modRaw['moy_ue'] ?? ($modRaw['moyenne'] ?? ($lignes ? round($totPondere / max(1, count($lignes) * 2), 2) : 0)));
+                    $ueCredits = floatval($modRaw['ue_credits'] ?? 6);
+                    $modsList[] = [
+                        'module' => (object)[
+                            'id'      => $modRaw['ue_nom'] ?? ('UE-' . $sKey),
+                            'nom'     => $modRaw['ue_nom'] ?? 'Unité d'Enseignement',
+                            'code'    => $modRaw['ue_nom'] ?? '',
+                            'credits' => $ueCredits,
+                        ],
+                        'lignes'            => $lignes,
+                        'total_moyenne_coef'=> $totPondere,
+                        'moyenne_ue'        => $moyUe,
+                        'valide'            => $moyUe >= 10.0,
+                    ];
+                }
+
+                $bulletins[] = [
+                    'semestre' => (object)[
+                        'id'            => $sKey,
+                        'numero'        => $semNum,
+                        'numero_global' => $semNum,
+                        'annee'         => substr($reqYear, 0, 4),
+                        'libelle'       => "Semestre {$semNum} ({$sKey})",
+                    ],
+                    'annee_scolaire'       => $reqYear,
+                    'moyenne_semestre'     => $sAvg,
+                    'moyenne_generale'     => $sAvg,
+                    'credits_requis'       => 30,
+                    'credits_obtenus'      => $sCred,
+                    'valide'               => $sAvg >= 10.0,
+                    'mention'              => $bulletinService->mentionDe($sAvg),
+                    'appreciation'         => $sApp,
+                    'modules'              => $modsList,
+                    'lignes'               => $lignesSimples,
+                ];
+            }
+        } elseif ($student->license_id) {
+            // Année courante connectée aux semestres en base
+            $semestres = Semestre::where('license_id', $student->license_id)->orderBy('numero_global')->get();
+            $bulletins = $semestres->map(fn ($s) => $calculSimple
+                ? $bulletinService->detailSemestreSimple($student, $s, $reqYear)
+                : $bulletinService->detailSemestre($student, $s, $reqYear));
         }
 
-        $anneeScolaire = $student->annee_scolaire ?? (date('Y') . '-' . (date('Y') + 1));
-        $path = $student->license?->calcul_simple
-            ? $pdfService->generateBulletinSimple($student, $semestre, $anneeScolaire, null)
-            : $pdfService->generateBulletin($student, $semestre, $anneeScolaire, null);
-        $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
-
-        if (!file_exists($full)) {
-            return response()->json(['message' => 'Erreur génération PDF'], 500);
-        }
-
-        return response()->file($full, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="bulletin_S' . $semestre->numero_global . '.pdf"',
+        return response()->json([
+            'annee_scolaire' => $reqYear,
+            'annees_cursus'  => $anneesCursusList,
+            'calcul_simple'  => $calculSimple,
+            'bulletins'      => $bulletins,
+            'student'        => [
+                'matricule'   => $student->matricule,
+                'nom_complet' => $student->full_name,
+                'filiere'     => $student->filiere?->nom,
+                'classe'      => $student->license?->nom,
+            ]
         ]);
     }
 
-    /** Grand tableau de délibération de la classe (JSON, pour affichage à l'écran). */
-    public function conseilClasse(Semestre $semestre, Request $request, BulletinService $bulletinService)
+    /**
+     * Téléchargement du PDF officiel d'un bulletin du cursus (actuel ou historique).
+     */
+    public function telechargerMonBulletin(Request $request, $semestre, PDFService $pdfService, BulletinService $bulletinService)
+    {
+        $student = Student::where('user_id', $request->user()->id)->with(['license', 'filiere'])->firstOrFail();
+        $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? '2024-2025');
+
+        // 1. Si le paramètre est un ID numérique de Semestre en base
+        if (is_numeric($semestre)) {
+            $semestreObj = Semestre::find($semestre);
+            if ($semestreObj) {
+                $path = $student->license?->calcul_simple
+                    ? $pdfService->generateBulletinSimple($student, $semestreObj, $anneeScolaire, null)
+                    : $pdfService->generateBulletin($student, $semestreObj, $anneeScolaire, null);
+                $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+                if (file_exists($full)) {
+                    return response()->file($full, [
+                        'Content-Type'        => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="bulletin_S' . $semestreObj->numero_global . '.pdf"',
+                    ]);
+                }
+            }
+        }
+
+        // 2. Si c'est un code semestre (ex: S1, S2) ou un bulletin historique de son cursus
+        $semKey = strtoupper(trim((string)$semestre));
+        $semNum = ($semKey === 'S2' || $semKey === '2') ? 2 : 1;
+        $semObj = (object)[
+            'id'            => $semKey,
+            'numero'        => $semNum,
+            'numero_global' => $semNum,
+            'annee'         => substr($anneeScolaire, 0, 4),
+            'libelle'       => "Semestre {$semNum} ({$semKey})",
+        ];
+
+        // Charger les données du bulletin via mesBulletins
+        $bulletinsData = $this->mesBulletins(new Request(['annee_scolaire' => $anneeScolaire]), $bulletinService)->getData(true);
+        $targetBulletin = null;
+        if (!empty($bulletinsData['bulletins'])) {
+            foreach ($bulletinsData['bulletins'] as $b) {
+                if (strtoupper($b['semestre']['id'] ?? '') === $semKey || intval($b['semestre']['numero'] ?? 0) === $semNum) {
+                    $targetBulletin = $b;
+                    break;
+                }
+            }
+        }
+
+        if (!$targetBulletin && !empty($bulletinsData['bulletins'])) {
+            $targetBulletin = $bulletinsData['bulletins'][0];
+        }
+
+        if ($targetBulletin) {
+            $path = $pdfService->generateBulletinDataPdf($student, $semObj, $targetBulletin, $anneeScolaire);
+            $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+            if (file_exists($full)) {
+                return response()->file($full, [
+                    'Content-Type'        => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="bulletin_' . $semKey . '_' . preg_replace('/[^0-9]/', '', $anneeScolaire) . '.pdf"',
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Impossible de générer le bulletin pour ce semestre.'], 404);
+    }
+
+    /** Grand tableau de d public function conseilClasse(Semestre $semestre, Request $request, BulletinService $bulletinService)
     {
         $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
         return response()->json($bulletinService->conseilClasse($semestre, $anneeScolaire));

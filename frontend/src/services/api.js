@@ -287,8 +287,8 @@ export const getProfContenus      = (matiereId) => api.get(`/prof/matieres/${mat
 export const saisirProfContenu    = (matiereId, data) => api.post(`/prof/matieres/${matiereId}/contenus`, data)
 
 // ── Étudiant — bulletins ─────────────────────────────────────────────────────
-export const getMesBulletins        = () => api.get('/etudiant/bulletins')
-export const downloadMonBulletinPdf = (semestreId) => api.get(`/etudiant/semestres/${semestreId}/bulletin-pdf`, { responseType: 'blob' })
+export const getMesBulletins        = (params) => api.get('/etudiant/bulletins', { params })
+export const downloadMonBulletinPdf = (semestreId, params) => api.get(`/etudiant/semestres/${semestreId}/bulletin-pdf`, { params, responseType: 'blob' })
 
 // ── Espace professeur ────────────────────────────────────────────────────────
 export const getProfEmploiDuTemps = () => api.get('/prof/emploi-du-temps')
