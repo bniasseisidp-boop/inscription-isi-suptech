@@ -14,6 +14,7 @@ import {
   getCashierPayments, recordManualPayment, updateManualPayment, recordManualPaymentMultiMois, getCashierStats,
   getAdminStudents, getEtudiantsAttentePaiement, getMoisDesactives,
   downloadReceiptBlob, getImpayesMois, getFilieres, downloadImpayesPdfBlob, downloadBrouillardBlob,
+  getStudentDossierHistorique,
   getCashierStudents, getCashierStudentSuivi, getInscriptionDetails,
   demanderModificationPaiement, getStatutDemandeModification,
   updateMyPassword, updateMyPhoto, downloadFactureProformaBlob,
@@ -700,23 +701,23 @@ export default function CashierDashboard() {
 
   const loadStats = useCallback(() => {
     getCashierStats({ annee_scolaire: selectedAnnee }).then(({ data }) => setStats(data)).catch(() => {})
-  }, [])
+  }, [selectedAnnee])
 
   const loadAttente = useCallback(() => {
     setLoadingAttente(true)
-    getEtudiantsAttentePaiement()
+    getEtudiantsAttentePaiement({ annee_scolaire: selectedAnnee })
       .then(({ data }) => setEtudiantsAttente(data))
       .catch(() => {})
       .finally(() => setLoadingAttente(false))
-  }, [])
+  }, [selectedAnnee])
 
   const loadInscrits = useCallback(() => {
     setLoadingInscrits(true)
-    getCashierStudents({ statut: 'accepte', annee_scolaire: selectedAnnee })
+    getCashierStudents({ statut: 'accepte', annee_scolaire: selectedAnnee, per_page: 50 })
       .then(({ data }) => setEtudiantsInscrits(data.data || []))
       .catch(() => {})
       .finally(() => setLoadingInscrits(false))
-  }, [])
+  }, [selectedAnnee])
 
   const loadPayments = useCallback(() => {
     setLoading(true)
@@ -1101,10 +1102,28 @@ export default function CashierDashboard() {
               {/* ── DASHBOARD ──────────────────────────────────────────────── */}
               {active === 'dashboard' && (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-3 gap-4">
-                    <StatBox label="Recettes aujourd'hui" value={`${fmt(stats?.total_jour)} FCFA`} color="green"/>
-                    <StatBox label="Recettes ce mois"     value={`${fmt(stats?.total_mois)} FCFA`} color="brand"/>
-                    <StatBox label="En attente paiement"  value={etudiantsAttente.length} color="yellow"/>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatBox
+                      label={`Total Encaissé (${selectedAnnee === 'ALL' ? 'Global' : selectedAnnee})`}
+                      value={`${fmt(stats?.total_annee)} FCFA`}
+                      color="green"
+                    />
+                    <StatBox
+                      label={`Étudiants Inscrits (${selectedAnnee === 'ALL' ? 'Global' : selectedAnnee})`}
+                      value={fmt(stats?.total_inscrits ?? etudiantsInscrits.length)}
+                      color="brand"
+                    />
+                    <StatBox
+                      label={`En Attente Paiement (${selectedAnnee === 'ALL' ? 'Global' : selectedAnnee})`}
+                      value={fmt(stats?.total_attente ?? etudiantsAttente.length)}
+                      color="yellow"
+                    />
+                    <StatBox
+                      label="Aujourd'hui / Ce mois"
+                      value={`${fmt(stats?.total_jour)} FCFA`}
+                      sub={`Ce mois : ${fmt(stats?.total_mois)} FCFA`}
+                      color="brand"
+                    />
                   </div>
 
                   {/* Quick-action banner */}

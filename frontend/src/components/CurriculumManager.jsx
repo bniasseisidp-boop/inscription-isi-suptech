@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock, CheckCircle2, CircleSlash, ClipboardList, FileText, Archive } from 'lucide-react'
+import { Plus, Trash2, Pencil, X, Users, BookOpen, GraduationCap, Save, Clock, Download, KeyRound, Lock, Unlock, CheckCircle2, CircleSlash, ClipboardList, FileText, Archive, Search, AlertTriangle } from 'lucide-react'
 import {
   getFilieres, getLicenseSemestres, createSemestre, createModule, updateModule, deleteModule,
   createMatiere, updateMatiere, deleteMatiere, getProfesseurs, createProfesseur, deleteProfesseur,
