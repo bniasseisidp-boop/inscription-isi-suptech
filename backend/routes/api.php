@@ -82,6 +82,16 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ── Admin routes ────────────────────────────────────────────────────────
+    
+    // Shared Staff Routes (Admin, Cashier, Accueil, Super Admin)
+    Route::middleware('role:admin,super_admin,cashier,accueil')->prefix('admin')->group(function () {
+        Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+        Route::post('/etudiants/{student}/modifier-notes-dossier', [AdminController::class, 'updateHistoricalNotes']);
+        Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
+        Route::post('/etudiants/reinscrire', [AdminController::class, 'reinscrireStudent']);
+        Route::post('/etudiants/{student}/send-invite', [AdminController::class, 'sendStudentInvite']);
+    });
+
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         // Inscriptions, Réinscriptions & Invitations
         Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);

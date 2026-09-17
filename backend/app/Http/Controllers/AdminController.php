@@ -1475,6 +1475,14 @@ class AdminController extends Controller
                 'student' => $student,
                 'active_year' => $activeYear,
                 'annees_cursus' => $anneesCursus,
+                'canonical' => [
+                    'annee' => $activeYear,
+                    'niveau' => $canonicalStudent['niveau'] ?? $student->niveau_entree,
+                    'filiere' => $canonicalStudent['filiere'] ?? ($student->filiere->nom ?? 'Tronc Commun'),
+                    'moyenne_generale' => $canonicalStudent['moyenne_generale'] ?? 0,
+                    'credits_total' => $canonicalStudent['credits_total'] ?? 0,
+                    'decision' => $canonicalStudent['decision'] ?? 'En cours',
+                ],
                 'canonical_data' => [
                     'annee' => $activeYear,
                     'niveau' => $canonicalStudent['niveau'] ?? $student->niveau_entree,
@@ -1635,6 +1643,17 @@ class AdminController extends Controller
         $fullPath = Storage::disk('public')->path($cardPath);
         $safeName = 'carte_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf';
         return response()->download($fullPath, $safeName, ['Content-Type' => 'application/pdf']);
+    }
+
+
+    public function getAnneesScolaires()
+    {
+        $years = [
+            '2026-2027', '2025-2026', '2024-2025', '2023-2024',
+            '2022-2023', '2021-2022', '2020-2021', '2019-2020',
+            '2018-2019', '2017-2018'
+        ];
+        return response()->json($years);
     }
 
 }
