@@ -286,7 +286,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Curriculum académique (semestres, modules, matières, profs, emploi du temps) ──
     // Admin + Accueil Pédagogique : gestion complète. Super admin passe toujours (CheckRole).
-    Route::middleware('role:admin,pedagogique')->prefix('curriculum')->group(function () {
+    Route::middleware('role:admin,pedagogique,cashier,super_admin')->prefix('curriculum')->group(function () {
         Route::get('/licenses/{license}/semestres',              [CurriculumController::class, 'semestres']);
         Route::post('/licenses/{license}/semestres',             [CurriculumController::class, 'createSemestre']);
         Route::post('/semestres/{semestre}/modules',             [CurriculumController::class, 'createModule']);
@@ -307,8 +307,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/matieres/{matiere}/presences',             [CurriculumController::class, 'saisirPresences']);
         Route::get('/matieres/{matiere}/contenus',                [CurriculumController::class, 'contenus']);
         Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
-        Route::get('/semestres/{semestre}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
-        Route::post('/semestres/{semestre}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
+        Route::get('/semestres/{semestreKey}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
+        Route::post('/semestres/{semestreKey}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
         Route::get('/semestres/{semestre}/verrou',                [CurriculumController::class, 'verrouStatus']);
         Route::post('/semestres/{semestre}/verrou',               [CurriculumController::class, 'verrouToggle']);
         Route::get('/semestres/{semestre}/emploi-du-temps-pdf',   [CurriculumController::class, 'downloadEmploiDuTemps']);
@@ -334,6 +334,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/etudiant/emploi-du-temps', [CurriculumController::class, 'monEmploiDuTemps']);
     Route::middleware('role:student')->group(function () {
         Route::get('/etudiant/bulletins',                       [CurriculumController::class, 'mesBulletins']);
-        Route::get('/etudiant/semestres/{semestre}/bulletin-pdf', [CurriculumController::class, 'telechargerMonBulletin']);
+        Route::get('/etudiant/semestres/{semestreKey}/bulletin-pdf', [CurriculumController::class, 'telechargerMonBulletin']);
     });
 });

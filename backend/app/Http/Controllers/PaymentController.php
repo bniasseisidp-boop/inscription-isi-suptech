@@ -44,9 +44,21 @@ class PaymentController extends Controller
 
         if ($annee && $annee !== 'ALL') {
             if ($annee === '2026-2027') {
-                $query->where('annee', '2026-2027');
+                $query->where(function ($q) {
+                    $q->where('annee', '2026-2027')
+                      ->orWhere('annee', '2026')
+                      ->orWhere(function ($sub) {
+                          $sub->whereNull('annee')->whereYear('date_paiement', '>=', 2026);
+                      })
+                      ->orWhereHas('student', function ($sq) {
+                          $sq->where('annee_scolaire', '2026-2027');
+                      });
+                });
             } elseif ($annee === 'ANCIENS') {
-                $query->where('annee', '!=', '2026-2027');
+                $query->where(function ($q) {
+                    $q->where('annee', '!=', '2026-2027')
+                      ->where('annee', '!=', '2026');
+                });
             } else {
                 $query->where('annee', $annee);
             }
@@ -691,9 +703,22 @@ class PaymentController extends Controller
         }
         
         if ($annee === '2026-2027' || !$annee) {
-            $pQuery->where('annee', '2026-2027');
+            $pQuery->where(function ($q) {
+                $q->where('annee', '2026-2027')
+                  ->orWhere('annee', '2026')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('annee')
+                          ->whereYear('date_paiement', '>=', 2026);
+                  })
+                  ->orWhereHas('student', function ($sq) {
+                      $sq->where('annee_scolaire', '2026-2027');
+                  });
+            });
         } elseif ($annee === 'ANCIENS') {
-            $pQuery->where('annee', '!=', '2026-2027');
+            $pQuery->where(function ($q) {
+                $q->where('annee', '!=', '2026-2027')
+                  ->where('annee', '!=', '2026');
+            });
         } elseif ($annee !== 'ALL') {
             $pQuery->where('annee', $annee);
         }

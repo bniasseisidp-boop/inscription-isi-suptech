@@ -622,7 +622,7 @@ class CurriculumController extends Controller
         ]);
     }
 
-    public function telechargerMonBulletin(Request $request, $semestre, PDFService $pdfService, BulletinService $bulletinService)
+        public function telechargerMonBulletin(Request $request, $semestreKey, PDFService $pdfService, BulletinService $bulletinService)
     {
         $user = $request->user();
         if (!$user) {
@@ -638,8 +638,8 @@ class CurriculumController extends Controller
         }
 
         $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? '2024-2025');
-        $semKey = strtoupper(trim((string)$semestre));
-        $semNum = is_numeric($semestre) ? intval($semestre) : (intval(preg_replace('/[^0-9]/', '', $semKey)) ?: 1);
+        $semKey = strtoupper(trim((string)$semestreKey));
+        $semNum = is_numeric($semestreKey) ? intval($semestreKey) : (intval(preg_replace('/[^0-9]/', '', $semKey)) ?: 1);
 
         $histData = $this->getStudentHistoricalBulletins($student, $anneeScolaire, $bulletinService);
         $targetBulletin = null;
@@ -675,8 +675,8 @@ class CurriculumController extends Controller
         }
 
         // Fallback si Semestre ID numérique en base de données
-        if (is_numeric($semestre)) {
-            $semestreObj = Semestre::find($semestre);
+        if (is_numeric($semestreKey)) {
+            $semestreObj = Semestre::find($semestreKey);
             if ($semestreObj) {
                 $path = $student->license?->calcul_simple
                     ? $pdfService->generateBulletinSimple($student, $semestreObj, $anneeScolaire, null)
@@ -717,128 +717,11 @@ class CurriculumController extends Controller
     /** Genere en un seul coup les bulletins PDF de tous les etudiants "en regle" (a jour
      *  de paiement) de la classe, dans une archive ZIP. Les etudiants non en regle sont
      *  listes a part dans la reponse pour que l'admin sache lesquels ont ete ignores. */
-    public function downloadBulletinsClasse(Semestre $semestre, Request $request, \App\Services\PDFService $pdfService)
+        /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
+        /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
+    public function downloadBulletin($semestreKey, Student $student, Request $request, \App\Services\PDFService $pdfService, BulletinService $bulletinService)
     {
-        $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
-
-        $etudiants = Student::where('license_id', $semestre->license_id)
-            ->where('statut_inscription', 'accepte')
-            ->orderBy('nom')->orderBy('prenom')
-            ->get();
-
-        $enRegle = $etudiants->filter(fn ($e) => $e->estEnRegle());
-        if ($enRegle->isEmpty()) {
-            return response()->json(['message' => "Aucun étudiant de cette classe n'est à jour de ses paiements."], 422);
-        }
-
-        $tmpZip = tempnam(sys_get_temp_dir(), 'bulletins_') . '.zip';
-        $zip = new \ZipArchive();
-        $zip->open($tmpZip, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
-
-        foreach ($enRegle as $etudiant) {
-            $path = $semestre->license?->calcul_simple
-                ? $pdfService->generateBulletinSimple($etudiant, $semestre, $anneeScolaire, null)
-                : $pdfService->generateBulletin($etudiant, $semestre, $anneeScolaire, null);
-            $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
-            $nomFichier = 'bulletin_' . ($etudiant->matricule ?? $etudiant->id) . '_' . str_replace(' ', '_', $etudiant->nom) . '.pdf';
-            $zip->addFile($full, $nomFichier);
-        }
-        $zip->close();
-
-        $filename = 'bulletins_S' . $semestre->numero_global . '_' . now()->format('Ymd') . '.zip';
-        return response()->download($tmpZip, $filename)->deleteFileAfterSend(true);
-    }
-
-    /** PDF de l'emploi du temps complet d'une classe (filière + niveau + semestre). */
-    public function downloadEmploiDuTemps(Semestre $semestre, \App\Services\PDFService $pdfService)
-    {
-        $path = $pdfService->generateEmploiDuTempsClasse($semestre);
-        $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
-
-        return response()->file($full, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="emploi_du_temps_S' . $semestre->numero_global . '.pdf"',
-        ])->deleteFileAfterSend(true);
-    }
-
-    // ── Notes ────────────────────────────────────────────────────────────────
-
-    /** Saisie/mise à jour en masse des notes d'un étudiant pour un semestre donné. */
-    public function saisirNotes(Request $request, Student $student)
-    {
-        $validated = $request->validate([
-            'annee_scolaire' => 'required|string|max:20',
-            'notes'          => 'required|array|min:1',
-            'notes.*.matiere_id' => 'required|exists:matieres,id',
-            'notes.*.mcc'         => 'nullable|numeric|min:0|max:20',
-            'notes.*.examen'      => 'nullable|numeric|min:0|max:20',
-        ]);
-
-        foreach ($validated['notes'] as $entry) {
-            $mcc = isset($entry['mcc']) && $entry['mcc'] !== '' && $entry['mcc'] !== null ? floatval($entry['mcc']) : null;
-            $examen = isset($entry['examen']) && $entry['examen'] !== '' && $entry['examen'] !== null ? floatval($entry['examen']) : null;
-
-            if ($mcc === null && $examen === null) {
-                // If both are cleared, remove or set null
-                Note::where('student_id', $student->id)
-                    ->where('matiere_id', $entry['matiere_id'])
-                    ->where('annee_scolaire', $validated['annee_scolaire'])
-                    ->delete();
-            } else {
-                Note::updateOrCreate(
-                    ['student_id' => $student->id, 'matiere_id' => $entry['matiere_id'], 'annee_scolaire' => $validated['annee_scolaire']],
-                    [
-                        'mcc'       => $mcc,
-                        'examen'    => $examen,
-                        'saisi_par' => $request->user()?->id,
-                    ]
-                );
-            }
-        }
-
-        return response()->json(['message' => 'Notes enregistrées.']);
-    }
-
-    /** Bulletin calculé (moyennes, validation, mention) pour un étudiant + semestre. */
-    public function bulletin(Semestre $semestre, Student $student, Request $request, BulletinService $bulletinService)
-    {
-        $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? date('Y') . '-' . (date('Y') + 1));
-        $calculSimple = (bool) $semestre->license?->calcul_simple;
-
-        $detail = $calculSimple
-            ? $bulletinService->detailSemestreSimple($student, $semestre, $anneeScolaire)
-            : $bulletinService->detailSemestre($student, $semestre, $anneeScolaire);
-
-        return response()->json(array_merge($detail, ['calcul_simple' => $calculSimple]));
-    }
-
-    /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
-        
-    /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
-    public function downloadBulletin($semestre, Student $student, Request $request, \App\Services\PDFService $pdfService, BulletinService $bulletinService)
-    {
-        // Resolve Semestre if string or model
-        if (!($semestre instanceof Semestre) || !$semestre->exists) {
-            $semNum = is_numeric($semestre) ? intval($semestre) : intval(preg_replace('/[^0-9]/', '', (string)$semestre));
-            $resolved = null;
-            if ($semNum > 0) {
-                $resolved = $student->license?->semestres()->where('numero', $semNum)->first()
-                    ?? Semestre::where('numero', $semNum)->first();
-            }
-            if (!$resolved && is_numeric($semestre)) {
-                $resolved = Semestre::find($semestre);
-            }
-            if (!$resolved) {
-                $resolved = $student->license?->semestres()->first() ?? Semestre::first();
-            }
-            $semestre = $resolved;
-        }
-
-        if (!$semestre) {
-            return response()->json(['message' => 'Semestre introuvable pour ce bulletin.'], 404);
-        }
-
-        $isStaff = $request->user() && in_array($request->user()->role, ['admin', 'pedagogique', 'cashier']);
+        $isStaff = $request->user() && in_array($request->user()->role, ['admin', 'pedagogique', 'cashier', 'super_admin']);
         if (!$isStaff && !$student->estEnRegle()) {
             return response()->json([
                 'message' => "Impossible de générer le bulletin : {$student->prenom} {$student->nom} n'est pas à jour de ses paiements.",
@@ -851,8 +734,8 @@ class CurriculumController extends Controller
         ]);
         $anneeScolaire = $validated['annee_scolaire'] ?? ($student->annee_scolaire ?? date('Y') . '-' . (date('Y') + 1));
 
-        $semKey = strtoupper(trim((string)(is_object($semestre) ? ($semestre->libelle ?? ('S' . ($semestre->numero_global ?? $semestre->numero ?? 1))) : $semestre)));
-        $semNum = is_object($semestre) ? ($semestre->numero_global ?? $semestre->numero ?? 1) : (intval(preg_replace('/[^0-9]/', '', (string)$semestre)) ?: 1);
+        $semKey = strtoupper(trim((string)$semestreKey));
+        $semNum = is_numeric($semestreKey) ? intval($semestreKey) : (intval(preg_replace('/[^0-9]/', '', $semKey)) ?: 1);
 
         // 1. Vérifier si l'étudiant a des notes réelles dans dossiers_historique ou canonical pour cette année
         $histData = $this->getStudentHistoricalBulletins($student, $anneeScolaire, $bulletinService);
@@ -871,7 +754,7 @@ class CurriculumController extends Controller
         }
 
         if ($targetBulletin && !empty($targetBulletin['modules'])) {
-            $semObj = is_object($semestre) ? $semestre : (object)[
+            $semObj = (object)[
                 'id'            => $semKey,
                 'numero'        => $semNum,
                 'numero_global' => $semNum,
@@ -880,9 +763,19 @@ class CurriculumController extends Controller
             ];
             $path = $pdfService->generateBulletinDataPdf($student, $semObj, $targetBulletin, $anneeScolaire, $validated['appreciation'] ?? null);
         } else {
-            $path = (is_object($semestre) && $semestre->license?->calcul_simple)
-                ? $pdfService->generateBulletinSimple($student, $semestre, $anneeScolaire, $validated['appreciation'] ?? null)
-                : $pdfService->generateBulletin($student, is_object($semestre) ? $semestre : Semestre::first(), $anneeScolaire, $validated['appreciation'] ?? null);
+            $semestreModel = is_numeric($semestreKey) ? Semestre::find($semestreKey) : null;
+            if (!$semestreModel && $semNum > 0) {
+                $semestreModel = $student->license?->semestres()->where('numero', $semNum)->first() ?? Semestre::where('numero', $semNum)->first();
+            }
+            if (!$semestreModel) {
+                $semestreModel = $student->license?->semestres()->first() ?? Semestre::first();
+            }
+            if (!$semestreModel) {
+                return response()->json(['message' => 'Semestre introuvable pour ce bulletin.'], 404);
+            }
+            $path = $semestreModel->license?->calcul_simple
+                ? $pdfService->generateBulletinSimple($student, $semestreModel, $anneeScolaire, $validated['appreciation'] ?? null)
+                : $pdfService->generateBulletin($student, $semestreModel, $anneeScolaire, $validated['appreciation'] ?? null);
         }
 
         $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
@@ -893,8 +786,7 @@ class CurriculumController extends Controller
 
         return response()->file($full, [
             'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="bulletin_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_S' . ($semestre->numero_global ?? $semestre->numero ?? 1) . '.pdf"',
+            'Content-Disposition' => 'inline; filename="bulletin_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_S' . $semNum . '.pdf"',
         ]);
     }
-
 }
