@@ -59,19 +59,9 @@ class AdminController extends Controller
         }
         
         if ($annee === '2026-2027' || !$annee) {
-            $pQuery->where(function ($q) {
-                $q->where('annee', '2026-2027')
-                  ->orWhere('annee', 'like', '%2026%')
-                  ->orWhereHas('student', function($sq) {
-                      $sq->where('annee_scolaire', '2026-2027')
-                         ->orWhere('matricule', 'like', 'ISI-2026-%');
-                  });
-            });
+            $pQuery->where('annee', '2026-2027');
         } elseif ($annee !== 'ALL') {
-            $pQuery->where(function ($q) use ($annee) {
-                $q->where('annee', $annee)
-                  ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
-            });
+            $pQuery->where('annee', $annee);
         }
 
         $totalCandidatures = (clone $sQuery)->where('statut_inscription', '!=', 'rejete')->count();
@@ -839,7 +829,7 @@ class AdminController extends Controller
 
         try {
             \Illuminate\Support\Facades\Mail::to($user->email)
-                ->send(new \App\Mail\StaffInvite($user, $tempPassword));
+                ->send(new \App\Mail\StudentInvite($user, $tempPassword, $student));
         } catch (\Exception $e) {
             \Log::warning('Email invitation staff: ' . $e->getMessage());
         }
@@ -1198,7 +1188,7 @@ class AdminController extends Controller
         if (!empty($validated['send_email']) && $student->email) {
             try {
                 \Illuminate\Support\Facades\Mail::to($student->email)->send(
-                    new \App\Mail\StaffInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel')
+                    new \App\Mail\StudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
                 );
             } catch (\Exception $e) {
                 \Log::warning("Erreur envoi email réinscription: " . $e->getMessage());

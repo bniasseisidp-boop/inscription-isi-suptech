@@ -691,10 +691,7 @@ class PaymentController extends Controller
         
         $pQuery = Payment::where('statut', 'complete');
         if ($annee && $annee !== 'ALL') {
-            $pQuery->where(function ($q) use ($annee) {
-                $q->where('annee', $annee)
-                  ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
-            });
+            $pQuery->where('annee', $annee);
         }
 
         $effectiveTotalAnnee = (float)(clone $pQuery)->sum('montant');
