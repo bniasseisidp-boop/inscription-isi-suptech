@@ -1,7 +1,7 @@
 <?php
 
-// Standalone direct import script that can be executed via terminal: `php import_direct.php`
-// OR via browser: `https://votre-domaine.com/inscription/api/import_direct.php`
+// Standalone direct import script optimized for cPanel LVE / Low Memory environments
+// Run via CLI: php import_direct.php
 
 $backendDir = __DIR__;
 if (!file_exists($backendDir . '/vendor/autoload.php')) {
@@ -22,14 +22,15 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Schema\Blueprint;
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== IMPORTATION DIRECTE DE TOUS LES 1 162 ÉTUDIANTS (2 193 INSCRIPTIONS ANNUELLES) ===\n\n";
+echo "=== IMPORTATION RAPIDE & OPTIMISÉE (CHUNKED) ===\n\n";
 
-ini_set('memory_limit', '1024M');
+ini_set('memory_limit', '512M');
 set_time_limit(900);
 DB::disableQueryLog();
 
 // 1. Ensure columns exist
-echo "1. Vérification et création automatique des colonnes manquantes...\n";
+echo "1. Vérification et synchronisation du schéma de base...\n";
+
 Schema::table('students', function (Blueprint $table) {
     if (!Schema::hasColumn('students', 'compta_debit_total')) {
         $table->decimal('compta_debit_total', 14, 2)->default(0)->nullable();
@@ -54,8 +55,6 @@ Schema::table('students', function (Blueprint $table) {
     }
 });
 
-
-// Ensure matieres table columns exist
 if (Schema::hasTable('matieres')) {
     Schema::table('matieres', function (Blueprint $table) {
         if (!Schema::hasColumn('matieres', 'code')) {
@@ -70,7 +69,6 @@ if (Schema::hasTable('matieres')) {
     });
 }
 
-// Ensure notes table and columns exist
 if (!Schema::hasTable('notes')) {
     Schema::create('notes', function (Blueprint $table) {
         $table->id();
@@ -80,6 +78,7 @@ if (!Schema::hasTable('notes')) {
         $table->decimal('note_examen', 5, 2)->nullable();
         $table->string('semestre', 10)->default('S1');
         $table->string('annee_universitaire', 20)->default('2024-2025');
+        $table->string('annee_scolaire', 20)->default('2024-2025')->nullable();
         $table->timestamps();
     });
 } else {
@@ -108,7 +107,7 @@ if (!Schema::hasTable('notes')) {
     });
 }
 
-// 2. Find JSON
+// 2. Find JSON file
 $paths = [
     $backendDir . '/storage/app/canonical_all_students.json',
     storage_path('app/canonical_all_students.json'),
@@ -150,23 +149,45 @@ foreach ($matieres as $m) {
     $matiereMap[strtoupper(trim($m->nom))] = $m->id;
 }
 
-// Cache existing
+// Cache Existing Users & Students
 $existingUsers = DB::table('users')->pluck('id', 'email')->toArray();
 $existingStudents = DB::table('students')->pluck('id', 'matricule')->toArray();
+$existingPayments = DB::table('payments')->whereNotNull('wave_transaction_id')->pluck('id', 'wave_transaction_id')->toArray();
+
+// Column capabilities check
+$hasMatCode = Schema::hasColumn('matieres', 'code');
+$hasMatCoeff = Schema::hasColumn('matieres', 'coefficient');
+$hasMatCoeffShort = Schema::hasColumn('matieres', 'coeff');
+$hasMatFiliere = Schema::hasColumn('matieres', 'filiere_id');
+
+$hasNoteCC = Schema::hasColumn('notes', 'note_cc');
+$hasNoteCCShort = Schema::hasColumn('notes', 'cc');
+$hasNoteExam = Schema::hasColumn('notes', 'note_examen');
+$hasNoteExamShort = Schema::hasColumn('notes', 'note_exam');
+$hasNoteExamen = Schema::hasColumn('notes', 'examen');
+$hasNoteDirect = Schema::hasColumn('notes', 'note');
+$hasNoteValeur = Schema::hasColumn('notes', 'valeur');
+$hasNoteSemestre = Schema::hasColumn('notes', 'semestre');
+$hasNoteAnneeUniv = Schema::hasColumn('notes', 'annee_universitaire');
+$hasNoteAnneeScol = Schema::hasColumn('notes', 'annee_scolaire');
+$hasNoteAnnee = Schema::hasColumn('notes', 'annee');
 
 $imported = 0;
 $updated = 0;
 $skipped = 0;
-$notesCount = 0;
-$paymentsCount = 0;
 
-echo "4. Importation et mise à jour des notes et comptabilité en cours...\n";
+$pendingPayments = [];
+$pendingNotes = [];
+
+echo "4. Traitement par lots (Bulk Processing) pour éviter tout dépassement de mémoire...\n";
+
+$batchSize = 250;
 
 foreach ($data as $idx => $item) {
     $matricule = trim($item['matricule'] ?? '');
     if (!$matricule) continue;
 
-    // Ne pas toucher aux 58 dossiers de 2026-2027
+    // Protéger les dossiers de 2026-2027
     if (str_starts_with($matricule, 'ISI-2026-') || ($item['annee'] ?? '') === '2026-2027') {
         $skipped++;
         continue;
@@ -265,36 +286,35 @@ foreach ($data as $idx => $item) {
         $imported++;
     }
 
-    // Payments
+    // Accumulate Payments
     if (!empty($item['paiements']) && is_array($item['paiements'])) {
         foreach ($item['paiements'] as $pay) {
             $montant = (float)($pay['montant'] ?? 0);
             if ($montant <= 0) continue;
-            $datePay = !empty($pay['date']) ? date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $pay['date']) . ' ' . ($pay['heure'] ?? '12:00:00'))) : $now;
             $txId = !empty($pay['id_recette']) ? "REC-{$pay['id_recette']}" : null;
+            if ($txId && isset($existingPayments[$txId])) continue;
 
-            $existsPay = DB::table('payments')->where('student_id', $studentId)->where('wave_transaction_id', $txId)->exists();
-            if (!$existsPay) {
-                DB::table('payments')->insert([
-                    'student_id' => $studentId,
-                    'wave_transaction_id' => $txId,
-                    'type' => (stripos($pay['nature'] ?? '', 'inscription') !== false) ? 'inscription' : 'mensualite',
-                    'montant' => $montant,
-                    'mois' => $pay['mois'] ?? 'Mensualité',
-                    'annee' => $annee,
-                    'statut' => 'complete',
-                    'date_paiement' => $datePay,
-                    'methode' => (stripos($pay['mode'] ?? '', 'ch') !== false) ? 'cheque' : ((stripos($pay['mode'] ?? '', 'vir') !== false) ? 'virement' : 'especes'),
-                    'notes' => 'Nature: ' . ($pay['nature'] ?? 'Paiement') . ' | Caissier: ' . ($pay['caissier'] ?? 'superviseur'),
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-                $paymentsCount++;
-            }
+            $datePay = !empty($pay['date']) ? date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $pay['date']) . ' ' . ($pay['heure'] ?? '12:00:00'))) : $now;
+
+            $pendingPayments[] = [
+                'student_id' => $studentId,
+                'wave_transaction_id' => $txId,
+                'type' => (stripos($pay['nature'] ?? '', 'inscription') !== false) ? 'inscription' : 'mensualite',
+                'montant' => $montant,
+                'mois' => $pay['mois'] ?? 'Mensualité',
+                'annee' => $annee,
+                'statut' => 'complete',
+                'date_paiement' => $datePay,
+                'methode' => (stripos($pay['mode'] ?? '', 'ch') !== false) ? 'cheque' : ((stripos($pay['mode'] ?? '', 'vir') !== false) ? 'virement' : 'especes'),
+                'notes' => 'Nature: ' . ($pay['nature'] ?? 'Paiement') . ' | Caissier: ' . ($pay['caissier'] ?? 'superviseur'),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+            if ($txId) $existingPayments[$txId] = true;
         }
     }
 
-    // Notes & Modules (support both $mat['matiere'] and $mat['nom'])
+    // Accumulate Notes & Modules
     if (!empty($item['modules']) && is_array($item['modules'])) {
         foreach ($item['modules'] as $mod) {
             if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
@@ -313,10 +333,10 @@ foreach ($data as $idx => $item) {
                             'created_at' => $now,
                             'updated_at' => $now,
                         ];
-                        if (Schema::hasColumn('matieres', 'code')) $mRow['code'] = $code;
-                        if (Schema::hasColumn('matieres', 'coefficient')) $mRow['coefficient'] = (int)($mat['coeff'] ?? 2);
-                        elseif (Schema::hasColumn('matieres', 'coeff')) $mRow['coeff'] = (int)($mat['coeff'] ?? 2);
-                        if (Schema::hasColumn('matieres', 'filiere_id')) $mRow['filiere_id'] = $filiereId;
+                        if ($hasMatCode) $mRow['code'] = $code;
+                        if ($hasMatCoeff) $mRow['coefficient'] = (int)($mat['coeff'] ?? 2);
+                        elseif ($hasMatCoeffShort) $mRow['coeff'] = (int)($mat['coeff'] ?? 2);
+                        if ($hasMatFiliere) $mRow['filiere_id'] = $filiereId;
 
                         $matiereId = DB::table('matieres')->insertGetId($mRow);
                         $matiereMap[$matKey] = $matiereId;
@@ -324,44 +344,59 @@ foreach ($data as $idx => $item) {
 
                     $cc = isset($mat['cc']) && $mat['cc'] !== '' && $mat['cc'] !== null ? (float)$mat['cc'] : null;
                     $exam = isset($mat['exam']) ? (float)$mat['exam'] : (isset($mat['examen']) ? (float)$mat['examen'] : null);
+                    $semestreVal = (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1';
 
-                    $existsNote = DB::table('notes')->where('student_id', $studentId)->where('matiere_id', $matiereId)->first();
-                    $noteData = [
+                    $nRow = [
+                        'student_id' => $studentId,
+                        'matiere_id' => $matiereId,
+                        'created_at' => $now,
                         'updated_at' => $now,
                     ];
-                    if (Schema::hasColumn('notes', 'note_cc')) $noteData['note_cc'] = $cc;
-                    elseif (Schema::hasColumn('notes', 'cc')) $noteData['cc'] = $cc;
-                    
-                    if (Schema::hasColumn('notes', 'note_examen')) $noteData['note_examen'] = $exam;
-                    elseif (Schema::hasColumn('notes', 'note_exam')) $noteData['note_exam'] = $exam;
-                    elseif (Schema::hasColumn('notes', 'examen')) $noteData['examen'] = $exam;
+                    if ($hasNoteCC) $nRow['note_cc'] = $cc;
+                    if ($hasNoteCCShort) $nRow['cc'] = $cc;
+                    if ($hasNoteExam) $nRow['note_examen'] = $exam;
+                    if ($hasNoteExamShort) $nRow['note_exam'] = $exam;
+                    if ($hasNoteExamen) $nRow['examen'] = $exam;
+                    if ($hasNoteDirect) $nRow['note'] = ($exam !== null ? $exam : $cc);
+                    if ($hasNoteValeur) $nRow['valeur'] = ($exam !== null ? $exam : $cc);
+                    if ($hasNoteSemestre) $nRow['semestre'] = $semestreVal;
+                    if ($hasNoteAnneeUniv) $nRow['annee_universitaire'] = $annee;
+                    if ($hasNoteAnneeScol) $nRow['annee_scolaire'] = $annee;
+                    if ($hasNoteAnnee) $nRow['annee'] = $annee;
 
-                    if (Schema::hasColumn('notes', 'semestre')) {
-                        $noteData['semestre'] = (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1';
-                    }
-                    if (Schema::hasColumn('notes', 'annee_universitaire')) $noteData['annee_universitaire'] = $annee;
-                    if (Schema::hasColumn('notes', 'annee_scolaire')) $noteData['annee_scolaire'] = $annee;
-                    if (Schema::hasColumn('notes', 'annee')) $noteData['annee'] = $annee;
-                    if (Schema::hasColumn('notes', 'note') && !isset($noteData['note'])) $noteData['note'] = ($exam !== null ? $exam : $cc);
-                    if (Schema::hasColumn('notes', 'valeur') && !isset($noteData['valeur'])) $noteData['valeur'] = ($exam !== null ? $exam : $cc);
-
-                    if ($existsNote) {
-                        DB::table('notes')->where('id', $existsNote->id)->update($noteData);
-                    } else {
-                        $noteData['student_id'] = $studentId;
-                        $noteData['matiere_id'] = $matiereId;
-                        $noteData['created_at'] = $now;
-                        DB::table('notes')->insert($noteData);
-                        $notesCount++;
-                    }
+                    $pendingNotes[] = $nRow;
                 }
             }
         }
     }
 
-    if ($idx % 100 === 0) {
+    // Flush batches every 500 items
+    if (count($pendingPayments) >= 500) {
+        DB::table('payments')->insert($pendingPayments);
+        $pendingPayments = [];
+    }
+
+    if (count($pendingNotes) >= 500) {
+        DB::table('notes')->insert($pendingNotes);
+        $pendingNotes = [];
+    }
+
+    if ($idx > 0 && $idx % $batchSize === 0) {
+        echo " -> Traité : $idx / $total dossiers...\n";
         gc_collect_cycles();
     }
+}
+
+// Final flushes
+if (!empty($pendingPayments)) {
+    DB::table('payments')->insert($pendingPayments);
+    $pendingPayments = [];
+}
+if (!empty($pendingNotes)) {
+    foreach (array_chunk($pendingNotes, 500) as $chunk) {
+        DB::table('notes')->insert($chunk);
+    }
+    $pendingNotes = [];
 }
 
 $finalTotal = DB::table('students')->count();
