@@ -11,6 +11,10 @@ import {
   downloadCertificatScolariteBlob, downloadFicheInscriptionBlob
 } from '../services/api'
 
+function safeFmt(n) {
+  return Number(n || 0).toLocaleString('fr-FR')
+}
+
 export default function StudentHistoricalDossierModal({
   isOpen,
   onClose,
