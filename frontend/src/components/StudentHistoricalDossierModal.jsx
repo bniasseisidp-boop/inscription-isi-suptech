@@ -244,12 +244,12 @@ export default function StudentHistoricalDossierModal({
 
                 {/* Multi-Year Career Switcher Bar */}
         {dossierData?.annees_cursus && dossierData.annees_cursus.length > 1 && (
-          <div className="bg-slate-100/80 border-b border-slate-200 px-6 py-2.5 flex items-center gap-3 overflow-x-auto">
-            <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5 shrink-0">
-              <GraduationCap size={16} className="text-isiblue-600" />
-              Cursus complet ({dossierData.annees_cursus.length} années) :
+          <div className="bg-gradient-to-r from-slate-100 to-blue-50/60 border-b border-slate-200 px-6 py-3 flex items-center gap-3 shrink-0 overflow-x-auto z-10">
+            <span className="text-xs font-black text-slate-800 flex items-center gap-1.5 shrink-0 uppercase tracking-wide">
+              <GraduationCap size={18} className="text-isiblue-600 shrink-0" />
+              Cursus ({dossierData.annees_cursus.length} années) :
             </span>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
               {dossierData.annees_cursus.map((c) => {
                 const isSel = (selectedAnnee === c.annee) || (!selectedAnnee && c.annee === dossierData.active_year);
                 return (
@@ -257,18 +257,18 @@ export default function StudentHistoricalDossierModal({
                     key={c.annee}
                     type="button"
                     onClick={() => loadDossierForYear(c.annee)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-sm ${
                       isSel
-                        ? 'bg-isiblue-600 text-white shadow-md ring-2 ring-isiblue-400'
-                        : 'bg-white hover:bg-isiblue-50 text-slate-700 border border-slate-200'
+                        ? 'bg-isiblue-600 text-white shadow-md ring-2 ring-isiblue-400 scale-[1.02]'
+                        : 'bg-white hover:bg-isiblue-50 hover:border-isiblue-300 text-slate-700 border border-slate-200'
                     }`}
                   >
                     <span>🎓 {c.annee}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isSel ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-extrabold ${isSel ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'}`}>
                       {c.niveau_court || c.niveau}
                     </span>
                     {c.moyenne > 0 && (
-                      <span className={`text-[10px] px-1 rounded font-bold ${isSel ? 'bg-emerald-500/40 text-emerald-100' : 'text-emerald-700'}`}>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-black ${isSel ? 'bg-emerald-500/40 text-emerald-100 border border-emerald-400/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                         {c.moyenne}/20
                       </span>
                     )}
