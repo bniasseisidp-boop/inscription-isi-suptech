@@ -263,36 +263,61 @@ export default function ReinscriptionModal({ isOpen, onClose, onSuccess, initial
                   <div className="w-4 h-4 border-2 border-isiblue-600 border-t-transparent rounded-full animate-spin" />
                   Vérification de la situation financière antérieure...
                 </div>
-              ) : historyData ? (
-                <div>
-                  {historyData.mois_non_payes && historyData.mois_non_payes.length > 0 ? (
-                    <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-start gap-3">
-                      <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
-                      <div className="text-xs space-y-1">
-                        <div className="font-bold text-amber-800">
-                          ⚠️ Attention : Arriérés détectés sur les années précédentes
-                        </div>
-                        <div>
-                          Il reste <span className="font-bold">{historyData.mois_non_payes.length} mois impayé(s)</span> sur son dossier : 
-                          <span className="font-mono ml-1 font-semibold text-amber-950">
-                            {historyData.mois_non_payes.join(', ')}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-amber-700">
-                          Total déjà réglé : {(historyData.total_paye || 0).toLocaleString()} FCFA ({historyData.total_paiements || 0} reçus).
+              ) : historyData ? (() => {
+                const soldeRestant = Number(historyData?.caisse_data?.solde_restant ?? historyData?.solde_restant ?? selectedStudent?.compta_solde_restant ?? selectedStudent?.solde_restant ?? 0)
+                const moisNonPayes = historyData?.caisse_data?.mois_non_payes ?? historyData?.mois_non_payes ?? []
+                const totalPaye = Number(historyData?.caisse_data?.total_paye ?? historyData?.total_paye ?? selectedStudent?.compta_total_paye ?? selectedStudent?.total_paye ?? 0)
+                const estEnRegle = historyData?.caisse_data?.est_en_regle ?? (soldeRestant <= 0 && moisNonPayes.length === 0)
+
+                return (
+                  <div>
+                    {!estEnRegle || soldeRestant > 0 || moisNonPayes.length > 0 ? (
+                      <div className="p-4 bg-red-50 border-2 border-red-300 rounded-2xl text-red-950 flex items-start gap-3.5 shadow-sm">
+                        <AlertTriangle className="text-red-600 shrink-0 mt-0.5" size={22} />
+                        <div className="text-xs space-y-2 flex-1">
+                          <div className="font-black text-red-800 text-sm flex items-center justify-between">
+                            <span>⚠️ Arriérés non soldés détectés sur les années antérieures</span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-red-200 text-red-800 text-xs font-mono font-bold">
+                              Dû : {soldeRestant.toLocaleString()} FCFA
+                            </span>
+                          </div>
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-red-200 space-y-1">
+                            <div className="text-slate-700">
+                              <span className="font-bold text-red-700">Mois impayé(s) :</span>{' '}
+                              <span className="font-mono font-bold text-red-900">
+                                {moisNonPayes.length > 0 ? moisNonPayes.join(', ') : 'Arriérés de scolarité'}
+                              </span>
+                              {moisNonPayes.length > 0 && <span className="text-slate-500 ml-1 font-semibold">({moisNonPayes.length} mois)</span>}
+                            </div>
+                            <div className="text-slate-600 text-[11px]">
+                              Total déjà réglé sur son parcours : <span className="font-bold text-emerald-700">{totalPaye.toLocaleString()} FCFA</span>.
+                            </div>
+                          </div>
+                          <div className="text-[11px] text-red-700 font-medium flex items-center gap-1.5">
+                            <span>ℹ️ L'étudiant doit d'abord régler ces arriérés avant de pouvoir finaliser sa réinscription pour 2026-2027.</span>
+                          </div>
+                          {onOpenEncaissement && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenEncaissement(selectedStudent, soldeRestant, moisNonPayes)}
+                              className="mt-1 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                            >
+                              💳 Encaisser le reliquat ({soldeRestant.toLocaleString()} FCFA)
+                            </button>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 flex items-center gap-2.5">
-                      <CheckCircle2 className="text-emerald-600 shrink-0" size={18} />
-                      <div className="text-xs">
-                        <span className="font-bold">Situation financière antérieure en règle :</span> Aucun mois impayé détecté. Total réglé : {(historyData.total_paye || 0).toLocaleString()} FCFA.
+                    ) : (
+                      <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 flex items-center gap-3">
+                        <CheckCircle2 className="text-emerald-600 shrink-0" size={20} />
+                        <div className="text-xs">
+                          <span className="font-bold text-emerald-800">Situation financière antérieure en règle :</span> Aucun mois impayé détecté. Total réglé : <span className="font-bold">{totalPaye.toLocaleString()} FCFA</span>. Réinscription autorisée.
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+                    )}
+                  </div>
+                )
+              })() : null}
 
               {/* Step 2: Choose Target Class & Progression */}
               <div className="p-4 border border-slate-200 rounded-xl bg-white space-y-4">

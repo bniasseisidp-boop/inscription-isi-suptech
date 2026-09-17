@@ -38,7 +38,8 @@ function StatBox({ label, value, sub, color = 'brand' }) {
 
 /* ── Quick-pay modal ──────────────────────────────────────────────────────── */
 function QuickPayModal({ student, onClose, onSuccess }) {
-  const [type, setType]             = useState(student.inscription_payee ? 'mensualite' : 'inscription')
+  const isAncienWithSolde = Number(student.compta_solde_restant || student.solde_restant || 0) > 0
+  const [type, setType]             = useState(isAncienWithSolde ? 'reliquat' : (student.inscription_payee ? 'mensualite' : 'inscription'))
   const [methode, setMethode]       = useState('especes')
   const [montant, setMontant]       = useState('')
   const [notes, setNotes]           = useState('')
@@ -48,6 +49,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false)
   const [suivi, setSuivi]           = useState(null)
   const [inscDetail, setInscDetail] = useState(null)
+  const [historyData, setHistoryData] = useState(null)
   const [loadingSuivi, setLoadingSuivi] = useState(false)
 
   useEffect(() => {
@@ -58,17 +60,35 @@ function QuickPayModal({ student, onClose, onSuccess }) {
     const p2 = !student.inscription_payee
       ? getInscriptionDetails(student.id).then(({ data }) => {
           setInscDetail(data)
-          setMontant(data.restant || data.total_du || '')
+          if (type === 'inscription') setMontant(data.restant || data.total_du || '')
         }).catch(() => {
-          setMontant(student.license?.frais_inscription || '')
+          if (type === 'inscription') setMontant(student.license?.frais_inscription || '')
         })
       : Promise.resolve()
-    Promise.all([p1, p2]).finally(() => setLoadingSuivi(false))
+    const p3 = getStudentDossierHistorique(student.id)
+      .then(({ data }) => {
+        setHistoryData(data)
+        const solde = Number(data?.caisse_data?.solde_restant ?? data?.solde_restant ?? student.compta_solde_restant ?? student.solde_restant ?? 0)
+        if (solde > 0 && isAncienWithSolde) {
+          setMontant(String(solde))
+        }
+      })
+      .catch(() => {})
+
+    Promise.all([p1, p2, p3]).finally(() => setLoadingSuivi(false))
   }, [student.id])
+
+  const ancientArrearsMonths = historyData?.caisse_data?.mois_non_payes ?? historyData?.mois_non_payes ?? []
+  const ancientArrearsSolde = Number(historyData?.caisse_data?.solde_restant ?? historyData?.solde_restant ?? student.compta_solde_restant ?? student.solde_restant ?? 0)
 
   useEffect(() => {
     if (type === 'inscription') {
       setMontant(inscDetail?.restant || inscDetail?.total_du || student.license?.frais_inscription || '')
+    } else if (type === 'reliquat') {
+      setMontant(ancientArrearsSolde > 0 ? String(ancientArrearsSolde) : '')
+      if (ancientArrearsMonths.length > 0) {
+        setNotes(`Régularisation arriérés : ${ancientArrearsMonths.join(', ')}`)
+      }
     } else if (type === 'mensualite') {
       const avance = Math.round(suivi?.avance_paiement ?? 0)
       const frais = Math.round(Number(student.license?.frais_mensuel || 0))
@@ -77,7 +97,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
       setMontant('')
     }
     setMoisSelectionne(null)
-  }, [type])
+  }, [type, ancientArrearsSolde])
 
   const moisImpayesDus = suivi?.mois?.filter(m => !m.paye && (m.en_retard || m.actuel)) || []
   const avancePaiement = suivi?.avance_paiement ?? 0
@@ -101,12 +121,12 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           student_id: student.id,
           type,
           montant,
-          mois: type === 'mensualite' ? moisSelectionne : null,
+          mois: type === 'mensualite' ? moisSelectionne : (type === 'reliquat' ? (moisSelectionne || ancientArrearsMonths.join(', ') || 'Arriérés') : null),
           methode,
           notes,
         })
       }
-      toast.success('✅ Paiement enregistré — email + reçu PDF envoyés !')
+      toast.success('✅ Paiement enregistré — reçu PDF et mise à jour effectués !')
       onSuccess()
     } catch (e) {
       toast.error(e.response?.data?.message || "Erreur lors de l'enregistrement")
@@ -134,7 +154,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
             </div>
             <div>
               <h3 className="text-slate-900 font-bold">{student.prenom} {student.nom}</h3>
-              <div className="text-isiblue-500 text-xs font-mono">{student.matricule}</div>
+              <div className="text-isiblue-500 text-xs font-mono font-bold">{student.matricule}</div>
               <p className="text-slate-500 text-xs">{student.filiere?.nom} — {student.license?.nom}</p>
             </div>
           </div>
@@ -143,6 +163,39 @@ function QuickPayModal({ student, onClose, onSuccess }) {
 
         {/* Body — scrollable */}
         <div className="p-5 space-y-4 overflow-y-auto flex-1">
+
+          {/* Arriérés Banner if ancient with balance */}
+          {ancientArrearsSolde > 0 && (
+            <div className="p-4 bg-red-50 border-2 border-red-300 rounded-2xl text-red-950 space-y-2 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-red-800 text-xs flex items-center gap-1.5">
+                  <AlertTriangle size={15} className="text-red-600"/> Arriérés des années antérieures
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-red-200 text-red-900 font-mono font-bold text-xs">
+                  Reliquat : {ancientArrearsSolde.toLocaleString()} FCFA
+                </span>
+              </div>
+              <div className="text-xs text-slate-700 bg-white/90 p-2.5 rounded-xl border border-red-200">
+                <div>
+                  <span className="font-bold text-red-700">Mois concerné(s) :</span>{' '}
+                  <span className="font-mono font-bold text-slate-900">
+                    {ancientArrearsMonths.length > 0 ? ancientArrearsMonths.join(', ') : 'Arriérés de scolarité'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setType('reliquat')
+                  setMontant(String(ancientArrearsSolde))
+                  setNotes(`Régularisation totale arriérés : ${ancientArrearsMonths.join(', ')}`)
+                }}
+                className="w-full py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold text-xs shadow-sm transition-all text-center"
+              >
+                ⚡ Solder la totalité du reliquat ({ancientArrearsSolde.toLocaleString()} FCFA)
+              </button>
+            </div>
+          )}
 
           {/* Financial quick summary */}
           <div className="grid grid-cols-2 gap-2">
@@ -213,7 +266,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           )}
 
           {/* Months in arrears alert */}
-          {moisImpayesDus.length > 0 && type !== 'inscription' && (
+          {moisImpayesDus.length > 0 && type !== 'inscription' && type !== 'reliquat' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-3">
               <p className="text-red-600 text-xs font-bold mb-2 flex items-center gap-1.5">
                 <AlertTriangle size={12}/> {moisImpayesDus.length} mois impayé{moisImpayesDus.length > 1 ? 's' : ''} — arriéré dû
@@ -257,10 +310,11 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           {/* Type */}
           <div>
             <label className="form-label-light text-xs">Type de paiement *</label>
-            <select className="form-input-light text-sm" value={type} onChange={(e) => setType(e.target.value)}>
-              {!student.inscription_payee && <option value="inscription">Frais d'inscription</option>}
+            <select className="form-input-light text-sm font-semibold" value={type} onChange={(e) => setType(e.target.value)}>
+              {ancientArrearsSolde > 0 && <option value="reliquat">⚠️ Régularisation Reliquat / Arriérés ({ancientArrearsSolde.toLocaleString()} FCFA)</option>}
+              {!student.inscription_payee && <option value="inscription">Frais d'inscription / réinscription</option>}
               <option value="mensualite">Mensualité</option>
-              <option value="autre">Autre</option>
+              <option value="autre">Autre frais</option>
             </select>
           </div>
 
@@ -281,11 +335,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
               ) : suivi?.mois ? (
                 <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto pr-1">
                   {suivi.mois.map(m => {
-                    const isPaid     = m.paye       // bloqué (payé complet OU partiel)
-                    const isPartiel  = m.partiel    // bloqué mais paiement partiel (déficit reporté)
-                    const isRetard   = m.en_retard
-                    const isActuel   = m.actuel
-                    const isFutur    = m.futur
+                    const isPaid     = m.paye
                     const isSelected = multiMode ? moisMulti.includes(m.cle) : moisSelectionne === m.cle
                     return (
                       <button key={m.cle}
@@ -301,90 +351,121 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                           } else {
                             setMoisSelectionne(m.cle)
                             const avance = Math.round(suivi?.avance_paiement ?? 0)
-                            setMontant(Math.round(Math.max(0, frais - avance)) || frais)
+                            setMontant(Math.round(Math.max(0, frais - avance)) || frais || '')
                           }
                         }}
-                        className={`text-xs px-2 py-2 rounded-lg border text-center transition-all font-medium ${
-                          isPaid && !isPartiel ? 'bg-emerald-50 border-emerald-200 text-emerald-400 cursor-not-allowed'
-                          : isPartiel ? 'bg-amber-50 border-amber-200 text-amber-400 cursor-not-allowed'
-                          : isSelected ? 'bg-isiblue-500 border-isiblue-500 text-white'
-                          : isRetard ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-                          : isActuel ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                          : isFutur  ? 'bg-isiblue-50/70 border-isiblue-100 text-isiblue-400 hover:bg-isiblue-50 hover:text-isiblue-500'
-                          : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                        className={`p-2 rounded-xl text-left border text-xs transition-all relative ${
+                          isPaid
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800 cursor-not-allowed opacity-75'
+                            : isSelected
+                              ? 'bg-isiblue-500 border-isiblue-600 text-white font-bold ring-2 ring-isiblue-300'
+                              : m.en_retard
+                                ? 'bg-red-50 border-red-200 text-red-700 hover:border-red-400 font-semibold'
+                                : m.actuel
+                                  ? 'bg-amber-50 border-amber-300 text-amber-800 font-semibold'
+                                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
                         }`}>
-                        {isPaid && !isPartiel ? '✓ ' : isPartiel ? '½ ' : isRetard ? '⚠ ' : isFutur ? '◷ ' : ''}{m.label.split(' ')[0]}
-                        <div className="text-[9px] opacity-60">{isPartiel ? 'partiel' : m.label.split(' ')[1]}</div>
+                        <div className="font-semibold">{m.label}</div>
+                        <div className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                          {isPaid ? '✓ Payé' : m.en_retard ? '⚠ En retard' : m.actuel ? '● Mois en cours' : 'À venir'}
+                        </div>
                       </button>
                     )
                   })}
                 </div>
-              ) : (
-                <select className="form-input-light text-sm" value={moisSelectionne || ''} onChange={e => setMoisSelectionne(e.target.value)}>
-                  <option value="">-- Sélectionner un mois --</option>
-                </select>
-              )}
-              {!multiMode && moisSelectionne && (() => {
-                const selectedMoisInfo = suivi?.mois?.find(m => m.cle === moisSelectionne)
-                return (
-                  <div className="mt-1 flex items-center gap-2">
-                    <p className="text-isiblue-600 text-xs font-semibold">
-                      Mois sélectionné : {selectedMoisInfo?.label || moisSelectionne}
-                    </p>
-                    {selectedMoisInfo?.futur && (
-                      <span className="text-[9px] bg-isiblue-50 border border-isiblue-200 text-isiblue-600 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                        Anticipé
-                      </span>
-                    )}
-                  </div>
-                )
-              })()}
-              {multiMode && moisMulti.length > 0 && (
-                <p className="mt-1 text-isiblue-600 text-xs font-semibold">
-                  {moisMulti.length} mois sélectionné{moisMulti.length > 1 ? 's' : ''} — le montant versé sera réparti dans l'ordre ; un solde partiel sera reporté sur le mois suivant.
-                </p>
-              )}
+              ) : null}
+            </div>
+          )}
+
+          {/* Month selection for reliquat */}
+          {type === 'reliquat' && ancientArrearsMonths.length > 0 && (
+            <div>
+              <label className="form-label-light text-xs mb-1">Mois impayé concerné par ce versement</label>
+              <div className="flex flex-wrap gap-1.5">
+                {ancientArrearsMonths.map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setMoisSelectionne(m)
+                      setNotes(`Régularisation mois de ${m}`)
+                    }}
+                    className={`text-xs px-3 py-1.5 rounded-lg border font-semibold transition-all ${
+                      moisSelectionne === m
+                        ? 'bg-isiblue-600 border-isiblue-700 text-white shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
           {/* Amount */}
           <div>
-            <label className="form-label-light text-xs">Montant versé (FCFA) *</label>
-            <input className="form-input-light text-sm" type="number" value={montant}
-              onChange={(e) => setMontant(e.target.value)} placeholder="150000" />
-            {type === 'inscription' && inscDetail?.total_du && (
-              <p className="text-slate-500 text-xs mt-1">Total inscription : {fmt(inscDetail.total_du)} FCFA</p>
-            )}
+            <label className="form-label-light text-xs">Montant à encaisser (FCFA) *</label>
+            <input
+              type="number"
+              className="form-input-light text-base font-bold text-isiblue-700"
+              placeholder="Ex: 70000"
+              value={montant}
+              onChange={(e) => setMontant(e.target.value)}
+            />
           </div>
 
           {/* Method */}
           <div>
-            <label className="form-label-light text-xs">Méthode de paiement *</label>
-            <select className="form-input-light text-sm" value={methode} onChange={(e) => setMethode(e.target.value)}>
-              <option value="especes">💵 Espèces</option>
-              <option value="wave">📱 Wave</option>
-              <option value="virement">🏦 Virement bancaire</option>
-              <option value="cheque">📄 Chèque</option>
-            </select>
+            <label className="form-label-light text-xs">Mode de paiement *</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { id: 'especes', label: 'Espèces' },
+                { id: 'wave', label: 'Wave' },
+                { id: 'orange_money', label: 'OM' },
+                { id: 'cheque', label: 'Chèque' },
+              ].map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setMethode(id)}
+                  className={`p-2 rounded-xl text-center border text-xs font-semibold transition-all ${
+                    methode === id
+                      ? 'bg-isiblue-500 border-isiblue-600 text-white shadow-sm'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label className="form-label-light text-xs">Notes (optionnel)</label>
-            <textarea className="form-input-light text-sm resize-none" rows={2}
-              value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <label className="form-label-light text-xs">Observations / Référence reçu (optionnel)</label>
+            <input
+              type="text"
+              className="form-input-light text-xs"
+              placeholder="Ex: Reçu manuel N°124 / Chèque CBAO..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-5 pt-0 flex-shrink-0">
-          <button onClick={onClose} className="btn-secondary-light flex-1 text-sm py-2.5">Annuler</button>
-          <button onClick={submit} disabled={submitting}
-            className="btn-primary flex-1 flex items-center justify-center gap-2 text-sm py-2.5">
-            {submitting
-              ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/>
-              : <CheckCircle size={15}/>}
-            Valider &amp; Reçu PDF
+        <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50/50 rounded-b-2xl">
+          <button type="button" onClick={onClose} className="btn-secondary-light text-xs py-2 px-4">
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting || !montant}
+            className="btn-primary text-xs py-2 px-5 font-bold flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {submitting ? 'Encaissement…' : '💳 Valider l\'encaissement'}
           </button>
         </div>
       </motion.div>
@@ -1891,6 +1972,10 @@ export default function CashierDashboard() {
             loadStats();
             loadAnciensCaisse();
             loadInscrits();
+          }}
+          onOpenEncaissement={(st) => {
+            setShowReinscriptionModal(false);
+            setQuickPayStudent(st);
           }}
         />
       )}

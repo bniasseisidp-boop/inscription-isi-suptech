@@ -1289,7 +1289,12 @@ class AdminController extends Controller
 
             // Authentic receipts from canonical
             $paiementsList = [];
+            $paidMonthsSet = [];
             foreach ($canonicalStudent['paiements'] ?? [] as $p) {
+                $m = ucfirst(strtolower(trim($p['mois'] ?? '')));
+                if (!empty($m) && !in_array(strtolower($m), ['ouverture', 'inscription', 'acompte', 'autre', 'reliquat'])) {
+                    $paidMonthsSet[$m] = true;
+                }
                 $paiementsList[] = [
                     'id' => $p['id_recette'] ?? null,
                     'recu_numero' => $p['num_recu'] ?? ('REC-' . ($p['id_recette'] ?? '')),
@@ -1303,7 +1308,9 @@ class AdminController extends Controller
                 ];
             }
             if (empty($paiementsList)) {
-                $paiementsList = $student->payments->map(function ($p) {
+                $paiementsList = $student->payments->map(function ($p) use (&$paidMonthsSet) {
+                    $m = ucfirst(strtolower(trim($p->mois_label ?: $p->mois ?: '')));
+                    if (!empty($m)) $paidMonthsSet[$m] = true;
                     return [
                         'id' => $p->id,
                         'recu_numero' => $p->recu_numero ?: ('REC-' . $p->id),
@@ -1316,6 +1323,34 @@ class AdminController extends Controller
                         'statut' => $p->statut,
                     ];
                 })->values()->all();
+            }
+
+            $allStandardMonths = ['Octobre', 'Novembre', 'Décembre', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet'];
+            $unpaidMonths = [];
+            foreach ($allStandardMonths as $m) {
+                if (!isset($paidMonthsSet[$m])) {
+                    $unpaidMonths[] = $m;
+                }
+            }
+
+            $fraisMensuel = 70000;
+            if (!empty($canonicalStudent['paiements'])) {
+                foreach ($canonicalStudent['paiements'] as $p) {
+                    if (floatval($p['montant'] ?? 0) > 0 && !in_array(strtolower($p['nature'] ?? ''), ['inscription', 'ouverture'])) {
+                        $fraisMensuel = floatval($p['montant']);
+                        break;
+                    }
+                }
+            }
+
+            if ($soldeRestant > 0) {
+                $nbMoisDus = max(1, intval(round($soldeRestant / $fraisMensuel)));
+                $unpaidMonths = array_slice($unpaidMonths, 0, $nbMoisDus);
+                if (empty($unpaidMonths)) {
+                    $unpaidMonths = ['Arriérés (' . number_format($soldeRestant, 0, ',', ' ') . ' FCFA)'];
+                }
+            } else {
+                $unpaidMonths = [];
             }
 
             return response()->json([
@@ -1333,12 +1368,17 @@ class AdminController extends Controller
                     'decision' => $canonicalStudent['decision'] ?? '',
                 ],
                 'semestres_data' => array_values($semestresMap),
+                'total_du' => $scolariteDue,
+                'total_paye' => $totalPaye,
+                'solde_restant' => $soldeRestant,
+                'est_en_regle' => $estEnRegle,
+                'mois_non_payes' => $unpaidMonths,
                 'caisse_data' => [
                     'total_du' => $scolariteDue,
                     'total_paye' => $totalPaye,
                     'solde_restant' => $soldeRestant,
                     'est_en_regle' => $estEnRegle,
-                    'mois_non_payes' => $estEnRegle ? [] : ($student->mois_non_payes ?: ['Arriérés de scolarité']),
+                    'mois_non_payes' => $unpaidMonths,
                     'paiements' => $paiementsList,
                 ],
             ]);

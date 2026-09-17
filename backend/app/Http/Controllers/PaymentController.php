@@ -680,16 +680,5 @@ class PaymentController extends Controller
             'total_inscrits' => Student::where('statut_inscription', 'accepte')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
         ]);
     }
-        return response()->json([
-            'total_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
-            'total_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),
-            'total_annee'    => (clone $pQuery)->sum('montant'),
-            'count_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
-            'count_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
-            'count_annee'    => (clone $pQuery)->count(),
-            'total_attente'  => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
-            'total_inscrits' => Student::where('statut_inscription', 'accepte')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
-        ]);
-    }
 
 }
