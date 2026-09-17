@@ -132,7 +132,7 @@ export default function StudentHistoricalDossierModal({
                   </span>
                 ) : (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-100 font-bold flex items-center gap-1 border border-amber-400/30">
-                    <AlertTriangle size={12} /> Reliquat : {caisse.solde_restant.toLocaleString()} FCFA
+                    <AlertTriangle size={12} /> Reliquat : {safeFmt(caisse?.solde_restant)} FCFA
                   </span>
                 )}
               </div>
@@ -416,7 +416,7 @@ export default function StudentHistoricalDossierModal({
                     <div className="p-4 rounded-xl border border-slate-200 bg-slate-50">
                       <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Scolarité Totale Due</div>
                       <div className="text-2xl font-black text-slate-900 mt-2">
-                        {(caisse.total_du || 0).toLocaleString()} <span className="text-sm font-semibold">FCFA</span>
+                        {safeFmt(caisse?.total_du)} <span className="text-sm font-semibold">FCFA</span>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">Frais d'inscription + mensualités annuelles</p>
                     </div>
@@ -424,7 +424,7 @@ export default function StudentHistoricalDossierModal({
                     <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/50">
                       <div className="text-xs font-bold uppercase tracking-wider text-emerald-800">Total Réglé en Caisse</div>
                       <div className="text-2xl font-black text-emerald-700 mt-2">
-                        {(caisse.total_paye || 0).toLocaleString()} <span className="text-sm font-semibold">FCFA</span>
+                        {safeFmt(caisse?.total_paye)} <span className="text-sm font-semibold">FCFA</span>
                       </div>
                       <p className="text-xs text-emerald-600 mt-1">{paiements.length} versement(s) encaissé(s)</p>
                     </div>
@@ -434,10 +434,10 @@ export default function StudentHistoricalDossierModal({
                     }`}>
                       <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Solde Restant Dû</div>
                       <div className={`text-2xl font-black mt-2 ${caisse.solde_restant <= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                        {(caisse.solde_restant || 0).toLocaleString()} <span className="text-sm font-semibold">FCFA</span>
+                        {safeFmt(caisse?.solde_restant)} <span className="text-sm font-semibold">FCFA</span>
                       </div>
                       <p className="text-xs font-bold mt-1">
-                        {caisse.solde_restant <= 0 ? '✅ Dossier 100% en règle' : `⚠️ Reliquat de ${caisse.solde_restant.toLocaleString()} FCFA`}
+                        {caisse.solde_restant <= 0 ? '✅ Dossier 100% en règle' : `⚠️ Reliquat de ${safeFmt(caisse?.solde_restant)} FCFA`}
                       </p>
                     </div>
                   </div>
@@ -477,7 +477,7 @@ export default function StudentHistoricalDossierModal({
                                 <td className="p-3 font-semibold uppercase text-slate-900">{p.type || 'Mensualité'}</td>
                                 <td className="p-3 font-semibold text-slate-700">{p.mois || 'Frais de scolarité'}</td>
                                 <td className="p-3 text-right font-mono font-bold text-slate-950">
-                                  {Number(p.montant).toLocaleString()} FCFA
+                                  {safeFmt(p.montant)} FCFA
                                 </td>
                                 <td className="p-3 text-center text-slate-600 font-medium capitalize">{p.methode || 'Espèces'}</td>
                                 <td className="p-3 text-center">

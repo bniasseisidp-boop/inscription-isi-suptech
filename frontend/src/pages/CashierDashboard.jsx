@@ -658,6 +658,46 @@ export default function CashierDashboard() {
     if (active === 'etudiants') loadBrowserStudents()
   }, [active, selectedAnnee])
 
+  const loadAnciensCaisse = useCallback(async (page = 1) => {
+    setAnciensCaisseLoading(true)
+    try {
+      const params = { page, per_page: 25 }
+      if (searchAnciensCaisse) params.search = searchAnciensCaisse
+      if (filiereAnciensCaisse) params.filiere_id = filiereAnciensCaisse
+      if (anneeAnciensCaisse && anneeAnciensCaisse !== 'ALL') {
+        params.annee_scolaire = anneeAnciensCaisse
+      } else {
+        params.annee_scolaire = 'ALL'
+      }
+      const { data } = await getAdminStudents(params)
+      let list = data.data || data || []
+      
+      if (soldeFilterAnciens === 'EN_REGLE') {
+        list = list.filter(s => Number(s.compta_solde_restant || 0) <= 0)
+      } else if (soldeFilterAnciens === 'AVEC_SOLDE') {
+        list = list.filter(s => Number(s.compta_solde_restant || 0) > 0)
+      }
+
+      setAnciensCaisseList(list)
+      setAnciensCaissePagination({
+        current: data.current_page || 1,
+        last: data.last_page || 1,
+        total: data.total || list.length
+      })
+    } catch {
+      toast.error('Erreur chargement archives caisse')
+    } finally {
+      setAnciensCaisseLoading(false)
+    }
+  }, [searchAnciensCaisse, anneeAnciensCaisse, filiereAniliereCaisse = filiereAnciensCaisse, soldeFilterAnciens])
+
+  useEffect(() => {
+    if (active === 'anciens') {
+      const t = setTimeout(() => loadAnciensCaisse(1), 300)
+      return () => clearTimeout(t)
+    }
+  }, [active, searchAnciensCaisse, anneeAnciensCaisse, filiereAnciensCaisse, soldeFilterAnciens, loadAnciensCaisse])
+
   const loadBrowserStudents = useCallback(() => {
     setBrowserLoading(true)
     const params = { annee_scolaire: selectedAnnee }
@@ -1408,6 +1448,218 @@ export default function CashierDashboard() {
               )}
 
               {/* ── IMPAYÉS DU MOIS ────────────────────────────────────────── */}
+              {/* ── ANCIENS ÉTUDIANTS & ARCHIVES CAISSE ── */}
+              {active === 'anciens' && (
+                <div className="space-y-4">
+                  {/* Quick pay modal if selected */}
+                  {browserSelected && (
+                    <QuickPayModal
+                      student={browserSelected}
+                      onClose={() => setBrowserSelected(null)}
+                      onSuccess={() => { setBrowserSelected(null); loadStats(); loadAnciensCaisse(); }}
+                    />
+                  )}
+
+                  {/* Filters Bar */}
+                  <div className="light-card p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Clock className="text-isiblue-600" size={18} />
+                        <h2 className="text-sm font-black text-slate-800 uppercase tracking-wider">
+                          Archives Financières &amp; Historique Caisse (2017 - 2026)
+                        </h2>
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                        {anciensCaissePagination.total || anciensCaisseList.length} dossier(s) trouvé(s)
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <div className="flex-1 min-w-[200px]">
+                        <label className="form-label-light text-xs mb-1">Recherche (Nom, prénom, matricule...)</label>
+                        <div className="relative">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                          <input className="form-input-light pl-8 text-sm py-2"
+                            placeholder="Ex: Ndéné, 411-25..., 77..."
+                            value={searchAnciensCaisse}
+                            onChange={(e) => setSearchAnciensCaisse(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="w-48">
+                        <label className="form-label-light text-xs mb-1">Filtrer par promotion</label>
+                        <select className="form-input-light text-sm py-2 font-bold text-isiblue-700"
+                          value={anneeAnciensCaisse}
+                          onChange={(e) => setAnneeAnciensCaisse(e.target.value)}>
+                          <option value="ALL">🌟 Toutes les années (2 193)</option>
+                          <option value="2025-2026">2025-2026 (260)</option>
+                          <option value="2024-2025">2024-2025 (256)</option>
+                          <option value="2023-2024">2023-2024 (226)</option>
+                          <option value="2022-2023">2022-2023 (241)</option>
+                          <option value="2021-2022">2021-2022 (231)</option>
+                          <option value="2020-2021">2020-2021 (187)</option>
+                          <option value="2019-2020">2019-2020 (237)</option>
+                          <option value="2018-2019">2018-2019 (296)</option>
+                          <option value="2017-2018">2017-2018 (259)</option>
+                          <option value="2026-2027">2026-2027</option>
+                        </select>
+                      </div>
+
+                      <div className="w-48">
+                        <label className="form-label-light text-xs mb-1">Filière</label>
+                        <select className="form-input-light text-sm py-2"
+                          value={filiereAnciensCaisse}
+                          onChange={(e) => setFiliereAnciensCaisse(e.target.value)}>
+                          <option value="">Toutes les filières</option>
+                          {filieres.map(f => (
+                            <option key={f.id} value={f.id}>{f.nom}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="w-44">
+                        <label className="form-label-light text-xs mb-1">Situation solde</label>
+                        <select className="form-input-light text-sm py-2"
+                          value={soldeFilterAnciens}
+                          onChange={(e) => setSoldeFilterAnciens(e.target.value)}>
+                          <option value="ALL">Tous les statuts</option>
+                          <option value="EN_REGLE">✅ Soldés (0 FCFA)</option>
+                          <option value="AVEC_SOLDE">⚠️ Avec reliquat dû</option>
+                        </select>
+                      </div>
+
+                      <button onClick={() => loadAnciensCaisse(1)}
+                        className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
+                        <RefreshCw size={14} className={anciensCaisseLoading ? 'animate-spin' : ''}/>
+                        Actualiser
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tableau des anciens caisse */}
+                  {anciensCaisseLoading ? (
+                    <div className="py-16 flex justify-center"><div className="spinner"/></div>
+                  ) : anciensCaisseList.length === 0 ? (
+                    <div className="light-card py-16 text-center text-slate-400">
+                      <Clock size={40} className="mx-auto mb-3 opacity-30"/>
+                      <p className="font-semibold text-slate-600">Aucun dossier trouvé pour ces critères de recherche</p>
+                      <p className="text-xs text-slate-400 mt-1">Modifiez les filtres de promotion ou de filière.</p>
+                    </div>
+                  ) : (
+                    <div className="light-card overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-slate-50/70">
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Étudiant</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Matricule</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Promotion &amp; Filière</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Total Réglé</th>
+                            <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase">Solde Restant</th>
+                            <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase">Actions Caisse</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {anciensCaisseList.map((s) => {
+                            const debit = Number(s.compta_debit_total || s.frais_scolarite_total || 0)
+                            const paye = Number(s.compta_total_paye || s.avance_paiement || 0)
+                            const solde = Number(s.compta_solde_restant ?? Math.max(0, debit - paye))
+                            const enRegle = solde <= 0
+
+                            return (
+                              <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-isiblue-700 to-isiblue-500 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                      {(s.prenom?.[0] || '').toUpperCase()}{(s.nom?.[0] || '').toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div className="text-slate-900 font-bold text-sm">{s.prenom} {s.nom}</div>
+                                      <div className="text-slate-400 text-xs">{s.telephone || 'Sans tél'}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 font-mono text-xs font-bold text-isiblue-600">
+                                  {s.matricule || '—'}
+                                </td>
+                                <td className="px-4 py-3 text-xs">
+                                  <div className="font-semibold text-slate-800">{s.filiere?.nom || '—'}</div>
+                                  <div className="text-slate-400 font-medium">
+                                    <span className="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[11px] mr-1 font-bold">
+                                      {s.annee_scolaire || '—'}
+                                    </span>
+                                    {s.license?.nom || s.niveau_entree || ''}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-xs font-bold text-slate-800">
+                                  {fmt(paye)} <span className="text-[10px] text-slate-400 font-normal">FCFA</span>
+                                  {debit > 0 && (
+                                    <div className="text-[10px] text-slate-400 font-normal">
+                                      sur {fmt(debit)} FCFA
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-xs">
+                                  {enRegle ? (
+                                    <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                                      <CheckCircle size={12}/> Soldé (0 FCFA)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                                      <AlertTriangle size={12}/> {fmt(solde)} FCFA
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => setHistoricalDossierStudent(s)}
+                                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-isiblue-50 hover:bg-isiblue-100 text-isiblue-700 flex items-center gap-1 transition-colors"
+                                      title="Consulter tous les reçus et notes"
+                                    >
+                                      <BookOpen size={12} /> Dossier &amp; Reçus
+                                    </button>
+                                    <button
+                                      onClick={() => setBrowserSelected(s)}
+                                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition-colors shadow-sm"
+                                      title="Encaisser un paiement pour cet étudiant"
+                                    >
+                                      <CreditCard size={12} /> Encaisser
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* Pagination */}
+                      {anciensCaissePagination.last > 1 && (
+                        <div className="p-3 bg-slate-50/80 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                          <button
+                            disabled={anciensCaissePagination.current <= 1}
+                            onClick={() => loadAnciensCaisse(anciensCaissePagination.current - 1)}
+                            className="btn-secondary-light py-1 px-3 disabled:opacity-40"
+                          >
+                            Précédent
+                          </button>
+                          <span>Page {anciensCaissePagination.current} sur {anciensCaissePagination.last}</span>
+                          <button
+                            disabled={anciensCaissePagination.current >= anciensCaissePagination.last}
+                            onClick={() => loadAnciensCaisse(anciensCaissePagination.current + 1)}
+                            className="btn-secondary-light py-1 px-3 disabled:opacity-40"
+                          >
+                            Suivant
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── IMPAYÉS DU MOIS ── */}
               {active === 'impayes' && (
                 <div className="space-y-4">
                   {/* Month filter */}
