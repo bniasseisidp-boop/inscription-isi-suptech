@@ -25,7 +25,7 @@ class AdminController extends Controller
         private QRCodeService $qrService,
     ) {}
 
-    /** Dashboard stats — candidatures annulées exclues du total */
+    /** Dashboard stats ─ candidatures annulées exclues du total */
     public function stats(Request $request)
     {
         $annee = $request->query('annee_scolaire') 
@@ -37,12 +37,37 @@ class AdminController extends Controller
               ?? '2026-2027';
         
         $sQuery = Student::query();
-        if ($annee && $annee !== 'ALL') {
+        if ($annee === '2026-2027' || !$annee) {
+            $sQuery->where(function($q) {
+                $q->where('annee_scolaire', '2026-2027')
+                  ->orWhereNull('annee_scolaire')
+                  ->orWhere('annee_scolaire', '')
+                  ->orWhere('matricule', 'like', 'ISI-2026-%')
+                  ->orWhereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
+            })->where(function($q) {
+                $q->whereNull('dossiers_historique')
+                  ->orWhere('annee_scolaire', '2026-2027')
+                  ->orWhere('matricule', 'like', 'ISI-2026-%');
+            });
+        } elseif ($annee !== 'ALL') {
             $sQuery->where('annee_scolaire', $annee);
         }
 
-        $pQuery = Payment::where('statut', 'complete');
-        if ($annee && $annee !== 'ALL') {
+        $pQuery = Payment::query();
+        if (\Illuminate\Support\Facades\Schema::hasColumn('payments', 'statut')) {
+            $pQuery->whereIn('statut', ['complete', 'valide', 'succes', 'effectue', 'reussi', 'PAYE']);
+        }
+        
+        if ($annee === '2026-2027' || !$annee) {
+            $pQuery->where(function ($q) {
+                $q->where('annee', '2026-2027')
+                  ->orWhere('annee', 'like', '%2026%')
+                  ->orWhereHas('student', function($sq) {
+                      $sq->where('annee_scolaire', '2026-2027')
+                         ->orWhere('matricule', 'like', 'ISI-2026-%');
+                  });
+            });
+        } elseif ($annee !== 'ALL') {
             $pQuery->where(function ($q) use ($annee) {
                 $q->where('annee', $annee)
                   ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
@@ -106,15 +131,31 @@ class AdminController extends Controller
                       ->orWhere('dossiers_historique', 'like', '%"annee_universitaire":"' . $annee . '"%');
                 });
             } else {
-                // All historical promotions, strictly excluding current 2026-2027
-                $query->where('annee_scolaire', '!=', '2026-2027');
+                // All historical promotions: must have historical dossier or not be active 2026-2027
+                $query->where(function($q) {
+                    $q->whereNotNull('dossiers_historique')
+                      ->orWhere(function($sub) {
+                          $sub->where('annee_scolaire', '!=', '2026-2027')
+                              ->where('matricule', 'not like', 'ISI-2026-%')
+                              ->whereNotIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
+                      });
+                });
             }
         } else {
-            if ($annee && $annee !== 'ALL') {
+            if (!$annee || $annee === '2026-2027') {
+                $query->where(function($q) {
+                    $q->where('annee_scolaire', '2026-2027')
+                      ->orWhereNull('annee_scolaire')
+                      ->orWhere('annee_scolaire', '')
+                      ->orWhere('matricule', 'like', 'ISI-2026-%')
+                      ->orWhereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
+                })->where(function($q) {
+                    $q->whereNull('dossiers_historique')
+                      ->orWhere('annee_scolaire', '2026-2027')
+                      ->orWhere('matricule', 'like', 'ISI-2026-%');
+                });
+            } elseif ($annee && $annee !== 'ALL') {
                 $query->where('annee_scolaire', $annee);
-            } else if (!$annee) {
-                // Default view for current registration is current year 2026-2027
-                $query->where('annee_scolaire', '2026-2027');
             }
         }
 
