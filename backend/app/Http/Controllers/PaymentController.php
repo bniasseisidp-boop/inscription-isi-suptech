@@ -712,13 +712,27 @@ class PaymentController extends Controller
             $pQuery->where('annee', $annee);
         }
 
+        $sQuery = Student::query();
+        if ($annee === '2026-2027' || !$annee) {
+            $sQuery->where(function ($q) {
+                $q->where('annee_scolaire', '2026-2027')
+                  ->orWhere('matricule', 'like', 'ISI-2026-%')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('dossiers_historique')
+                          ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
+                  });
+            })->where(function ($q) {
+                $q->whereNull('dossiers_historique')
+                  ->orWhere('annee_scolaire', '2026-2027')
+                  ->orWhere('matricule', 'like', 'ISI-2026-%');
+            });
+        } elseif ($annee !== 'ALL') {
+            $sQuery->where('annee_scolaire', $annee);
+        }
+
         $effectiveTotalAnnee = (float)(clone $pQuery)->sum('montant');
-        $totalInscrits = Student::where('statut_inscription', 'accepte')
-            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
-            ->count();
-            
-        $totalReliquats = Student::when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
-            ->sum('compta_solde_restant');
+        $totalInscrits = (clone $sQuery)->where('statut_inscription', 'accepte')->count();
+        $totalReliquats = (clone $sQuery)->sum('compta_solde_restant');
 
         return response()->json([
             'total_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
@@ -728,7 +742,7 @@ class PaymentController extends Controller
             'count_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
             'count_mois'      => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
             'count_annee'     => (clone $pQuery)->count(),
-            'total_attente'   => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
+            'total_attente'   => (clone $sQuery)->where('statut_inscription', 'en_attente_paiement')->count(),
             'total_inscrits'  => $totalInscrits,
             'annee_selectionnee' => $annee,
         ]);

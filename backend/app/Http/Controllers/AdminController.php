@@ -36,19 +36,24 @@ class AdminController extends Controller
               ?? $request->input('annee');
 
         $sQuery = Student::query();
-        if ($annee && $annee !== 'ALL') {
-            if ($annee === '2026-2027') {
-                $sQuery->where(function ($q) {
-                    $q->where('annee_scolaire', '2026-2027')
-                      ->orWhere('matricule', 'like', 'ISI-2026-%')
-                      ->orWhere(function ($sub) {
-                          $sub->whereNull('dossiers_historique')
-                              ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
-                      });
-                });
-            } else {
-                $sQuery->where('annee_scolaire', $annee);
-            }
+        if ($annee === '2026-2027' || !$annee) {
+            // Uniquement les candidatures et étudiants en cours pour l'année 2026-2027
+            $sQuery->where(function ($q) {
+                $q->where('annee_scolaire', '2026-2027')
+                  ->orWhere('matricule', 'like', 'ISI-2026-%')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('dossiers_historique')
+                          ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
+                  });
+            })->where(function ($q) {
+                $q->whereNull('dossiers_historique')
+                  ->orWhere('annee_scolaire', '2026-2027')
+                  ->orWhere('matricule', 'like', 'ISI-2026-%');
+            });
+        } elseif ($annee === 'ANCIENS') {
+            $sQuery->whereNotNull('dossiers_historique');
+        } elseif ($annee !== 'ALL') {
+            $sQuery->where('annee_scolaire', $annee);
         }
 
         $pQuery = Payment::query();
