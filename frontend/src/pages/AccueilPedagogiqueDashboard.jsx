@@ -702,7 +702,7 @@ export default function AccueilPedagogiqueDashboard() {
   const [expandedFilieres, setExpandedFilieres] = useState({})
   const [selectedFiliere, setSelectedFiliere]   = useState(null)
   const [selectedLicense, setSelectedLicense]   = useState(null)
-  const [academicYear, setAcademicYear] = useState('ALL')
+  const [academicYear, setAcademicYear] = useState('2026-2027')
   const [historicalStudent, setHistoricalStudent] = useState(null)
   const [activeTab, setActiveTab]       = useState('inscrits') // 'inscrits' | 'candidats'
 
