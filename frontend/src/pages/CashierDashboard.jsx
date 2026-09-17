@@ -225,7 +225,7 @@ function QuickPayModal({ student, onClose, onSuccess }) {
           {type === 'inscription' && (
             <div className="bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
               <div className="px-3 py-2 bg-isiblue-50 border-b border-slate-100">
-                <p className="text-isiblue-600 text-xs font-bold uppercase tracking-wider">Détail des frais d'inscription</p>
+                <p className="text-isiblue-600 text-xs font-bold uppercase tracking-wider">{inscDetail?.is_reinscription ? 'Détail des frais de réinscription' : "Détail des frais d'inscription"}</p>
               </div>
               {loadingSuivi && !inscDetail
                 ? <div className="p-3 text-slate-400 text-xs">Chargement…</div>
@@ -234,11 +234,11 @@ function QuickPayModal({ student, onClose, onSuccess }) {
                     {[
                       { label: 'Frais de scolarité',    val: inscDetail?.frais_scolarite },
                       { label: 'Participation AMEA',    val: inscDetail?.frais_amea },
-                      { label: 'Tenue scolaire',        val: inscDetail?.frais_tenue },
+                      (Number(inscDetail?.frais_tenue || 0) > 0 ? { label: 'Tenue scolaire', val: inscDetail?.frais_tenue } : null),
                       { label: 'Assurance scolaire',    val: inscDetail?.frais_assurance },
                       { label: `Dernier mois (avance)${inscDetail?.dernier_mois_cle ? ' — ' + inscDetail.dernier_mois_cle : ''}`,
                         val: inscDetail?.frais_dernier_mois },
-                    ].map(({ label, val }) => (
+                    ].filter(Boolean).map(({ label, val }) => (
                       <div key={label} className="flex justify-between items-center px-3 py-1.5">
                         <span className="text-slate-500 text-xs">{label}</span>
                         <span className="text-slate-900 text-xs font-semibold">{fmt(val)} FCFA</span>

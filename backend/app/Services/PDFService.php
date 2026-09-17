@@ -258,8 +258,12 @@ class PDFService
         $nbMoisAnnee       = 10; // mois effectifs par an
 
         // frais_inscription = TOTAL; scolarité = dérivée (total - amea - tenue - assurance - dernier mois)
-        $inscriptionTotal   = $fraisInscription; // le total est la valeur du champ frais_inscription de la licence
-        $fraisScolarite     = max(0, $inscriptionTotal - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
+        $isReinscription = !empty($student->dossiers_historique) || ($license?->frais_reinscription && $license->frais_reinscription > 0);
+        $fraisTenue = $isReinscription ? 0 : floatval($siteSettings['frais_tenue'] ?? 60000);
+        $inscriptionTotal = $isReinscription
+            ? floatval($license?->frais_reinscription ?: max(0, floatval($license?->frais_inscription ?? 0) - 60000))
+            : floatval($license->frais_inscription ?? 0);
+        $fraisScolarite = max(0, $inscriptionTotal - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
 
         $inscriptionPaid   = $allPmts->where('type', 'inscription')->sum('montant');
         $mensualitesPaid   = $allPmts->where('type', 'mensualite')->sum('montant');

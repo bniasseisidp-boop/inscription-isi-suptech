@@ -99,7 +99,9 @@ export default function ReinscriptionModal({ isOpen, onClose, onSuccess, initial
     if (targetLicenseId) {
       const lic = availableLicenses.find(l => String(l.id) === String(targetLicenseId))
       if (lic) {
-        const montant = lic.frais_reinscription || lic.frais_inscription || 0
+        const montant = lic.frais_reinscription && Number(lic.frais_reinscription) > 0
+          ? Number(lic.frais_reinscription)
+          : Math.max(0, Number(lic.frais_inscription || 0) - 60000)
         setFraisReinscription(String(montant))
       }
     } else {

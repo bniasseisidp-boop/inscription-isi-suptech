@@ -59,7 +59,19 @@ class AdminController extends Controller
         }
         
         if ($annee === '2026-2027' || !$annee) {
-            $pQuery->where('annee', '2026-2027');
+            $pQuery->where(function ($q) {
+                $q->where('annee', '2026-2027')
+                  ->orWhere('annee', '2026')
+                  ->orWhereNull('annee')
+                  ->orWhere('annee', '')
+                  ->orWhereHas('student', function ($sq) {
+                      $sq->where('annee_scolaire', '2026-2027')
+                         ->orWhere('matricule', 'like', 'ISI-2026-%')
+                         ->orWhereIn('statut_inscription', ['accepte', 'en_attente_paiement']);
+                  });
+            })->where(function ($q) {
+                $q->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
+            });
         } elseif ($annee !== 'ALL') {
             $pQuery->where('annee', $annee);
         }
@@ -1149,15 +1161,22 @@ class AdminController extends Controller
         $student = Student::with(['filiere', 'license', 'user'])->findOrFail($validated['student_id']);
         $license = License::with('filiere')->findOrFail($validated['license_id']);
 
-        // Sauvegarder l'ancien parcours dans notes_admin ou champ historique
-        $ancienParcours = "Réinscription effectuée le " . now()->format('d/m/Y H:i') . " vers " . ($license->nom ?? 'Nouveau Niveau') . " (" . $validated['annee_scolaire'] . "). Ancien niveau : " . ($student->license?->nom ?? 'Non défini') . " (" . ($student->annee_scolaire ?? 'N/A') . ").";
-        $notesAdmin = trim(($student->notes_admin ? $student->notes_admin . "
-" : "") . $ancienParcours);
+        // Frais de tenue (non applicable en réinscription)
+        $settings = \Illuminate\Support\Facades\DB::table('site_settings')->pluck('valeur', 'cle');
+        $fraisTenue = floatval($settings['frais_tenue'] ?? 60000);
 
-        // Déterminer les frais de réinscription applicables
-        $fraisAppliques = $validated['frais_reinscription'] !== null 
-            ? floatval($validated['frais_reinscription']) 
-            : floatval($license->frais_reinscription ?: $license->frais_inscription ?: 0);
+        // Frais automatiques : licence frais_reinscription OU (frais_inscription - tenue)
+        $fraisAuto = $license->frais_reinscription && floatval($license->frais_reinscription) > 0
+            ? floatval($license->frais_reinscription)
+            : max(0, floatval($license->frais_inscription ?? 0) - $fraisTenue);
+
+        $fraisAppliques = $validated['frais_reinscription'] !== null && floatval($validated['frais_reinscription']) > 0
+            ? floatval($validated['frais_reinscription'])
+            : $fraisAuto;
+
+        // Sauvegarder l'ancien parcours dans notes_admin ou historique
+        $ancienParcours = "Réinscription effectuée le " . now()->format('d/m/Y H:i') . " vers " . ($license->nom ?? 'Nouveau Niveau') . " (" . $validated['annee_scolaire'] . ").";
+        $notesAdmin = trim(($student->notes_admin ? $student->notes_admin . "\n" : "") . $ancienParcours);
 
         // Mettre à jour l'étudiant
         $student->update([

@@ -138,7 +138,7 @@ class PaymentController extends Controller
             'libelle'      => $libelle,
             'montant'      => $request->montant,
             'mois'         => $request->mois,
-            'annee'        => date('Y'),
+            'annee'        => $student->annee_scolaire ?: '2026-2027',
             'statut'       => $statut,
             'methode'      => $request->methode,
             'date_paiement'=> now(),
@@ -310,7 +310,7 @@ class PaymentController extends Controller
                 'libelle'       => 'Mensualité ' . $mois . ' (paiement anticipé)',
                 'montant'       => $verse,
                 'mois'          => $mois,
-                'annee'         => date('Y'),
+                'annee'        => $student->annee_scolaire ?: '2026-2027',
                 'statut'        => $statut,
                 'methode'       => $request->methode,
                 'date_paiement' => now(),
@@ -689,8 +689,26 @@ class PaymentController extends Controller
         $thisMonth = now()->month;
         $thisYear  = now()->year;
         
-        $pQuery = Payment::where('statut', 'complete');
-        if ($annee && $annee !== 'ALL') {
+        $pQuery = Payment::query();
+        if (\Illuminate\Support\Facades\Schema::hasColumn('payments', 'statut')) {
+            $pQuery->whereIn('statut', ['complete', 'valide', 'succes', 'effectue', 'reussi', 'PAYE']);
+        }
+
+        if ($annee === '2026-2027' || !$annee) {
+            $pQuery->where(function ($q) {
+                $q->where('annee', '2026-2027')
+                  ->orWhere('annee', '2026')
+                  ->orWhereNull('annee')
+                  ->orWhere('annee', '')
+                  ->orWhereHas('student', function ($sq) {
+                      $sq->where('annee_scolaire', '2026-2027')
+                         ->orWhere('matricule', 'like', 'ISI-2026-%')
+                         ->orWhereIn('statut_inscription', ['accepte', 'en_attente_paiement']);
+                  });
+            })->where(function ($q) {
+                $q->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
+            });
+        } elseif ($annee !== 'ALL') {
             $pQuery->where('annee', $annee);
         }
 
@@ -716,4 +734,52 @@ class PaymentController extends Controller
         ]);
     }
 
+
+    public function inscriptionDetails(Student $student)
+    {
+        $student->loadMissing(['license.filiere', 'payments']);
+        $license = $student->license;
+
+        $settings       = \Illuminate\Support\Facades\DB::table('site_settings')->pluck('valeur', 'cle');
+        $fraisAmea      = floatval($settings['frais_amea']      ?? 10000);
+        $fraisTenueStd  = floatval($settings['frais_tenue']     ?? 60000);
+        $fraisAssurance = floatval($settings['frais_assurance'] ?? 10000);
+        $fraisMensuel   = floatval($license?->frais_mensuel ?? 0);
+
+        $isReinscription = !empty($student->dossiers_historique) || ($license?->frais_reinscription && $license->frais_reinscription > 0);
+        $fraisTenue = $isReinscription ? 0 : $fraisTenueStd;
+
+        $totalDu = $isReinscription
+            ? floatval($license?->frais_reinscription ?: max(0, floatval($license?->frais_inscription ?? 0) - $fraisTenueStd))
+            : floatval($license?->frais_inscription ?? 0);
+
+        $fraisScolarite = max(0, $totalDu - $fraisAmea - $fraisTenue - $fraisAssurance - $fraisMensuel);
+        $dejaPaye = floatval($student->payments()->where('type', 'inscription')->whereIn('statut', ['complete', 'partiel'])->sum('montant'));
+        $restant = max(0, $totalDu - $dejaPaye);
+
+        return response()->json([
+            'is_reinscription'   => $isReinscription,
+            'frais_scolarite'    => $fraisScolarite,
+            'frais_amea'         => $fraisAmea,
+            'frais_tenue'        => $fraisTenue,
+            'frais_assurance'    => $fraisAssurance,
+            'frais_dernier_mois' => $fraisMensuel,
+            'total_du'           => $totalDu,
+            'deja_paye'          => $dejaPaye,
+            'restant'            => $restant,
+            'dernier_mois_cle'   => $student->dernier_mois_cle,
+        ]);
+    }
+
+    public function etudiantSuivi($id)
+    {
+        $student = Student::with(['license.filiere', 'payments'])->findOrFail($id);
+        return response()->json([
+            'avance_paiement' => floatval($student->avance_paiement ?? 0),
+            'mois_payes'      => count($student->mois_payes_cle ?? []),
+            'mois_total'      => 10,
+            'solde_restant'   => floatval($student->compta_solde_restant ?? 0),
+            'mois'            => $student->calendrier_mois ?? [],
+        ]);
+    }
 }

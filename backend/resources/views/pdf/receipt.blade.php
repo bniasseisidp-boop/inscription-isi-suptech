@@ -227,7 +227,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:13px; line-height:1
 </tr></table>
 
 {{-- ══ NATURE / TITRE / ANNEE ═══════════════════════════════════════════════ --}}
-<div class="plain-row"><span class="lbl">Nature : </span><span class="val">{{ $payment->type === 'inscription' ? "Frais d'inscription" : ($payment->type === 'mensualite' ? ($groupePayments->count() > 1 ? 'Mensualités (paiement anticipé)' : 'Mensualité') : 'Paiement divers') }}</span></div>
+<div class="plain-row"><span class="lbl">Nature : </span><span class="val">{{ $payment->type === 'inscription' ? (($isReinscription ?? false) ? "Frais de réinscription" : "Frais d'inscription") : ($payment->type === 'mensualite' ? ($groupePayments->count() > 1 ? 'Mensualités (paiement anticipé)' : 'Mensualité') : 'Paiement divers') }}</span></div>
 <div class="plain-row"><span class="lbl">A titre de : </span><span class="val">{{ $titreLabel }}</span></div>
 <div class="plain-row"><span class="lbl">Année : </span><span class="val">{{ $anneeScolaireLabel }}</span></div>
 
@@ -273,7 +273,7 @@ body { font-family:'DejaVu Sans',Arial,sans-serif; font-size:13px; line-height:1
 
 {{-- ══ DÉTAIL FRAIS INSCRIPTION (complément d'information) ════════════════ --}}
 @if($payment->type === 'inscription')
-<div class="det-title">Détail des frais d'inscription</div>
+<div class="det-title">{{ ($isReinscription ?? false) ? 'Détail des frais de réinscription' : "Détail des frais d'inscription" }}</div>
 <table class="det">
   <tr><td class="l">Frais de scolarité</td><td class="v">{{ number_format($fraisScolarite, 0, ',', ' ') }} FCFA</td></tr>
   <tr><td class="l">Participation AMEA</td><td class="v">{{ number_format($fraisAmea, 0, ',', ' ') }} FCFA</td></tr>
