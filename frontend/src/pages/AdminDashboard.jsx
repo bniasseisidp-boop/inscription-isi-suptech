@@ -1163,11 +1163,11 @@ export default function AdminDashboard() {
     const loadAnciens = async (page = 1) => {
     setAnciensLoading(true)
     try {
-      const params = { page }
+      const params = { page, type: 'anciens', anciens: true }
       if (searchAnciens) params.search = searchAnciens
       if (filterFiliereAnciens) params.filiere_id = filterFiliereAnciens
       if (filterAnneeAnciens && filterAnneeAnciens !== 'ALL') params.annee_scolaire = filterAnneeAnciens
-      else params.annee_scolaire = 'ALL'
+      else params.annee_scolaire = 'ANCIENS'
       const { data } = await getAdminStudents(params)
       setAnciensList(data.data || [])
       setAnciensPagination({ current: data.current_page, last: data.last_page, total: data.total })

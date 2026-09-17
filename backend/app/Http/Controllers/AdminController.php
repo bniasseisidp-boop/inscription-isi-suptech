@@ -80,20 +80,38 @@ class AdminController extends Controller
     /** List all students with filters */
     public function students(Request $request)
     {
-        $annee = $request->query('annee_scolaire', '2026-2027');
+        $annee = $request->query('annee_scolaire', $request->query('annee_universitaire', $request->query('annee')));
+        $isAnciens = $request->boolean('anciens') || $request->query('type') === 'anciens' || $annee === 'ANCIENS';
 
-        $query = Student::with(['filiere', 'license', 'user'])
-            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
-            ->when($request->statut, fn($q) => $q->where('statut_inscription', $request->statut))
-            ->when($request->filiere_id, fn($q) => $q->where('filiere_id', $request->filiere_id))
-            ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
-                $q2->where('nom', 'like', '%' . $request->search . '%')
-                   ->orWhere('prenom', 'like', '%' . $request->search . '%')
-                   ->orWhere('matricule', 'like', '%' . $request->search . '%');
-            }))
-            ->latest();
+        $query = Student::with(['filiere', 'license', 'user']);
 
-        return response()->json($query->paginate(20));
+        if ($isAnciens) {
+            if ($annee && $annee !== 'ALL' && $annee !== 'ANCIENS') {
+                $query->where('annee_scolaire', $annee);
+            } else {
+                // All historical promotions, strictly excluding current 2026-2027
+                $query->where('annee_scolaire', '!=', '2026-2027');
+            }
+        } else {
+            if ($annee && $annee !== 'ALL') {
+                $query->where('annee_scolaire', $annee);
+            } else if (!$annee) {
+                // Default view for current registration is current year 2026-2027
+                $query->where('annee_scolaire', '2026-2027');
+            }
+        }
+
+        $query->when($request->statut, fn($q) => $q->where('statut_inscription', $request->statut))
+              ->when($request->filiere_id, fn($q) => $q->where('filiere_id', $request->filiere_id))
+              ->when($request->search, fn($q) => $q->where(function ($q2) use ($request) {
+                  $q2->where('nom', 'like', '%' . $request->search . '%')
+                     ->orWhere('prenom', 'like', '%' . $request->search . '%')
+                     ->orWhere('matricule', 'like', '%' . $request->search . '%')
+                     ->orWhere('telephone', 'like', '%' . $request->search . '%');
+              }))
+              ->latest();
+
+        return response()->json($query->paginate($request->per_page ?? 20));
     }
 
     /**
