@@ -1223,7 +1223,7 @@ class AdminController extends Controller
         $student->loadMissing(['filiere', 'license.semestres.modules.matieres', 'payments', 'notes.matiere.module.semestre', 'user']);
 
         // Check canonical store first for 100% exact fidelity with visualiseur_etudiants.html
-        $jsonPath = storage_path('canonical_all_students.json');
+        $jsonPath = file_exists(storage_path('app/canonical_all_students.json')) ? storage_path('app/canonical_all_students.json') : (file_exists(storage_path('canonical_all_students.json')) ? storage_path('canonical_all_students.json') : base_path('storage/app/canonical_all_students.json'));
         $canonicalStudent = null;
         if (file_exists($jsonPath)) {
             static $canonicalCache = null;

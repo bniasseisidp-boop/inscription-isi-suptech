@@ -1,6 +1,6 @@
 <?php
 
-// Standalone direct import script optimized for cPanel LVE / Low Memory environments
+// Standalone direct import script that imports all 2 193 annual student careers without overwriting
 // Run via CLI: php import_direct.php
 
 $backendDir = __DIR__;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Schema\Blueprint;
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== IMPORTATION RAPIDE & OPTIMISÉE (CHUNKED & UPSERT SAFE) ===\n\n";
+echo "=== IMPORTATION COMPLÈTE DE TOUS LES 2 193 DOSSIERS ANNUELS ===\n\n";
 
 ini_set('memory_limit', '512M');
 set_time_limit(900);
@@ -111,6 +111,7 @@ if (!Schema::hasTable('notes')) {
 $paths = [
     $backendDir . '/storage/app/canonical_all_students.json',
     storage_path('app/canonical_all_students.json'),
+    storage_path('canonical_all_students.json'),
     '/home/c2710036c/isisuptech-backend/backend/storage/app/canonical_all_students.json',
 ];
 
@@ -149,9 +150,23 @@ foreach ($matieres as $m) {
     $matiereMap[strtoupper(trim($m->nom))] = $m->id;
 }
 
-// Cache Existing Users & Students
+// Cache Existing Users, Students (keyed by id_cc AND matricule_annee)
 $existingUsers = DB::table('users')->pluck('id', 'email')->toArray();
-$existingStudents = DB::table('students')->pluck('id', 'matricule')->toArray();
+$existingStudents = DB::table('students')->select('id', 'id_cc', 'matricule', 'annee_scolaire')->get();
+
+$studentMapByIdCc = [];
+$studentMapByMatYear = [];
+foreach ($existingStudents as $s) {
+    if ($s->id_cc) {
+        $studentMapByIdCc[$s->id_cc] = $s->id;
+    }
+    $mat = strtoupper(trim($s->matricule ?? ''));
+    $yr = trim($s->annee_scolaire ?? '');
+    if ($mat && $yr) {
+        $studentMapByMatYear["{$mat}_{$yr}"] = $s->id;
+    }
+}
+
 $existingPayments = DB::table('payments')->whereNotNull('wave_transaction_id')->pluck('id', 'wave_transaction_id')->toArray();
 
 // Column capabilities check
@@ -179,7 +194,7 @@ $skipped = 0;
 $pendingPayments = [];
 $pendingNotes = [];
 
-echo "4. Traitement par lots sécurisé avec déduplication et insertOrIgnore...\n";
+echo "4. Importation de chaque année d'études (L1, L2, L3, Master...) pour tous les étudiants...\n";
 
 $batchSize = 250;
 
@@ -187,15 +202,17 @@ foreach ($data as $idx => $item) {
     $matricule = trim($item['matricule'] ?? '');
     if (!$matricule) continue;
 
+    $annee = trim($item['annee'] ?? $item['annee_universitaire'] ?? '2024-2025');
+
     // Protéger les dossiers de 2026-2027
-    if (str_starts_with($matricule, 'ISI-2026-') || ($item['annee'] ?? '') === '2026-2027') {
+    if (str_starts_with($matricule, 'ISI-2026-') || $annee === '2026-2027') {
         $skipped++;
         continue;
     }
 
+    $idCc = !empty($item['id_cc']) ? intval($item['id_cc']) : (!empty($item['id']) ? intval($item['id']) : null);
     $nom = trim($item['nom'] ?? '');
     $prenom = trim($item['prenom'] ?? '');
-    $annee = trim($item['annee'] ?? $item['annee_universitaire'] ?? '2024-2025');
     $filiereNom = trim($item['filiere'] ?? 'Tronc Commun');
     $niveau = trim($item['niveau'] ?? 'Licence 1');
 
@@ -271,22 +288,30 @@ foreach ($data as $idx => $item) {
         'compta_est_en_regle' => ($solde <= 0 ? 1 : 0),
         'moyenne_generale' => (float)($item['moyenne_generale'] ?? 0),
         'credits_total' => (int)($item['credits_total'] ?? 0),
-        'id_cc' => $item['id_cc'] ?? null,
+        'id_cc' => $idCc,
         'updated_at' => $now,
     ];
 
-    if (isset($existingStudents[$matricule])) {
-        $studentId = $existingStudents[$matricule];
+    $matYearKey = strtoupper($matricule) . "_{$annee}";
+    $studentId = null;
+
+    if ($idCc && isset($studentMapByIdCc[$idCc])) {
+        $studentId = $studentMapByIdCc[$idCc];
+        DB::table('students')->where('id', $studentId)->update($studentRow);
+        $updated++;
+    } elseif (isset($studentMapByMatYear[$matYearKey])) {
+        $studentId = $studentMapByMatYear[$matYearKey];
         DB::table('students')->where('id', $studentId)->update($studentRow);
         $updated++;
     } else {
         $studentRow['created_at'] = $now;
         $studentId = DB::table('students')->insertGetId($studentRow);
-        $existingStudents[$matricule] = $studentId;
+        if ($idCc) $studentMapByIdCc[$idCc] = $studentId;
+        $studentMapByMatYear[$matYearKey] = $studentId;
         $imported++;
     }
 
-    // Accumulate Payments with deduplication
+    // Accumulate Payments
     if (!empty($item['paiements']) && is_array($item['paiements'])) {
         foreach ($item['paiements'] as $pay) {
             $montant = (float)($pay['montant'] ?? 0);
@@ -314,7 +339,7 @@ foreach ($data as $idx => $item) {
         }
     }
 
-    // Accumulate Notes & Modules with array deduplication
+    // Accumulate Notes & Modules
     if (!empty($item['modules']) && is_array($item['modules'])) {
         foreach ($item['modules'] as $mod) {
             if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
@@ -364,7 +389,6 @@ foreach ($data as $idx => $item) {
                     if ($hasNoteAnneeScol) $nRow['annee_scolaire'] = $annee;
                     if ($hasNoteAnnee) $nRow['annee'] = $annee;
 
-                    // Deduplicate key by student + matiere + annee
                     $uniqueNoteKey = "{$studentId}_{$matiereId}_{$annee}";
                     $pendingNotes[$uniqueNoteKey] = $nRow;
                 }
@@ -372,7 +396,7 @@ foreach ($data as $idx => $item) {
         }
     }
 
-    // Flush batches every 500 items using insertOrIgnore
+    // Flush batches
     if (count($pendingPayments) >= 500) {
         DB::table('payments')->insertOrIgnore(array_values($pendingPayments));
         $pendingPayments = [];
@@ -384,7 +408,7 @@ foreach ($data as $idx => $item) {
     }
 
     if ($idx > 0 && $idx % $batchSize === 0) {
-        echo " -> Traité : $idx / $total dossiers...\n";
+        echo " -> Traité : $idx / $total dossiers annuels...\n";
         gc_collect_cycles();
     }
 }
@@ -406,8 +430,7 @@ $finalPayments = DB::table('payments')->count();
 $finalNotes = DB::table('notes')->count();
 
 echo "\n🎉 SUCCÈS TOTAL !\n";
-echo "- Total étudiants uniques dans la base : $finalTotal\n";
-echo "- Total inscriptions annuelles archivées : 2 193\n";
+echo "- Total dossiers annuels étudiants dans la base : $finalTotal (Créés: $imported | Mis à jour: $updated)\n";
 echo "- Total paiements caisse : $finalPayments\n";
 echo "- Total notes enregistrées : $finalNotes\n";
 echo "- Dossiers 2026-2027 protégés : $skipped\n";
