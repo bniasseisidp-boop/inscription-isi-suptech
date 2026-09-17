@@ -725,8 +725,16 @@ class CurriculumController extends Controller
      *  listes a part dans la reponse pour que l'admin sache lesquels ont ete ignores. */
         /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
         /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
-    public function downloadBulletin($semestreKey, Student $student, Request $request, \App\Services\PDFService $pdfService, BulletinService $bulletinService)
+    public function downloadBulletin($semestreKey, $student, Request $request, \App\Services\PDFService $pdfService, BulletinService $bulletinService)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+        if (!($student instanceof Student)) {
+            $student = Student::find($student) ?? Student::where('matricule', $student)->first() ?? Student::where('user_id', $student)->first();
+        }
+        if (!$student) {
+            return response()->json(['message' => 'Étudiant introuvable'], 404);
+        }
         $isStaff = $request->user() && in_array($request->user()->role, ['admin', 'pedagogique', 'cashier', 'super_admin']);
         if (!$isStaff && !$student->estEnRegle()) {
             return response()->json([

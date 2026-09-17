@@ -308,7 +308,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/matieres/{matiere}/contenus',                [CurriculumController::class, 'contenus']);
         Route::post('/etudiants/{student}/notes',                [CurriculumController::class, 'saisirNotes']);
         Route::get('/semestres/{semestreKey}/etudiants/{student}/bulletin', [CurriculumController::class, 'bulletin']);
-        Route::post('/semestres/{semestreKey}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
+        Route::match(['get', 'post'], '/semestres/{semestreKey}/etudiants/{student}/bulletin-pdf', [CurriculumController::class, 'downloadBulletin']);
         Route::get('/semestres/{semestre}/verrou',                [CurriculumController::class, 'verrouStatus']);
         Route::post('/semestres/{semestre}/verrou',               [CurriculumController::class, 'verrouToggle']);
         Route::get('/semestres/{semestre}/emploi-du-temps-pdf',   [CurriculumController::class, 'downloadEmploiDuTemps']);
@@ -334,6 +334,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/etudiant/emploi-du-temps', [CurriculumController::class, 'monEmploiDuTemps']);
     Route::middleware('role:student')->group(function () {
         Route::get('/etudiant/bulletins',                       [CurriculumController::class, 'mesBulletins']);
-        Route::get('/etudiant/semestres/{semestreKey}/bulletin-pdf', [CurriculumController::class, 'telechargerMonBulletin']);
+        Route::match(['get', 'post'], '/etudiant/semestres/{semestreKey}/bulletin-pdf', [CurriculumController::class, 'telechargerMonBulletin']);
     });
 });

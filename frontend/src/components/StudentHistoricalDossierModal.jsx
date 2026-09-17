@@ -132,6 +132,8 @@ export default function StudentHistoricalDossierModal({
   const statVal = canonical.statut_validation || (genCred >= 60 ? 'VALIDÉ / ADMIS (60/60 ECTS)' : (genMoy >= 10 ? 'VALIDÉ PAR COMPENSATION' : 'AJOURNÉ / SESSION 2'))
 
   // Filter semestres based on selected filter
+  const activeYear = selectedAnnee || dossierData?.active_year || dossierData?.student?.annee_universitaire || dossierData?.canonical?.annee_scolaire || '2024-2025'
+
   const visibleSemestres = selectedSemestreId === 'ALL'
     ? semestres
     : semestres.filter(s => String(s.id) === String(selectedSemestreId))
@@ -174,7 +176,18 @@ export default function StudentHistoricalDossierModal({
         toast.success('Document téléchargé avec succès !')
       }
     } catch (err) {
-      toast.error('Erreur lors du téléchargement du document')
+      console.error('Download error:', err)
+      let msg = 'Erreur lors du téléchargement du document'
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text()
+          const json = JSON.parse(text)
+          if (json.message) msg = json.message
+        } catch (_) {}
+      } else if (err.response?.data?.message) {
+        msg = err.response.data.message
+      }
+      toast.error(msg)
     } finally {
       setDownloadingDoc(null)
     }
