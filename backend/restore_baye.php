@@ -18,6 +18,7 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Student;
 use App\Models\User;
@@ -150,21 +151,34 @@ if ($student) {
 }
 
 echo "\n4. Nettoyage et Restauration des paiements historiques...\n";
-Payment::where('student_id', $student->id)->where('annee_scolaire', '2026-2027')->delete();
+if (Schema::hasColumn('payments', 'annee')) {
+    Payment::where('student_id', $student->id)->where('annee', '2026-2027')->delete();
+} elseif (Schema::hasColumn('payments', 'annee_scolaire')) {
+    Payment::where('student_id', $student->id)->where('annee_scolaire', '2026-2027')->delete();
+}
+
 $existingPaymentsCount = Payment::where('student_id', $student->id)->count();
 if ($existingPaymentsCount == 0 && !empty($data['paiements'])) {
     foreach ($data['paiements'] as $p) {
-        Payment::create([
+        $pDate = isset($p['date']) ? \Carbon\Carbon::createFromFormat('d/m/Y', $p['date']) : now();
+        $paymentData = [
             'student_id'     => $student->id,
             'type'           => strtolower($p['nature'] ?? 'mensualite') === 'inscription' ? 'inscription' : 'mensualite',
             'montant'        => floatval($p['montant'] ?? 0),
             'mois'           => $p['mois'] ?? null,
-            'mode_paiement'  => $p['mode'] ?? 'espece',
-            'reference'      => $p['num_piece'] ?? ('HIST-' . ($p['id_recette'] ?? uniqid())),
-            'statut'         => 'valide',
-            'annee_scolaire' => '2024-2025',
-            'created_at'     => isset($p['date']) ? \Carbon\Carbon::createFromFormat('d/m/Y', $p['date']) : now(),
-        ]);
+            'methode'        => 'espece',
+            'statut'         => 'complete',
+            'date_paiement'  => $pDate,
+            'created_at'     => $pDate,
+            'notes'          => 'Paiement historique importe (' . ($p['num_piece'] ?? '') . ')',
+        ];
+        if (Schema::hasColumn('payments', 'annee')) {
+            $paymentData['annee'] = '2024-2025';
+        }
+        if (Schema::hasColumn('payments', 'annee_scolaire')) {
+            $paymentData['annee_scolaire'] = '2024-2025';
+        }
+        Payment::create($paymentData);
     }
     echo "   -> " . count($data['paiements']) . " paiements historiques (2024-2025) restaures.\n";
 } else {
