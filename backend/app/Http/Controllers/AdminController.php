@@ -28,16 +28,25 @@ class AdminController extends Controller
     /** Dashboard stats — candidatures annulées exclues du total */
     public function stats(Request $request)
     {
-        $annee = $request->annee_scolaire ?? '2026-2027';
+        $annee = $request->query('annee_scolaire') 
+              ?? $request->query('annee_universitaire') 
+              ?? $request->query('annee') 
+              ?? $request->input('annee_scolaire') 
+              ?? $request->input('annee_universitaire') 
+              ?? $request->input('annee') 
+              ?? '2026-2027';
         
         $sQuery = Student::query();
-        if ($annee !== 'ALL') {
+        if ($annee && $annee !== 'ALL') {
             $sQuery->where('annee_scolaire', $annee);
         }
 
         $pQuery = Payment::where('statut', 'complete');
-        if ($annee !== 'ALL') {
-            $pQuery->where('annee', $annee);
+        if ($annee && $annee !== 'ALL') {
+            $pQuery->where(function ($q) use ($annee) {
+                $q->where('annee', $annee)
+                  ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
+            });
         }
 
         $totalCandidatures = (clone $sQuery)->where('statut_inscription', '!=', 'rejete')->count();
@@ -46,7 +55,12 @@ class AdminController extends Controller
         $acceptes          = (clone $sQuery)->where('statut_inscription', 'accepte')->count();
         $rejetes           = (clone $sQuery)->where('statut_inscription', 'rejete')->count();
         $inscritsPayes     = (clone $sQuery)->where('statut_inscription', 'accepte')->where('inscription_payee', true)->count();
-        $recettesTotales   = (clone $pQuery)->sum('montant');
+        
+        $recettesTotalesPayments = (clone $pQuery)->sum('montant');
+        $recettesTotalesStudents = (clone $sQuery)->sum('compta_total_paye');
+        $recettesTotales         = max((float)$recettesTotalesPayments, (float)$recettesTotalesStudents);
+        $totalReliquats          = (clone $sQuery)->sum('compta_solde_restant');
+        
         $recettesMois      = (clone $pQuery)->whereYear('date_paiement', now()->year)->whereMonth('date_paiement', now()->month)->sum('montant');
 
         return response()->json([
@@ -57,7 +71,9 @@ class AdminController extends Controller
             'rejetes'               => $rejetes,
             'inscrits_payes'        => $inscritsPayes,
             'recettes_totales'      => $recettesTotales,
+            'total_reliquats'       => $totalReliquats,
             'recettes_mois'         => $recettesMois,
+            'annee_selectionnee'    => $annee,
         ]);
     }
 

@@ -633,7 +633,13 @@ class PaymentController extends Controller
     /** List students for cashier browser — inclut en_attente pour que le caissier trouve tout étudiant pré-inscrit */
     public function etudiantsList(Request $request)
     {
-        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
+        $annee = $request->query('annee_scolaire') 
+              ?? $request->query('annee_universitaire') 
+              ?? $request->query('annee') 
+              ?? $request->input('annee_scolaire') 
+              ?? $request->input('annee_universitaire') 
+              ?? $request->input('annee');
+
         $statutsDisponibles = ['accepte', 'en_attente_paiement', 'en_attente'];
         $statuts = ($request->statut && in_array($request->statut, $statutsDisponibles))
             ? [$request->statut]
@@ -650,12 +656,22 @@ class PaymentController extends Controller
             }))
             ->latest();
 
-        return response()->json($query->paginate($request->per_page ?? 15));
+        return response()->json($query->paginate($request->per_page ?? 25));
     }
 
     public function stats(Request $request)
     {
-        $annee = $request->query('annee_scolaire', $request->input('annee_scolaire', '2026-2027'));
+        $annee = $request->query('annee_scolaire') 
+              ?? $request->query('annee_universitaire') 
+              ?? $request->query('annee') 
+              ?? $request->input('annee_scolaire') 
+              ?? $request->input('annee_universitaire') 
+              ?? $request->input('annee');
+              
+        if (!$annee) {
+            $annee = '2026-2027';
+        }
+        
         $today = now()->toDateString();
         $thisMonth = now()->month;
         $thisYear  = now()->year;
@@ -664,20 +680,35 @@ class PaymentController extends Controller
         if ($annee && $annee !== 'ALL') {
             $pQuery->where(function ($q) use ($annee) {
                 $q->where('annee', $annee)
-                  ->orWhere('annee', substr($annee, 0, 4))
                   ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $annee));
             });
         }
 
+        $totalAnneePayments = (clone $pQuery)->sum('montant');
+        $totalInscrits = Student::where('statut_inscription', 'accepte')
+            ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
+            ->count();
+            
+        // If it's a historical year with compta_total_paye, ensure maximum precision
+        $totalPayeFromStudents = Student::when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
+            ->sum('compta_total_paye');
+            
+        $totalReliquats = Student::when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
+            ->sum('compta_solde_restant');
+
+        $effectiveTotalAnnee = max((float)$totalAnneePayments, (float)$totalPayeFromStudents);
+
         return response()->json([
-            'total_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
-            'total_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),
-            'total_annee'    => (clone $pQuery)->sum('montant'),
-            'count_jour'     => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
-            'count_mois'     => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
-            'count_annee'    => (clone $pQuery)->count(),
-            'total_attente'  => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
-            'total_inscrits' => Student::where('statut_inscription', 'accepte')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
+            'total_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
+            'total_mois'      => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),
+            'total_annee'     => $effectiveTotalAnnee,
+            'total_reliquats' => (float)$totalReliquats,
+            'count_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
+            'count_mois'      => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
+            'count_annee'     => (clone $pQuery)->count(),
+            'total_attente'   => Student::where('statut_inscription', 'en_attente_paiement')->when($annee && $annee !== 'ALL', fn($q)=>$q->where('annee_scolaire', $annee))->count(),
+            'total_inscrits'  => $totalInscrits,
+            'annee_selectionnee' => $annee,
         ]);
     }
 
