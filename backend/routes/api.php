@@ -14,7 +14,7 @@ use App\Http\Controllers\ProfesseurPortalController;
 // ─── Public routes ──────────────────────────────────────────────────────────
 // Limitées en fréquence — ce sont des cibles classiques pour le bruteforce
 // (mot de passe, code 2FA à 6 chiffres).
-Route::middleware('throttle:10,1')->group(function () {
+Route::middleware('throttle:60,1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
