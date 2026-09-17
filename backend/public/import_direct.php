@@ -102,6 +102,9 @@ if (!Schema::hasTable('notes')) {
         if (!Schema::hasColumn('notes', 'annee_universitaire')) {
             $table->string('annee_universitaire', 20)->default('2024-2025')->nullable();
         }
+        if (!Schema::hasColumn('notes', 'annee_scolaire')) {
+            $table->string('annee_scolaire', 20)->default('2024-2025')->nullable();
+        }
     });
 }
 
@@ -337,7 +340,10 @@ foreach ($data as $idx => $item) {
                         $noteData['semestre'] = (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1';
                     }
                     if (Schema::hasColumn('notes', 'annee_universitaire')) $noteData['annee_universitaire'] = $annee;
-                    elseif (Schema::hasColumn('notes', 'annee')) $noteData['annee'] = $annee;
+                    if (Schema::hasColumn('notes', 'annee_scolaire')) $noteData['annee_scolaire'] = $annee;
+                    if (Schema::hasColumn('notes', 'annee')) $noteData['annee'] = $annee;
+                    if (Schema::hasColumn('notes', 'note') && !isset($noteData['note'])) $noteData['note'] = ($exam !== null ? $exam : $cc);
+                    if (Schema::hasColumn('notes', 'valeur') && !isset($noteData['valeur'])) $noteData['valeur'] = ($exam !== null ? $exam : $cc);
 
                     if ($existsNote) {
                         DB::table('notes')->where('id', $existsNote->id)->update($noteData);
