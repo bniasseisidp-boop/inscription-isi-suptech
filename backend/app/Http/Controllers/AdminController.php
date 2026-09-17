@@ -17,6 +17,11 @@ use App\Mail\DossierIncomplet;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
+use Exception;
 
 class AdminController extends Controller
 {
@@ -304,7 +309,7 @@ class AdminController extends Controller
         try {
             $pdfPath = $this->pdfService->generateAcceptanceLetter($student);
         } catch (\Exception $e) {
-            \Log::warning('PDF lettre acceptation: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('PDF lettre acceptation: ' . $e->getMessage());
         }
 
         if ($student->user?->email) {
@@ -474,7 +479,7 @@ class AdminController extends Controller
             \Illuminate\Support\Facades\Mail::to($user->email)
                 ->send(new \App\Mail\StudentInvite($user, $tempPassword, $student->fresh()));
         } catch (\Exception $e) {
-            \Log::warning('Email invitation étudiant (admin): ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Email invitation étudiant (admin): ' . $e->getMessage());
         }
 
         return response()->json(['message' => 'Étudiant créé', 'student' => $student->fresh()], 201);
@@ -778,7 +783,7 @@ class AdminController extends Controller
             Storage::disk('public')->deleteDirectory('impayes');
             Storage::disk('public')->deleteDirectory('photos');
         } catch (\Throwable $e) {
-            \Log::warning('Reset storage: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Reset storage: ' . $e->getMessage());
         }
 
         // Truncate data tables (keep staff/admin users, filieres, licenses).
@@ -817,7 +822,7 @@ class AdminController extends Controller
             Storage::disk('public')->deleteDirectory('photos');
             Storage::disk('public')->deleteDirectory('brouillards');
         } catch (\Throwable $e) {
-            \Log::warning('Delete all accounts storage: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Delete all accounts storage: ' . $e->getMessage());
         }
 
         \DB::statement('SET FOREIGN_KEY_CHECKS=0');
@@ -865,7 +870,7 @@ class AdminController extends Controller
             \Illuminate\Support\Facades\Mail::to($user->email)
                 ->send(new \App\Mail\StudentInvite($user, $tempPassword, $student));
         } catch (\Exception $e) {
-            \Log::warning('Email invitation staff: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Email invitation staff: ' . $e->getMessage());
         }
 
         \App\Services\ActivityLogger::log(
@@ -1181,7 +1186,7 @@ class AdminController extends Controller
             'send_email'          => 'nullable|boolean',
         ]);
 
-        DB::beginTransaction();
+        \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $student = Student::with(['filiere', 'license', 'user'])->findOrFail($validated['student_id']);
             $license = License::with('filiere')->findOrFail($validated['license_id']);
@@ -1275,7 +1280,7 @@ class AdminController extends Controller
                 }
             }
 
-            DB::commit();
+            \Illuminate\Support\Facades\DB::commit();
 
             // Envoyer email d'invitation si demandé
             if (!empty($validated['send_email']) && $student->email) {
@@ -1283,8 +1288,8 @@ class AdminController extends Controller
                     \Illuminate\Support\Facades\Mail::to($student->email)->send(
                         new \App\Mail\StudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
                     );
-                } catch (Exception $e) {
-                    Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
                 }
             }
 
@@ -1293,8 +1298,8 @@ class AdminController extends Controller
                 'student'             => $student->fresh(['filiere', 'license', 'user']),
                 'frais_reinscription' => $fraisAppliques,
             ]);
-        } catch (Exception $e) {
-            DB::rollBack();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
             return response()->json(['message' => 'Erreur lors de la réinscription : ' . $e->getMessage()], 422);
         }
     }
@@ -1349,7 +1354,7 @@ class AdminController extends Controller
                 'password' => $tempPassword
             ]);
         } catch (\Exception $e) {
-            \Log::warning("Mail invite: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning("Mail invite: " . $e->getMessage());
             // Retourner quand même le mot de passe généré pour que l'admin puisse le transmettre manuellement si besoin
             return response()->json([
                 'message' => "Compte étudiant configuré pour {$email}. (Email en attente de passerelle SMTP : MDP temporaire = {$tempPassword})",
