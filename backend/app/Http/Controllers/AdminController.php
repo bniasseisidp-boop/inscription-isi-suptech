@@ -57,11 +57,19 @@ class AdminController extends Controller
         $inscritsPayes     = (clone $sQuery)->where('statut_inscription', 'accepte')->where('inscription_payee', true)->count();
         
         $recettesTotalesPayments = (clone $pQuery)->sum('montant');
-        $recettesTotalesStudents = (clone $sQuery)->sum('compta_total_paye');
-        $recettesTotales         = max((float)$recettesTotalesPayments, (float)$recettesTotalesStudents);
-        $totalReliquats          = (clone $sQuery)->sum('compta_solde_restant');
         
-        $recettesMois      = (clone $pQuery)->whereYear('date_paiement', now()->year)->whereMonth('date_paiement', now()->month)->sum('montant');
+        $recettesTotalesStudents = 0;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('students', 'compta_total_paye')) {
+            $recettesTotalesStudents = (clone $sQuery)->sum('compta_total_paye');
+        }
+
+        $totalReliquats = 0;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('students', 'compta_solde_restant')) {
+            $totalReliquats = (clone $sQuery)->sum('compta_solde_restant');
+        }
+
+        $recettesTotales = max((float)$recettesTotalesPayments, (float)$recettesTotalesStudents);
+        $recettesMois    = (clone $pQuery)->whereYear('date_paiement', now()->year)->whereMonth('date_paiement', now()->month)->sum('montant');
 
         return response()->json([
             'total_candidatures'    => $totalCandidatures,
@@ -71,8 +79,8 @@ class AdminController extends Controller
             'rejetes'               => $rejetes,
             'inscrits_payes'        => $inscritsPayes,
             'recettes_totales'      => $recettesTotales,
-            'total_reliquats'       => $totalReliquats,
-            'recettes_mois'         => $recettesMois,
+            'total_reliquats'       => (float)$totalReliquats,
+            'recettes_mois'         => (float)$recettesMois,
             'annee_selectionnee'    => $annee,
         ]);
     }
