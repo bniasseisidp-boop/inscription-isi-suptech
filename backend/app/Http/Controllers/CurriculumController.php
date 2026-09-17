@@ -11,6 +11,7 @@ use App\Models\Professeur;
 use App\Models\Semestre;
 use App\Models\Student;
 use App\Services\BulletinService;
+use App\Services\PDFService;
 use Illuminate\Http\Request;
 
 class CurriculumController extends Controller
@@ -717,7 +718,7 @@ class CurriculumController extends Controller
     }
 
     /** PDF du grand tableau de délibération de la classe. */
-    public function downloadConseilClasse(Semestre $semestre, Request $request, \App\Services\PDFService $pdfService)
+    public function downloadConseilClasse(Semestre $semestre, Request $request, PDFService $pdfService)
     {
         $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
         $path = $pdfService->generateConseilClasse($semestre, $anneeScolaire);
@@ -734,7 +735,7 @@ class CurriculumController extends Controller
      *  listes a part dans la reponse pour que l'admin sache lesquels ont ete ignores. */
         /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
         /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
-    public function downloadBulletin($semestreKey, $student, Request $request, \App\Services\PDFService $pdfService, BulletinService $bulletinService)
+    public function downloadBulletin($semestreKey, $student, Request $request, PDFService $pdfService, BulletinService $bulletinService)
     {
         @ini_set('memory_limit', '512M');
         @set_time_limit(120);
