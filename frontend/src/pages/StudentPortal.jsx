@@ -1542,74 +1542,109 @@ export default function StudentPortal() {
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {b.modules && b.modules.length > 0 ? (
-                                  b.modules.map((mod, mIdx) => (
-                                    <Fragment key={mod.module?.id || mIdx}>
-                                      {/* UE Row */}
-                                      <tr className="bg-slate-50/70 font-bold text-slate-800">
-                                        <td colSpan={5} className="py-2 px-3 text-isiblue-800">
-                                          {mod.module?.nom || mod.module?.code || `UE ${mIdx + 1}`}
-                                        </td>
-                                        <td className="py-2 px-2 text-center font-bold text-slate-800">
-                                          {mod.moyenne_ue ? Number(mod.moyenne_ue).toFixed(2) : '-'}
-                                        </td>
-                                        <td className="py-2 px-3 text-right">
-                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                            mod.valide ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                                          }`}>
-                                            {mod.valide ? 'UE VALIDÉE' : 'EN COURS'}
-                                          </span>
-                                        </td>
-                                      </tr>
-                                      {/* Matières */}
-                                      {mod.lignes && mod.lignes.map((l, lIdx) => (
-                                        <tr key={lIdx} className="hover:bg-slate-50 transition-colors">
-                                          <td className="py-2 px-3 pl-6 text-slate-700 font-medium">
-                                            {l.matiere?.nom || l.matiere?.code || 'Matière'}
+                                  b.modules.map((mod, mIdx) => {
+                                    const courses = (mod.matieres && mod.matieres.length > 0)
+                                      ? mod.matieres
+                                      : (mod.lignes && mod.lignes.length > 0 ? mod.lignes : [])
+                                    
+                                    const ueNom = mod.module?.nom || mod.ue_nom || mod.nom || `Unité d'Enseignement ${mIdx + 1}`
+                                    const ueMoy = mod.moyenne_ue !== undefined ? mod.moyenne_ue : (mod.moy_ue !== undefined ? mod.moy_ue : mod.moyenne)
+                                    const isUeValide = mod.valide !== undefined ? mod.valide : (ueMoy !== null && ueMoy !== undefined ? Number(ueMoy) >= 10 : true)
+
+                                    return (
+                                      <Fragment key={mod.module?.id || mod.ue_nom || mIdx}>
+                                        {/* UE Row */}
+                                        <tr className="bg-slate-100/90 font-bold text-slate-800 border-t border-b border-slate-200">
+                                          <td colSpan={5} className="py-2.5 px-3 text-isiblue-900 font-extrabold flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-isiblue-600"></span>
+                                            <span>{ueNom}</span>
                                           </td>
-                                          <td className="py-2 px-2 text-center text-slate-500">{l.matiere?.coef ?? 2}</td>
-                                          <td className="py-2 px-2 text-center text-slate-500">{l.matiere?.credits ?? 2.5}</td>
-                                          <td className="py-2 px-2 text-center font-mono text-slate-600">
-                                            {l.mcc !== null && l.mcc !== undefined ? Number(l.mcc).toFixed(2) : '-'}
+                                          <td className="py-2.5 px-2 text-center font-bold font-mono text-slate-900">
+                                            {ueMoy !== null && ueMoy !== undefined && ueMoy !== '' ? Number(ueMoy).toFixed(2) : '-'}
                                           </td>
-                                          <td className="py-2 px-2 text-center font-mono text-slate-600">
-                                            {l.examen !== null && l.examen !== undefined ? Number(l.examen).toFixed(2) : '-'}
-                                          </td>
-                                          <td className="py-2 px-2 text-center font-bold font-mono text-slate-800">
-                                            {l.moyenne_generale !== null && l.moyenne_generale !== undefined ? Number(l.moyenne_generale).toFixed(2) : '-'}
-                                          </td>
-                                          <td className="py-2 px-3 text-right text-[11px] text-slate-500">
-                                            {l.appreciation || (l.moyenne_generale >= 10 ? 'Validé' : 'Non validé')}
+                                          <td className="py-2.5 px-3 text-right">
+                                            <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                              isUeValide ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                            }`}>
+                                              {isUeValide ? 'UE VALIDÉE' : 'EN COURS'}
+                                            </span>
                                           </td>
                                         </tr>
-                                      ))}
-                                    </Fragment>
-                                  ))
+                                        {/* Matières */}
+                                        {courses.map((l, lIdx) => {
+                                          const matNom = l.matiere?.nom || l.nom || l.matiere || 'Matière'
+                                          const coeff = l.coeff ?? l.coef ?? l.matiere?.coef ?? 2
+                                          const credits = l.credits ?? l.matiere?.credits ?? 2.5
+                                          const cc = (l.cc !== null && l.cc !== undefined && l.cc !== '') ? l.cc : ((l.mcc !== null && l.mcc !== undefined && l.mcc !== '') ? l.mcc : l.moy_cont)
+                                          const exam = (l.examen !== null && l.examen !== undefined && l.examen !== '') ? l.examen : ((l.exam !== null && l.exam !== undefined && l.exam !== '') ? l.exam : l.compo)
+                                          const moy = (l.moyenne !== null && l.moyenne !== undefined && l.moyenne !== '') ? l.moyenne : ((l.moy !== null && l.moy !== undefined && l.moy !== '') ? l.moy : ((l.moyenne_generale !== null && l.moyenne_generale !== undefined && l.moyenne_generale !== '') ? l.moyenne_generale : l.moyenne_ec))
+                                          const appr = l.appreciation || l.val || (moy !== null && moy !== undefined && Number(moy) >= 10 ? 'Validé' : (moy !== null && moy !== undefined ? 'Ajourné' : '-'))
+
+                                          return (
+                                            <tr key={lIdx} className="hover:bg-slate-50/80 transition-colors">
+                                              <td className="py-2.5 px-3 pl-8 text-slate-700 font-medium flex items-center gap-2">
+                                                <span className="text-slate-300 font-mono text-[10px]">•</span>
+                                                <span>{matNom}</span>
+                                              </td>
+                                              <td className="py-2.5 px-2 text-center text-slate-500 font-medium">{coeff}</td>
+                                              <td className="py-2.5 px-2 text-center text-slate-500 font-medium">{credits}</td>
+                                              <td className="py-2.5 px-2 text-center font-mono text-slate-700 font-semibold">
+                                                {cc !== null && cc !== undefined && cc !== '' ? Number(cc).toFixed(2) : '-'}
+                                              </td>
+                                              <td className="py-2.5 px-2 text-center font-mono text-slate-700 font-semibold">
+                                                {exam !== null && exam !== undefined && exam !== '' ? Number(exam).toFixed(2) : '-'}
+                                              </td>
+                                              <td className="py-2.5 px-2 text-center font-bold font-mono text-slate-900 bg-slate-50/50">
+                                                {moy !== null && moy !== undefined && moy !== '' ? (
+                                                  <span className={Number(moy) >= 10 ? 'text-emerald-700' : 'text-amber-700'}>
+                                                    {Number(moy).toFixed(2)}
+                                                  </span>
+                                                ) : '-'}
+                                              </td>
+                                              <td className="py-2.5 px-3 text-right text-[11px] text-slate-600 font-medium">
+                                                {appr}
+                                              </td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </Fragment>
+                                    )
+                                  })
                                 ) : b.lignes && b.lignes.length > 0 ? (
-                                  b.lignes.map((l, lIdx) => (
-                                    <tr key={lIdx} className="hover:bg-slate-50 transition-colors">
-                                      <td className="py-2 px-3 text-slate-700 font-medium">{l.matiere?.nom || 'Matière'}</td>
-                                      <td className="py-2 px-2 text-center text-slate-500">{l.matiere?.coef ?? 2}</td>
-                                      <td className="py-2 px-2 text-center text-slate-500">{l.matiere?.credits ?? 2.5}</td>
-                                      <td className="py-2 px-2 text-center font-mono text-slate-600">
-                                        {l.mcc !== null && l.mcc !== undefined ? Number(l.mcc).toFixed(2) : '-'}
-                                      </td>
-                                      <td className="py-2 px-2 text-center font-mono text-slate-600">
-                                        {l.examen !== null && l.examen !== undefined ? Number(l.examen).toFixed(2) : '-'}
-                                      </td>
-                                      <td className="py-2 px-2 text-center font-bold font-mono text-slate-800">
-                                        {l.moyenne_generale !== null && l.moyenne_generale !== undefined ? Number(l.moyenne_generale).toFixed(2) : '-'}
-                                      </td>
-                                      <td className="py-2 px-3 text-right text-[11px] text-slate-500">
-                                        {l.appreciation || (l.moyenne_generale >= 10 ? 'Validé' : 'Non validé')}
-                                      </td>
-                                    </tr>
-                                  ))
+                                  b.lignes.map((l, lIdx) => {
+                                    const matNom = l.matiere?.nom || l.nom || l.matiere || 'Matière'
+                                    const coeff = l.coeff ?? l.coef ?? l.matiere?.coef ?? 2
+                                    const credits = l.credits ?? l.matiere?.credits ?? 2.5
+                                    const cc = (l.cc !== null && l.cc !== undefined && l.cc !== '') ? l.cc : ((l.mcc !== null && l.mcc !== undefined && l.mcc !== '') ? l.mcc : l.moy_cont)
+                                    const exam = (l.examen !== null && l.examen !== undefined && l.examen !== '') ? l.examen : ((l.exam !== null && l.exam !== undefined && l.exam !== '') ? l.exam : l.compo)
+                                    const moy = (l.moyenne !== null && l.moyenne !== undefined && l.moyenne !== '') ? l.moyenne : ((l.moy !== null && l.moy !== undefined && l.moy !== '') ? l.moy : ((l.moyenne_generale !== null && l.moyenne_generale !== undefined && l.moyenne_generale !== '') ? l.moyenne_generale : l.moyenne_ec))
+                                    const appr = l.appreciation || l.val || (moy !== null && moy !== undefined && Number(moy) >= 10 ? 'Validé' : (moy !== null && moy !== undefined ? 'Ajourné' : '-'))
+
+                                    return (
+                                      <tr key={lIdx} className="hover:bg-slate-50 transition-colors">
+                                        <td className="py-2 px-3 text-slate-700 font-medium">{matNom}</td>
+                                        <td className="py-2 px-2 text-center text-slate-500">{coeff}</td>
+                                        <td className="py-2 px-2 text-center text-slate-500">{credits}</td>
+                                        <td className="py-2 px-2 text-center font-mono text-slate-600">
+                                          {cc !== null && cc !== undefined && cc !== '' ? Number(cc).toFixed(2) : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-center font-mono text-slate-600">
+                                          {exam !== null && exam !== undefined && exam !== '' ? Number(exam).toFixed(2) : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-center font-bold font-mono text-slate-800">
+                                          {moy !== null && moy !== undefined && moy !== '' ? Number(moy).toFixed(2) : '-'}
+                                        </td>
+                                        <td className="py-2 px-3 text-right text-[11px] text-slate-500">
+                                          {appr}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })
                                 ) : (
                                   <tr>
-                                    <td colSpan={7} className="py-4 text-center text-slate-400">Aucune note enregistrée</td>
+                                    <td colSpan={7} className="py-6 text-center text-slate-400 font-medium">Aucune note enregistrée</td>
                                   </tr>
-                                )}
-                              </tbody>
+                                )}</tbody>
                             </table>
                           </div>
                         </div>
