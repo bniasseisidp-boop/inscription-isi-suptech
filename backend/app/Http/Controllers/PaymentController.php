@@ -697,19 +697,13 @@ class PaymentController extends Controller
             });
         }
 
-        $totalAnneePayments = (clone $pQuery)->sum('montant');
+        $effectiveTotalAnnee = (float)(clone $pQuery)->sum('montant');
         $totalInscrits = Student::where('statut_inscription', 'accepte')
             ->when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->count();
             
-        // If it's a historical year with compta_total_paye, ensure maximum precision
-        $totalPayeFromStudents = Student::when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
-            ->sum('compta_total_paye');
-            
         $totalReliquats = Student::when($annee && $annee !== 'ALL', fn($q) => $q->where('annee_scolaire', $annee))
             ->sum('compta_solde_restant');
-
-        $effectiveTotalAnnee = max((float)$totalAnneePayments, (float)$totalPayeFromStudents);
 
         return response()->json([
             'total_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
