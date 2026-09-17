@@ -54,6 +54,22 @@ Schema::table('students', function (Blueprint $table) {
     }
 });
 
+
+// Ensure matieres table columns exist
+if (Schema::hasTable('matieres')) {
+    Schema::table('matieres', function (Blueprint $table) {
+        if (!Schema::hasColumn('matieres', 'code')) {
+            $table->string('code')->nullable();
+        }
+        if (!Schema::hasColumn('matieres', 'coefficient') && !Schema::hasColumn('matieres', 'coeff')) {
+            $table->integer('coefficient')->default(2)->nullable();
+        }
+        if (!Schema::hasColumn('matieres', 'filiere_id')) {
+            $table->unsignedBigInteger('filiere_id')->nullable();
+        }
+    });
+}
+
 // Ensure notes table exists
 if (!Schema::hasTable('notes')) {
     Schema::create('notes', function (Blueprint $table) {
@@ -268,14 +284,17 @@ foreach ($data as $idx => $item) {
                     } else {
                         $code = substr(strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $matNom)), 0, 10);
                         if (!$code) $code = 'MAT-' . rand(100, 999);
-                        $matiereId = DB::table('matieres')->insertGetId([
+                        $mRow = [
                             'nom' => $matNom,
-                            'code' => $code,
-                            'coefficient' => (int)($mat['coeff'] ?? 2),
-                            'filiere_id' => $filiereId,
                             'created_at' => $now,
                             'updated_at' => $now,
-                        ]);
+                        ];
+                        if (Schema::hasColumn('matieres', 'code')) $mRow['code'] = $code;
+                        if (Schema::hasColumn('matieres', 'coefficient')) $mRow['coefficient'] = (int)($mat['coeff'] ?? 2);
+                        elseif (Schema::hasColumn('matieres', 'coeff')) $mRow['coeff'] = (int)($mat['coeff'] ?? 2);
+                        if (Schema::hasColumn('matieres', 'filiere_id')) $mRow['filiere_id'] = $filiereId;
+
+                        $matiereId = DB::table('matieres')->insertGetId($mRow);
                         $matiereMap[$matKey] = $matiereId;
                     }
 
