@@ -77,7 +77,28 @@ if (!$license) {
 echo "   Filiere: " . $filiere->nom . " (ID: " . $filiere->id . ")\n";
 echo "   Classe: " . $license->nom . " (ID: " . $license->id . ")\n\n";
 
-echo "2. Recherche / Restauration de l'etudiant...\n";
+echo "2. Creation / Mise a jour du compte utilisateur d'abord...\n";
+$userEmail = 'azotobrain7@gmail.com';
+$user = User::where('email', $userEmail)->first();
+if ($user) {
+    $user->update([
+        'name'     => 'Baye Assane NIASSE',
+        'email'    => $userEmail,
+        'password' => Hash::make('password123'),
+        'role'     => 'student'
+    ]);
+    echo "   -> Utilisateur existant (ID: " . $user->id . ") mis a jour avec email: " . $userEmail . " et mdp: password123\n";
+} else {
+    $user = User::create([
+        'name'     => 'Baye Assane NIASSE',
+        'email'    => $userEmail,
+        'password' => Hash::make('password123'),
+        'role'     => 'student'
+    ]);
+    echo "   -> Nouvel utilisateur cree (ID: " . $user->id . ") avec email: " . $userEmail . " et mdp: password123\n";
+}
+
+echo "\n3. Recherche / Restauration de l'etudiant...\n";
 $matricule = $data['matricule'] ?? '411-25-1245/ISI SUPTECH';
 $student = Student::withTrashed()->where('matricule', $matricule)->first();
 if (!$student) {
@@ -90,6 +111,7 @@ if ($student && method_exists($student, 'trashed') && $student->trashed()) {
 
 $historique = $data['dossiers_historique'] ?? [];
 $studentFields = [
+    'user_id'                => $user->id,
     'matricule'              => $matricule,
     'nom'                    => 'NIASSE',
     'prenom'                 => 'Baye Assane',
@@ -99,7 +121,7 @@ $studentFields = [
     'nationalite'            => 'Sénégalaise',
     'telephone'              => '78 456 78 93',
     'telephone_tuteur'       => '77 270 23 28',
-    'email'                  => 'azotobrain7@gmail.com',
+    'email'                  => $userEmail,
     'adresse'                => 'Golf Sud',
     'filiere_id'             => $filiere->id,
     'license_id'             => $license->id,
@@ -124,31 +146,6 @@ if ($student) {
     $student = Student::create($studentFields);
     echo "   -> Etudiant recree avec succes (ID: " . $student->id . ").\n";
 }
-
-echo "\n3. Creation / Mise a jour du compte utilisateur...\n";
-$userEmail = 'azotobrain7@gmail.com';
-$user = User::where('email', $userEmail)->first();
-if (!$user && $student->user_id) {
-    $user = User::find($student->user_id);
-}
-if ($user) {
-    $user->update([
-        'name'     => 'Baye Assane NIASSE',
-        'email'    => $userEmail,
-        'password' => Hash::make('password123'),
-        'role'     => 'student'
-    ]);
-    echo "   -> Utilisateur existant (ID: " . $user->id . ") mis a jour avec email: " . $userEmail . " et mdp: password123\n";
-} else {
-    $user = User::create([
-        'name'     => 'Baye Assane NIASSE',
-        'email'    => $userEmail,
-        'password' => Hash::make('password123'),
-        'role'     => 'student'
-    ]);
-    echo "   -> Nouvel utilisateur cree (ID: " . $user->id . ") avec email: " . $userEmail . " et mdp: password123\n";
-}
-$student->update(['user_id' => $user->id]);
 
 echo "\n4. Nettoyage et Restauration des paiements historiques...\n";
 Payment::where('student_id', $student->id)->where('annee_scolaire', '2026-2027')->delete();
