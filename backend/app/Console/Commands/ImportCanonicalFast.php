@@ -4,7 +4,9 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Schema\Blueprint;
 
 class ImportCanonicalFast extends Command
 {
@@ -16,6 +18,47 @@ class ImportCanonicalFast extends Command
         ini_set('memory_limit', '1024M');
         set_time_limit(900);
         DB::disableQueryLog();
+
+        // 1. Ensure all required columns exist in production database
+        $this->info("Checking database schema columns...");
+
+        Schema::table('students', function (Blueprint $table) {
+            if (!Schema::hasColumn('students', 'compta_debit_total')) {
+                $table->decimal('compta_debit_total', 14, 2)->default(0)->nullable();
+            }
+            if (!Schema::hasColumn('students', 'compta_total_paye')) {
+                $table->decimal('compta_total_paye', 14, 2)->default(0)->nullable();
+            }
+            if (!Schema::hasColumn('students', 'compta_solde_restant')) {
+                $table->decimal('compta_solde_restant', 14, 2)->default(0)->nullable();
+            }
+            if (!Schema::hasColumn('students', 'compta_est_en_regle')) {
+                $table->boolean('compta_est_en_regle')->default(0)->nullable();
+            }
+            if (!Schema::hasColumn('students', 'moyenne_generale')) {
+                $table->decimal('moyenne_generale', 5, 2)->default(0)->nullable();
+            }
+            if (!Schema::hasColumn('students', 'credits_total')) {
+                $table->integer('credits_total')->default(0)->nullable();
+            }
+            if (!Schema::hasColumn('students', 'id_cc')) {
+                $table->integer('id_cc')->nullable();
+            }
+        });
+
+        // Ensure notes table exists
+        if (!Schema::hasTable('notes')) {
+            Schema::create('notes', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('student_id')->constrained()->cascadeOnDelete();
+                $table->foreignId('matiere_id')->constrained()->cascadeOnDelete();
+                $table->decimal('note_cc', 5, 2)->nullable();
+                $table->decimal('note_examen', 5, 2)->nullable();
+                $table->string('semestre', 10)->default('S1');
+                $table->string('annee_universitaire', 20)->default('2024-2025');
+                $table->timestamps();
+            });
+        }
 
         $path = storage_path('app/canonical_all_students.json');
         if (!file_exists($path)) {
@@ -31,7 +74,7 @@ class ImportCanonicalFast extends Command
         $defaultPassword = Hash::make('IsiPass2026!');
         $now = date('Y-m-d H:i:s');
 
-        // 1. Preload / Create Filieres
+        // Preload / Create Filieres
         $filieres = DB::table('filieres')->get();
         $filiereMap = [];
         foreach ($filieres as $f) {
@@ -39,14 +82,14 @@ class ImportCanonicalFast extends Command
             if ($f->code) $filiereMap[strtoupper(trim($f->code))] = $f->id;
         }
 
-        // 2. Preload Matieres
+        // Preload Matieres
         $matieres = DB::table('matieres')->get();
         $matiereMap = [];
         foreach ($matieres as $m) {
             $matiereMap[strtoupper(trim($m->nom))] = $m->id;
         }
 
-        // 3. Preload existing Users & Students
+        // Preload existing Users & Students
         $existingUsers = DB::table('users')->pluck('id', 'email')->toArray();
         $existingStudents = DB::table('students')->pluck('id', 'matricule')->toArray();
 
@@ -167,7 +210,7 @@ class ImportCanonicalFast extends Command
                 $imported++;
             }
 
-            // 4. Import Payments (Caisse)
+            // Import Payments (Caisse)
             if (!empty($item['paiements']) && is_array($item['paiements'])) {
                 foreach ($item['paiements'] as $pay) {
                     $montant = (float)($pay['montant'] ?? 0);
@@ -196,7 +239,7 @@ class ImportCanonicalFast extends Command
                 }
             }
 
-            // 5. Import Modules & Notes (Pédagogie)
+            // Import Modules & Notes (Pédagogie)
             if (!empty($item['modules']) && is_array($item['modules'])) {
                 foreach ($item['modules'] as $mod) {
                     if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
