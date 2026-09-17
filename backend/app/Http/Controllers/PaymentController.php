@@ -36,7 +36,7 @@ class PaymentController extends Controller
     }
 
     /** Cashier list: all payments */
-        public function index(Request $request)
+            public function index(Request $request)
     {
         $annee = $request->query('annee_scolaire', $request->query('annee_universitaire', $request->query('annee', '2026-2027')));
 
@@ -49,9 +49,12 @@ class PaymentController extends Controller
                       ->orWhere(function ($sub) {
                           $sub->where(function ($sub2) {
                               $sub2->whereNull('annee')->orWhere('annee', '')->orWhere('annee', '2026-2027');
-                          })->whereHas('student', function ($sq) {
-                              $sq->where('matricule', 'like', 'ISI-2026-%')
-                                 ->orWhere('annee_scolaire', '2026-2027');
+                          })->where(function ($sub3) {
+                              $sub3->whereHas('student', function ($sq) {
+                                  $sq->where('matricule', 'like', 'ISI-2026-%')
+                                     ->orWhere('annee_scolaire', '2026-2027');
+                              })->orWhereDate('date_paiement', '>=', '2026-08-01')
+                                ->orWhereDate('created_at', '>=', '2026-08-01');
                           });
                       });
                 });
@@ -693,7 +696,7 @@ class PaymentController extends Controller
         return response()->json($query->paginate($request->per_page ?? 25));
     }
 
-        public function stats(Request $request)
+            public function stats(Request $request)
     {
         $annee = $request->query('annee_scolaire') 
               ?? $request->query('annee_universitaire') 
@@ -712,7 +715,7 @@ class PaymentController extends Controller
         
         $pQuery = Payment::query();
         if (\Illuminate\Support\Facades\Schema::hasColumn('payments', 'statut')) {
-            $pQuery->whereIn('statut', ['complete', 'valide', 'succes', 'effectue', 'reussi', 'PAYE']);
+            $pQuery->whereIn('statut', ['complete', 'valide', 'succes', 'effectue', 'reussi', 'PAYE', 'paye']);
         }
         
         if ($annee === '2026-2027' || !$annee) {
@@ -721,9 +724,12 @@ class PaymentController extends Controller
                   ->orWhere(function ($sub) {
                       $sub->where(function ($sub2) {
                           $sub2->whereNull('annee')->orWhere('annee', '')->orWhere('annee', '2026-2027');
-                      })->whereHas('student', function ($sq) {
-                          $sq->where('matricule', 'like', 'ISI-2026-%')
-                             ->orWhere('annee_scolaire', '2026-2027');
+                      })->where(function ($sub3) {
+                          $sub3->whereHas('student', function ($sq) {
+                              $sq->where('matricule', 'like', 'ISI-2026-%')
+                                 ->orWhere('annee_scolaire', '2026-2027');
+                          })->orWhereDate('date_paiement', '>=', '2026-08-01')
+                            ->orWhereDate('created_at', '>=', '2026-08-01');
                       });
                   });
             });
@@ -755,12 +761,8 @@ class PaymentController extends Controller
                   ->orWhere('matricule', 'like', 'ISI-2026-%')
                   ->orWhere(function ($sub) {
                       $sub->whereNull('dossiers_historique')
-                          ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
+                          ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
                   });
-            })->where(function ($q) {
-                $q->whereNull('dossiers_historique')
-                  ->orWhere('annee_scolaire', '2026-2027')
-                  ->orWhere('matricule', 'like', 'ISI-2026-%');
             });
         } elseif ($annee !== 'ALL') {
             $sQuery->where('annee_scolaire', $annee);
