@@ -242,6 +242,43 @@ export default function StudentHistoricalDossierModal({
           </div>
         </div>
 
+                {/* Multi-Year Career Switcher Bar */}
+        {dossierData?.annees_cursus && dossierData.annees_cursus.length > 1 && (
+          <div className="bg-slate-100/80 border-b border-slate-200 px-6 py-2.5 flex items-center gap-3 overflow-x-auto">
+            <span className="text-xs font-extrabold text-slate-700 flex items-center gap-1.5 shrink-0">
+              <GraduationCap size={16} className="text-isiblue-600" />
+              Cursus complet ({dossierData.annees_cursus.length} années) :
+            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {dossierData.annees_cursus.map((c) => {
+                const isSel = (selectedAnnee === c.annee) || (!selectedAnnee && c.annee === dossierData.active_year);
+                return (
+                  <button
+                    key={c.annee}
+                    type="button"
+                    onClick={() => loadDossierForYear(c.annee)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                      isSel
+                        ? 'bg-isiblue-600 text-white shadow-md ring-2 ring-isiblue-400'
+                        : 'bg-white hover:bg-isiblue-50 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    <span>🎓 {c.annee}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold ${isSel ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      {c.niveau_court || c.niveau}
+                    </span>
+                    {c.moyenne > 0 && (
+                      <span className={`text-[10px] px-1 rounded font-bold ${isSel ? 'bg-emerald-500/40 text-emerald-100' : 'text-emerald-700'}`}>
+                        {c.moyenne}/20
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Tab Navigation */}
         <div className="bg-slate-50 border-b border-slate-200 px-6 flex items-center justify-between shrink-0 overflow-x-auto">
           <div className="flex items-center gap-1 py-2">
