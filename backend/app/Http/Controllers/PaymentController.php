@@ -36,7 +36,7 @@ class PaymentController extends Controller
     }
 
     /** Cashier list: all payments */
-            public function index(Request $request)
+                public function index(Request $request)
     {
         $annee = $request->query('annee_scolaire', $request->query('annee_universitaire', $request->query('annee', '2026-2027')));
 
@@ -46,18 +46,16 @@ class PaymentController extends Controller
             if ($annee === '2026-2027') {
                 $query->where(function ($q) {
                     $q->where('annee', '2026-2027')
-                      ->orWhere(function ($sub) {
-                          $sub->where(function ($sub2) {
-                              $sub2->whereNull('annee')->orWhere('annee', '')->orWhere('annee', '2026-2027');
-                          })->where(function ($sub3) {
-                              $sub3->whereHas('student', function ($sq) {
-                                  $sq->where('matricule', 'like', 'ISI-2026-%')
-                                     ->orWhere('annee_scolaire', '2026-2027');
-                              })->orWhereDate('date_paiement', '>=', '2026-08-01')
-                                ->orWhereDate('created_at', '>=', '2026-08-01');
-                          });
-                      });
-                });
+                      ->orWhere('annee', '2026')
+                      ->orWhereNull('annee')
+                      ->orWhere('annee', '')
+                      ->orWhereHas('student', function ($sq) {
+                          $sq->where('matricule', 'like', 'ISI-2026-%')
+                             ->orWhere('annee_scolaire', '2026-2027');
+                      })
+                      ->orWhereDate('date_paiement', '>=', '2026-08-01')
+                      ->orWhereDate('created_at', '>=', '2026-08-01');
+                })->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
             } elseif ($annee === 'ANCIENS') {
                 $query->where(function ($q) {
                     $q->where('annee', '!=', '2026-2027')
@@ -696,7 +694,7 @@ class PaymentController extends Controller
         return response()->json($query->paginate($request->per_page ?? 25));
     }
 
-            public function stats(Request $request)
+                public function stats(Request $request)
     {
         $annee = $request->query('annee_scolaire') 
               ?? $request->query('annee_universitaire') 
@@ -721,18 +719,16 @@ class PaymentController extends Controller
         if ($annee === '2026-2027' || !$annee) {
             $pQuery->where(function ($q) {
                 $q->where('annee', '2026-2027')
-                  ->orWhere(function ($sub) {
-                      $sub->where(function ($sub2) {
-                          $sub2->whereNull('annee')->orWhere('annee', '')->orWhere('annee', '2026-2027');
-                      })->where(function ($sub3) {
-                          $sub3->whereHas('student', function ($sq) {
-                              $sq->where('matricule', 'like', 'ISI-2026-%')
-                                 ->orWhere('annee_scolaire', '2026-2027');
-                          })->orWhereDate('date_paiement', '>=', '2026-08-01')
-                            ->orWhereDate('created_at', '>=', '2026-08-01');
-                      });
-                  });
-            });
+                  ->orWhere('annee', '2026')
+                  ->orWhereNull('annee')
+                  ->orWhere('annee', '')
+                  ->orWhereHas('student', function ($sq) {
+                      $sq->where('matricule', 'like', 'ISI-2026-%')
+                         ->orWhere('annee_scolaire', '2026-2027');
+                  })
+                  ->orWhereDate('date_paiement', '>=', '2026-08-01')
+                  ->orWhereDate('created_at', '>=', '2026-08-01');
+            })->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
         } elseif ($annee === 'ANCIENS') {
             $pQuery->where(function ($q) {
                 $q->where('annee', '!=', '2026-2027')
