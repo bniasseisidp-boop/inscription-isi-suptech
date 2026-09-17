@@ -928,14 +928,34 @@ class AdminController extends Controller
             if ($annee === '2026-2027') {
                 $query->where(function ($q) {
                     $q->where('annee', '2026-2027')
-                      ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', '2026-2027')->orWhere('matricule', 'like', 'ISI-2026-%'));
+                      ->orWhere(function ($sub) {
+                          $sub->whereYear('date_paiement', 2026)
+                              ->where(function ($sub2) {
+                                  $sub2->where('annee', '2026-2027')
+                                       ->orWhere('annee', '2026')
+                                       ->orWhereNull('annee')
+                                       ->orWhere('annee', '');
+                              });
+                      });
                 })->where(function ($q) {
-                    $q->where('annee', '2026-2027')->orWhereNull('annee')->orWhere('created_at', '>=', '2026-01-01');
-                });
+                    $q->where('annee', '2026-2027')
+                      ->orWhereYear('date_paiement', 2026);
+                })->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
             } elseif ($annee === 'ANCIENS') {
-                $query->where('annee', '!=', '2026-2027');
+                $query->where(function ($q) {
+                    $q->where('annee', '!=', '2026-2027')
+                      ->whereYear('date_paiement', '<', 2026);
+                });
             } else {
-                $query->where('annee', $annee);
+                $query->where(function ($q) use ($annee) {
+                    $q->where('annee', $annee)
+                      ->orWhere(function ($sub) use ($annee) {
+                          $yr = intval(substr($annee, 0, 4));
+                          if ($yr > 2000) {
+                              $sub->whereYear('date_paiement', $yr)->whereNull('annee');
+                          }
+                      });
+                });
             }
         }
 
@@ -943,7 +963,8 @@ class AdminController extends Controller
             ->when($request->statut, fn($q) => $q->where('statut', $request->statut))
             ->when($request->type, fn($q) => $q->where('type', $request->type))
             ->when($request->mois, fn($q) => $q->where('mois', $request->mois))
-            ->latest()
+            ->latest('date_paiement')
+            ->latest('id')
             ->paginate(30);
 
         return response()->json($payments);
