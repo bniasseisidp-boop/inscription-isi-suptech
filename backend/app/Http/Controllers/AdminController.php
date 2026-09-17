@@ -100,7 +100,11 @@ class AdminController extends Controller
 
         if ($isAnciens) {
             if ($annee && $annee !== 'ALL' && $annee !== 'ANCIENS') {
-                $query->where('annee_scolaire', $annee);
+                $query->where(function($q) use ($annee) {
+                    $q->where('annee_scolaire', $annee)
+                      ->orWhere('dossiers_historique', 'like', '%"annee":"' . $annee . '"%')
+                      ->orWhere('dossiers_historique', 'like', '%"annee_universitaire":"' . $annee . '"%');
+                });
             } else {
                 // All historical promotions, strictly excluding current 2026-2027
                 $query->where('annee_scolaire', '!=', '2026-2027');
