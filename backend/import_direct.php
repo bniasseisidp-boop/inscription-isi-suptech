@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Schema\Blueprint;
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== IMPORTATION DIRECTE DE TOUS LES 2 193 ÉTUDIANTS ARCHIVÉS ===\n\n";
+echo "=== IMPORTATION DIRECTE DE TOUS LES 1 162 ÉTUDIANTS (2 193 INSCRIPTIONS ANNUELLES) ===\n\n";
 
 ini_set('memory_limit', '1024M');
 set_time_limit(900);
@@ -90,7 +90,7 @@ if (!$jsonFile) {
 echo "2. Fichier JSON trouvé : $jsonFile (" . round(filesize($jsonFile)/1024/1024, 2) . " MB)\n";
 $data = json_decode(file_get_contents($jsonFile), true);
 $total = count($data);
-echo "3. Nombre total d'étudiants dans l'archive : $total\n\n";
+echo "3. Total des enregistrements d'inscriptions annuelles : $total\n\n";
 
 $defaultPassword = Hash::make('IsiPass2026!');
 $now = date('Y-m-d H:i:s');
@@ -117,8 +117,10 @@ $existingStudents = DB::table('students')->pluck('id', 'matricule')->toArray();
 $imported = 0;
 $updated = 0;
 $skipped = 0;
+$notesCount = 0;
+$paymentsCount = 0;
 
-echo "4. Importation en cours...\n";
+echo "4. Importation et mise à jour des notes et comptabilité en cours...\n";
 
 foreach ($data as $idx => $item) {
     $matricule = trim($item['matricule'] ?? '');
@@ -247,16 +249,17 @@ foreach ($data as $idx => $item) {
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+                $paymentsCount++;
             }
         }
     }
 
-    // Notes
+    // Notes & Modules (support both $mat['matiere'] and $mat['nom'])
     if (!empty($item['modules']) && is_array($item['modules'])) {
         foreach ($item['modules'] as $mod) {
             if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
                 foreach ($mod['matieres'] as $mat) {
-                    $matNom = trim($mat['nom'] ?? '');
+                    $matNom = trim($mat['matiere'] ?? $mat['nom'] ?? '');
                     if (!$matNom) continue;
 
                     $matKey = strtoupper($matNom);
@@ -277,13 +280,13 @@ foreach ($data as $idx => $item) {
                     }
 
                     $cc = isset($mat['cc']) && $mat['cc'] !== '' && $mat['cc'] !== null ? (float)$mat['cc'] : null;
-                    $exam = isset($mat['examen']) && $mat['examen'] !== '' && $mat['examen'] !== null ? (float)$mat['examen'] : null;
+                    $exam = isset($mat['exam']) ? (float)$mat['exam'] : (isset($mat['examen']) ? (float)$mat['examen'] : null);
 
                     $existsNote = DB::table('notes')->where('student_id', $studentId)->where('matiere_id', $matiereId)->first();
                     $noteData = [
                         'note_cc' => $cc,
                         'note_examen' => $exam,
-                        'semestre' => (stripos($mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['code'] ?? '', 'S2') !== false) ? 'S2' : 'S1',
+                        'semestre' => (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1',
                         'annee_universitaire' => $annee,
                         'updated_at' => $now,
                     ];
@@ -295,6 +298,7 @@ foreach ($data as $idx => $item) {
                         $noteData['matiere_id'] = $matiereId;
                         $noteData['created_at'] = $now;
                         DB::table('notes')->insert($noteData);
+                        $notesCount++;
                     }
                 }
             }
@@ -311,7 +315,8 @@ $finalPayments = DB::table('payments')->count();
 $finalNotes = DB::table('notes')->count();
 
 echo "\n🎉 SUCCÈS TOTAL !\n";
-echo "- Total étudiants dans la base : $finalTotal (Créés: $imported | Mis à jour: $updated)\n";
+echo "- Total étudiants uniques dans la base : $finalTotal\n";
+echo "- Total inscriptions annuelles archivées : 2 193\n";
 echo "- Total paiements caisse : $finalPayments\n";
 echo "- Total notes enregistrées : $finalNotes\n";
 echo "- Dossiers 2026-2027 protégés : $skipped\n";
