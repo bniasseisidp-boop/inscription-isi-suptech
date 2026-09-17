@@ -780,6 +780,8 @@ class PDFService
     /** Bulletin de notes officiel (format ISI SUPTECH) — MCC 40% + Examen 60%, par UE. */
     public function generateBulletin(\App\Models\Student $student, \App\Models\Semestre $semestre, string $anneeScolaire, ?string $appreciationConseil = null): string
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
         $student->load(['filiere', 'license']);
         $bulletinService = app(\App\Services\BulletinService::class);
         // strict=true : le bulletin officiel genere applique la regle ISI SUPTECH
@@ -809,6 +811,8 @@ class PDFService
      */
     public function generateBulletinDataPdf(\App\Models\Student $student, object $semestre, array $bulletin, string $anneeScolaire, ?string $appreciationConseil = null): string
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
         $student->loadMissing(['filiere', 'license']);
         $domaine = str_contains($this->inferDomaine($student), 'Gestion') ? 'Sciences Économiques et de Gestion' : 'NTIC';
         $mentionFiliere = str_contains($this->inferDomaine($student), 'Gestion') ? 'Gestion' : 'Informatique';

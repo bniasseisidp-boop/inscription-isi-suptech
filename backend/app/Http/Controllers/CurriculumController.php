@@ -356,6 +356,9 @@ class CurriculumController extends Controller
      */
     public function getStudentHistoricalBulletins(Student $student, ?string $reqYear = null, ?BulletinService $bulletinService = null)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+        static $canonicalCache = null;
         if (!$bulletinService) {
             $bulletinService = app(BulletinService::class);
         }
@@ -378,34 +381,37 @@ class CurriculumController extends Controller
 
         if (!$hasModulesInHist) {
             $jsonFiles = [
-                base_path('baye_data.json'),
-                base_path('canonical_all_students.json'),
                 storage_path('app/canonical_all_students.json'),
                 storage_path('canonical_all_students.json'),
-                '/home/c2710036c/isisuptech-backend/backend/baye_data.json',
-                '/home/c2710036c/isisuptech-backend/backend/storage/app/canonical_all_students.json'
+                base_path('canonical_all_students.json'),
+                '/home/c2710036c/isisuptech-backend/backend/storage/app/canonical_all_students.json',
+                '/home/c2710036c/isisuptech-backend/backend/storage/canonical_all_students.json',
+                base_path('baye_data.json'),
             ];
-            foreach ($jsonFiles as $jf) {
-                if (file_exists($jf)) {
-                    $cData = json_decode(file_get_contents($jf), true) ?: [];
-                    if (isset($cData['matricule'])) {
-                        $cData = [$cData];
+            if ($canonicalCache === null) {
+                foreach ($jsonFiles as $jf) {
+                    if (file_exists($jf)) {
+                        $raw = json_decode(file_get_contents($jf), true) ?: [];
+                        $canonicalCache = isset($raw['matricule']) ? [$raw] : $raw;
+                        break;
                     }
-                    $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
-                    $nom = strtolower(trim($student->nom ?? ''));
-                    $prenom = strtolower(trim($student->prenom ?? ''));
+                }
+            }
 
-                    foreach ($cData as $item) {
-                        $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $item['matricule'] ?? ''));
-                        $cNom = strtolower(trim($item['nom'] ?? ''));
-                        $cPrenom = strtolower(trim($item['prenom'] ?? ''));
+            if (!empty($canonicalCache)) {
+                $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+                $nom = strtolower(trim($student->nom ?? ''));
+                $prenom = strtolower(trim($student->prenom ?? ''));
 
-                        $match = (!empty($mat) && $mat === $cMat) || (!empty($nom) && $nom === $cNom && !empty($prenom) && $prenom === $cPrenom);
-                        if ($match) {
-                            $matchedRecords[] = $item;
-                        }
+                foreach ($canonicalCache as $item) {
+                    $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $item['matricule'] ?? ''));
+                    $cNom = strtolower(trim($item['nom'] ?? ''));
+                    $cPrenom = strtolower(trim($item['prenom'] ?? ''));
+
+                    $match = (!empty($mat) && $mat === $cMat) || (!empty($nom) && $nom === $cNom && !empty($prenom) && $prenom === $cPrenom);
+                    if ($match) {
+                        $matchedRecords[] = $item;
                     }
-                    if (!empty($matchedRecords)) break;
                 }
             }
         }
