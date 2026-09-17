@@ -72,16 +72,19 @@ class AdminController extends Controller
         $recettesMois    = (clone $pQuery)->whereYear('date_paiement', now()->year)->whereMonth('date_paiement', now()->month)->sum('montant');
 
         return response()->json([
-            'total_candidatures'    => $totalCandidatures,
-            'en_attente'            => $enAttente,
-            'en_attente_paiement'   => $enAttentePaiement,
-            'acceptes'              => $acceptes,
-            'rejetes'               => $rejetes,
-            'inscrits_payes'        => $inscritsPayes,
-            'recettes_totales'      => $recettesTotales,
-            'total_reliquats'       => (float)$totalReliquats,
-            'recettes_mois'         => (float)$recettesMois,
-            'annee_selectionnee'    => $annee,
+            'total_etudiants'       => $totalCandidatures,
+            'total_candidatures'     => $totalCandidatures,
+            'en_attente'             => $enAttente,
+            'en_attente_paiement'    => $enAttentePaiement,
+            'acceptes'               => $acceptes,
+            'rejetes'                => $rejetes,
+            'inscrits_payes'         => $inscritsPayes,
+            'inscriptions_payees'    => $inscritsPayes,
+            'frais_insc_percus'      => $inscritsPayes,
+            'recettes_totales'       => $recettesTotales,
+            'total_reliquats'        => (float)$totalReliquats,
+            'recettes_mois'          => (float)$recettesMois,
+            'annee_selectionnee'     => $annee,
         ]);
     }
 
