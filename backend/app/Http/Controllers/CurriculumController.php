@@ -344,55 +344,63 @@ class CurriculumController extends Controller
         /**
      * Récupère tous les bulletins du cursus complet de l'étudiant connecté (multi-années).
      */
+        /**
+     * Récupère tous les bulletins du cursus complet de l'étudiant connecté (multi-années).
+     */
     public function mesBulletins(Request $request, BulletinService $bulletinService)
     {
-        $student = Student::where('user_id', $request->user()->id)->with(['license.semestres.modules.matieres', 'filiere', 'notes.matiere'])->firstOrFail();
-        
-        // 1. Récupérer l'ensemble des années disponibles dans son cursus
-        $jsonPath = file_exists(storage_path('app/canonical_all_students.json')) 
-            ? storage_path('app/canonical_all_students.json') 
-            : (file_exists(storage_path('canonical_all_students.json')) ? storage_path('canonical_all_students.json') : base_path('storage/app/canonical_all_students.json'));
-        
-        static $canonicalCache = null;
-        if ($canonicalCache === null && file_exists($jsonPath)) {
-            $canonicalCache = json_decode(file_get_contents($jsonPath), true) ?: [];
-        }
+        $student = Student::where('user_id', $request->user()->id)->with(['license.semestres.modules.matieres', 'filiere'])->firstOrFail();
 
-        $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
-        $matchedRecords = [];
-        if (!empty($canonicalCache)) {
-            foreach ($canonicalCache as $c) {
-                $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $c['matricule'] ?? ''));
-                $cName = strtolower(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')));
-                $studentName = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
-                if ((!empty($mat) && $mat === $cMat) || ($studentName && $studentName === $cName)) {
-                    $matchedRecords[] = $c;
+        // 1. Lire dossiers_historique de l'étudiant
+        $rawHist = $student->dossiers_historique;
+        if (is_string($rawHist)) {
+            $rawHist = json_decode($rawHist, true) ?: [];
+        }
+        $matchedRecords = is_array($rawHist) ? $rawHist : [];
+
+        // 2. Fallback vers canonical / baye_data.json si modules manquants
+        if (empty($matchedRecords) || empty($matchedRecords[0]['modules'])) {
+            $jsonFiles = [
+                base_path('baye_data.json'),
+                base_path('canonical_all_students.json'),
+                storage_path('app/canonical_all_students.json'),
+                storage_path('canonical_all_students.json'),
+            ];
+            foreach ($jsonFiles as $jf) {
+                if (file_exists($jf)) {
+                    $cData = json_decode(file_get_contents($jf), true) ?: [];
+                    if (isset($cData['matricule'])) {
+                        $cData = [$cData];
+                    }
+                    $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+                    foreach ($cData as $item) {
+                        $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $item['matricule'] ?? ''));
+                        if (!empty($mat) && $mat === $cMat) {
+                            $matchedRecords[] = $item;
+                        }
+                    }
+                    if (!empty($matchedRecords)) break;
                 }
             }
         }
 
-        if (empty($matchedRecords) && !empty($student->dossiers_historique)) {
-            $matchedRecords = is_array($student->dossiers_historique) ? $student->dossiers_historique : json_decode($student->dossiers_historique, true);
-        }
-
-        // Liste des années cursus
+        // 3. Construire la liste des années disponibles
         $anneesCursus = [];
         $dossiersByYear = [];
-        if (!empty($matchedRecords)) {
-            foreach ($matchedRecords as $r) {
-                $yr = trim($r['annee'] ?? $r['annee_universitaire'] ?? '2024-2025');
-                $niv = trim($r['classe'] ?? $r['niveau'] ?? ($student->license?->nom ?? 'Licence'));
-                $fil = trim($r['filiere'] ?? ($student->filiere?->nom ?? 'Informatique'));
-                $moy = floatval($r['moyenne_generale'] ?? $student->moyenne_generale ?? 0);
-                $anneesCursus[$yr] = [
-                    'annee'   => $yr,
-                    'classe'  => $niv,
-                    'filiere' => $fil,
-                    'moyenne' => $moy,
-                    'credits' => intval($r['credits_total'] ?? 60),
-                ];
-                $dossiersByYear[$yr] = $r;
-            }
+
+        foreach ($matchedRecords as $r) {
+            $yr = trim($r['annee'] ?? $r['annee_universitaire'] ?? '2024-2025');
+            $niv = trim($r['classe'] ?? $r['niveau'] ?? ($student->license?->nom ?? 'Licence'));
+            $fil = trim($r['filiere'] ?? ($student->filiere?->nom ?? 'Informatique'));
+            $moy = floatval($r['moyenne_generale'] ?? $student->moyenne_generale ?? 0);
+            $anneesCursus[$yr] = [
+                'annee'   => $yr,
+                'classe'  => $niv,
+                'filiere' => $fil,
+                'moyenne' => $moy,
+                'credits' => intval($r['credits_total'] ?? 60),
+            ];
+            $dossiersByYear[$yr] = $r;
         }
 
         // Ajouter l'année courante si non présente
@@ -409,7 +417,7 @@ class CurriculumController extends Controller
 
         $anneesCursusList = array_values($anneesCursus);
 
-        // Déterminer l'année demandée
+        // 4. Déterminer l'année demandée (priorité : request > première année avec notes > année courante)
         $reqYear = $request->query('annee_scolaire') ?? $request->query('annee');
         if (!$reqYear || !isset($anneesCursus[$reqYear])) {
             $reqYear = !empty($dossiersByYear) ? array_key_first($dossiersByYear) : $currYear;
@@ -418,12 +426,10 @@ class CurriculumController extends Controller
         $calculSimple = (bool) $student->license?->calcul_simple;
         $bulletins = [];
 
-        // Si l'année demandée est dans les dossiers historiques / canonical
         if (isset($dossiersByYear[$reqYear])) {
             $dossier = $dossiersByYear[$reqYear];
             $semLabels = $dossier['semestres_dossier'] ?? ['S1', 'S2'];
             
-            // Regrouper les matières/modules par semestre
             $modulesBySem = [];
             if (!empty($dossier['modules']) && is_array($dossier['modules'])) {
                 foreach ($dossier['modules'] as $m) {
@@ -515,7 +521,6 @@ class CurriculumController extends Controller
                 ];
             }
         } elseif ($student->license_id) {
-            // Année courante connectée aux semestres en base
             $semestres = Semestre::where('license_id', $student->license_id)->orderBy('numero_global')->get();
             $bulletins = $semestres->map(fn ($s) => $calculSimple
                 ? $bulletinService->detailSemestreSimple($student, $s, $reqYear)
@@ -536,9 +541,7 @@ class CurriculumController extends Controller
         ]);
     }
 
-    /**
-     * Téléchargement du PDF officiel d'un bulletin du cursus (actuel ou historique).
-     */
+    /** Téléchargement du PDF officiel d'un de ses propres bulletins par l'étudiant connecté. */
     public function telechargerMonBulletin(Request $request, $semestre, PDFService $pdfService, BulletinService $bulletinService)
     {
         $student = Student::where('user_id', $request->user()->id)->with(['license', 'filiere'])->firstOrFail();
