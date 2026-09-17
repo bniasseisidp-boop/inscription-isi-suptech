@@ -151,7 +151,10 @@ class AdminController extends Controller
                       ->orWhere('matricule', 'like', 'ISI-2026-%')
                       ->orWhere(function ($sub) {
                           $sub->whereNull('dossiers_historique')
-                              ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement', 'accepte']);
+                              ->where(function($qNull) {
+                                  $qNull->whereNull('annee_scolaire')->orWhere('annee_scolaire', '2026-2027');
+                              })
+                              ->whereIn('statut_inscription', ['en_attente', 'en_attente_paiement']);
                       });
                 });
             } elseif ($annee && $annee !== 'ALL') {

@@ -27,7 +27,7 @@ use App\Models\License;
 use App\Models\Payment;
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== RESTAURATION CLEAN DE BAYE ASSANE NIASSE ===\n\n";
+echo "=== RESTAURATION CLEAN DE BAYE ASSANE NIASSE DANS LES ANCIENS ===\n\n";
 
 $jsonPath = __DIR__ . '/baye_data.json';
 if (!file_exists($jsonPath)) {
@@ -71,7 +71,7 @@ if (!$license) {
         'frais_reinscription' => 90000,
         'mensualite' => 70000,
         'duree_mois' => 9,
-        'annee_scolaire' => '2025-2026',
+        'annee_scolaire' => '2024-2025',
         'est_actif' => true
     ]);
 }
@@ -99,7 +99,7 @@ if ($user) {
     echo "   -> Nouvel utilisateur cree (ID: " . $user->id . ") avec email: " . $userEmail . " et mdp: password123\n";
 }
 
-echo "\n3. Recherche / Restauration de l'etudiant...\n";
+echo "\n3. Recherche / Restauration de l'etudiant dans les ANCIENS (Promotion 2024-2025)...\n";
 $matricule = $data['matricule'] ?? '411-25-1245/ISI SUPTECH';
 $student = Student::withTrashed()->where('matricule', $matricule)->first();
 if (!$student) {
@@ -110,7 +110,25 @@ if ($student && method_exists($student, 'trashed') && $student->trashed()) {
     echo "   -> Etudiant restaure depuis la corbeille (SoftDeletes).\n";
 }
 
-$historique = $data['dossiers_historique'] ?? [];
+$historique = $data['dossiers_historique'] ?? [
+    [
+        'id_compte' => 1825,
+        'annee' => '2024-2025',
+        'annee_universitaire' => '2024-2025',
+        'classe' => 'Licence 1 (L1) - Réseaux Informatiques (Cours du Jour)',
+        'filiere' => 'Réseaux Informatiques',
+        'cycle' => 'Licence 1 (L1)'
+    ],
+    [
+        'id_compte' => 2076,
+        'annee' => '2025-2026',
+        'annee_universitaire' => '2025-2026',
+        'classe' => 'Licence 2 (L2) - Réseaux Informatiques (Cours du Jour)',
+        'filiere' => 'Réseaux Informatiques',
+        'cycle' => 'Licence 2 (L2)'
+    ]
+];
+
 $studentFields = [
     'user_id'                => $user->id,
     'matricule'              => $matricule,
@@ -128,7 +146,7 @@ $studentFields = [
     'filiere_id'             => $filiere->id,
     'license_id'             => $license->id,
     'niveau_entree'          => 'Licence 1',
-    'annee_scolaire'         => '2025-2026',
+    'annee_scolaire'         => '2024-2025', // Ancien étudiant strict
     'statut_inscription'     => 'accepte',
     'inscription_payee'      => true,
     'frais_scolarite_total'  => 780000,
@@ -139,7 +157,7 @@ $studentFields = [
     'moyenne_generale'       => 16.35,
     'credits_total'          => 60,
     'dossiers_historique'    => $historique,
-    'notes_admin'            => 'Etudiant reimporte / restaure propre. Pret pour test reinscription 2026-2027.'
+    'notes_admin'            => 'Ancien etudiant importe. Pret pour reinscription 2026-2027.'
 ];
 
 if ($student) {
@@ -149,6 +167,16 @@ if ($student) {
     $student = Student::create($studentFields);
     echo "   -> Etudiant recree avec succes (ID: " . $student->id . ").\n";
 }
+
+// Forcer les champs JSON directs dans la base
+DB::table('students')->where('id', $student->id)->update([
+    'annee_scolaire'      => '2024-2025',
+    'dossiers_historique' => json_encode($historique),
+    'compta_debit_total'  => 780000,
+    'compta_total_paye'   => 780000,
+    'compta_solde_restant'=> 0,
+    'compta_est_en_regle' => 1
+]);
 
 echo "\n4. Nettoyage et Restauration des paiements historiques...\n";
 if (Schema::hasColumn('payments', 'annee')) {
@@ -186,9 +214,9 @@ if ($existingPaymentsCount == 0 && !empty($data['paiements'])) {
 }
 
 echo "\n======================================================\n";
-echo "SUCCES ! Baye Assane NIASSE est 100% restaure et pret !\n";
+echo "SUCCES ! Baye Assane NIASSE est 100% classe dans les ANCIENS !\n";
 echo "Matricule : " . $student->matricule . "\n";
 echo "Email     : " . $user->email . "\n";
 echo "Mot de passe test : password123\n";
-echo "Annee actuelle    : 2025-2026 (Pret pour reinscription 2026-2027)\n";
+echo "Annee historique  : 2024-2025 (Visible dans ANCIENS ETUDIANTS)\n";
 echo "======================================================\n";

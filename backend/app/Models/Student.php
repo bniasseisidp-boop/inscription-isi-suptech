@@ -47,6 +47,9 @@ class Student extends Model
         // Verrouillage profil
         'profil_verrouille', 'profil_verrouille_par', 'profil_verrouille_le',
         'profil_modifie_apres_verrouillage',
+        // Multi-year career & Accounting sync
+        'dossiers_historique', 'compta_debit_total', 'compta_total_paye', 'compta_solde_restant',
+        'compta_est_en_regle', 'moyenne_generale', 'credits_total', 'id_cc',
     ];
 
     protected $casts = [
@@ -62,6 +65,8 @@ class Student extends Model
         'est_transfert'                 => 'boolean',
         'profil_verrouille'             => 'boolean',
         'profil_modifie_apres_verrouillage' => 'boolean',
+        'dossiers_historique' => 'array',
+        'compta_est_en_regle' => 'boolean',
     ];
 
     public function getFullNameAttribute(): string
