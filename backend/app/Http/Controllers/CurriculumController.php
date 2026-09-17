@@ -347,9 +347,28 @@ class CurriculumController extends Controller
         /**
      * Récupère tous les bulletins du cursus complet de l'étudiant connecté (multi-années).
      */
+        /**
+     * Récupère tous les bulletins du cursus complet de l'étudiant connecté (multi-années).
+     */
     public function mesBulletins(Request $request, BulletinService $bulletinService)
     {
-        $student = Student::where('user_id', $request->user()->id)->with(['license.semestres.modules.matieres', 'filiere'])->firstOrFail();
+        $user = $request->user();
+        $student = null;
+        if ($user) {
+            $student = Student::where('user_id', $user->id)->first()
+                ?? Student::where('email', $user->email)->first()
+                ?? Student::whereRaw("LOWER(TRIM(email)) = ?", [strtolower(trim($user->email))])->first();
+        }
+
+        if (!$student) {
+            return response()->json([
+                'annee_scolaire' => '2024-2025',
+                'annees_cursus'  => [],
+                'calcul_simple'  => false,
+                'bulletins'      => [],
+                'message'        => 'Dossier étudiant introuvable pour ce compte utilisateur.'
+            ]);
+        }
 
         // 1. Lire dossiers_historique de l'étudiant
         $rawHist = $student->dossiers_historique;
@@ -358,13 +377,23 @@ class CurriculumController extends Controller
         }
         $matchedRecords = is_array($rawHist) ? $rawHist : [];
 
-        // 2. Fallback vers canonical / baye_data.json si modules manquants
-        if (empty($matchedRecords) || empty($matchedRecords[0]['modules'])) {
+        // 2. Fallback vers canonical / baye_data.json si historique vide ou sans modules
+        $hasModulesInHist = false;
+        foreach ($matchedRecords as $mr) {
+            if (!empty($mr['modules'])) {
+                $hasModulesInHist = true;
+                break;
+            }
+        }
+
+        if (!$hasModulesInHist) {
             $jsonFiles = [
                 base_path('baye_data.json'),
                 base_path('canonical_all_students.json'),
                 storage_path('app/canonical_all_students.json'),
                 storage_path('canonical_all_students.json'),
+                '/home/c2710036c/isisuptech-backend/backend/baye_data.json',
+                '/home/c2710036c/isisuptech-backend/backend/storage/app/canonical_all_students.json'
             ];
             foreach ($jsonFiles as $jf) {
                 if (file_exists($jf)) {
@@ -373,9 +402,16 @@ class CurriculumController extends Controller
                         $cData = [$cData];
                     }
                     $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+                    $nom = strtolower(trim($student->nom ?? ''));
+                    $prenom = strtolower(trim($student->prenom ?? ''));
+
                     foreach ($cData as $item) {
                         $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $item['matricule'] ?? ''));
-                        if (!empty($mat) && $mat === $cMat) {
+                        $cNom = strtolower(trim($item['nom'] ?? ''));
+                        $cPrenom = strtolower(trim($item['prenom'] ?? ''));
+
+                        $match = (!empty($mat) && $mat === $cMat) || (!empty($nom) && $nom === $cNom && !empty($prenom) && $prenom === $cPrenom);
+                        if ($match) {
                             $matchedRecords[] = $item;
                         }
                     }
@@ -399,12 +435,13 @@ class CurriculumController extends Controller
                 'filiere' => $fil,
                 'moyenne' => $moy,
                 'credits' => intval($r['credits_total'] ?? 60),
+                'has_modules' => !empty($r['modules']),
             ];
             $dossiersByYear[$yr] = $r;
         }
 
-        // Ajouter l'année courante si non présente
-        $currYear = $student->annee_scolaire ?: '2026-2027';
+        // Ajouter l'année active si non présente
+        $currYear = $student->annee_scolaire ?: '2024-2025';
         if (!isset($anneesCursus[$currYear])) {
             $anneesCursus[$currYear] = [
                 'annee'   => $currYear,
@@ -412,15 +449,25 @@ class CurriculumController extends Controller
                 'filiere' => $student->filiere?->nom ?? 'Informatique',
                 'moyenne' => floatval($student->moyenne_generale ?? 0),
                 'credits' => intval($student->credits_total ?? 60),
+                'has_modules' => false,
             ];
         }
 
         $anneesCursusList = array_values($anneesCursus);
 
-        // 4. Déterminer l'année demandée (priorité : request > première année avec notes > année courante)
+        // 4. Déterminer l'année demandée :
+        // Si demandée explicitement -> l'utiliser
+        // Sinon -> choisir la première année qui a des modules/notes
         $reqYear = $request->query('annee_scolaire') ?? $request->query('annee');
         if (!$reqYear || !isset($anneesCursus[$reqYear])) {
-            $reqYear = !empty($dossiersByYear) ? array_key_first($dossiersByYear) : $currYear;
+            $bestYear = null;
+            foreach ($dossiersByYear as $yKey => $dItem) {
+                if (!empty($dItem['modules'])) {
+                    $bestYear = $yKey;
+                    break;
+                }
+            }
+            $reqYear = $bestYear ?? (!empty($dossiersByYear) ? array_key_first($dossiersByYear) : $currYear);
         }
 
         $calculSimple = (bool) $student->license?->calcul_simple;
@@ -541,7 +588,6 @@ class CurriculumController extends Controller
         ]);
     }
 
-    /** Téléchargement du PDF officiel d'un de ses propres bulletins par l'étudiant connecté. */
     public function telechargerMonBulletin(Request $request, $semestre, PDFService $pdfService, BulletinService $bulletinService)
     {
         $student = Student::where('user_id', $request->user()->id)->with(['license', 'filiere'])->firstOrFail();

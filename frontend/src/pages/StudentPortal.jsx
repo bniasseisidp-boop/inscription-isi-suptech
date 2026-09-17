@@ -677,9 +677,17 @@ export default function StudentPortal() {
       setLoadingEmploi(true)
       getMonEmploiDuTemps().then(({ data }) => setEmploiDuTemps(data)).catch(() => {}).finally(() => setLoadingEmploi(false))
     }
-    if (activeSection === 'bulletins' && !bulletins) {
+    if (activeSection === 'bulletins') {
       setLoadingBulletins(true)
-      getMesBulletins().then(({ data }) => setBulletins(data)).catch(() => {}).finally(() => setLoadingBulletins(false))
+      getMesBulletins(selectedBulletinYear ? { annee_scolaire: selectedBulletinYear } : {})
+        .then(({ data }) => {
+          setBulletins(data)
+          if (!selectedBulletinYear && data?.annee_scolaire) {
+            setSelectedBulletinYear(data.annee_scolaire)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingBulletins(false))
     }
   }, [activeSection])
 
