@@ -219,12 +219,7 @@ class AccueilPedagogiqueController extends Controller
     }
 
     /** Télécharger la carte PDF d'un étudiant */
-    public function downloadCard(Student $student)
-    {
-        if ($student->statut_inscription !== 'accepte') {
-            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
-        }
-
+    public function downloadCard(Student $student) {
         $cardPath = $this->pdfService->generateStudentCard($student);
         $fullPath = Storage::disk('public')->path($cardPath);
 

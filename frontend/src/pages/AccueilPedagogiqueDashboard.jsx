@@ -772,18 +772,19 @@ export default function AccueilPedagogiqueDashboard() {
   const handleLogout = async () => { await logout(); navigate('/') }
 
   // Charger filières + classes + settings au montage
-  const loadClasses = () => {
-    getPedagogiqueClasses({ annee_scolaire: academicYear })
+  const loadClasses = useCallback(() => {
+    const targetAnnee = activeTab === 'anciens' ? 'ANCIENS' : (academicYear || '2026-2027')
+    getPedagogiqueClasses({ annee_scolaire: targetAnnee })
       .then(({ data }) => { setClasses(data); setFilieres(data) })
       .catch(() => {})
-  }
+  }, [activeTab, academicYear])
 
   useEffect(() => {
     loadClasses()
     getPedagogiqueSettings()
       .then(({ data }) => setFilieresLocked(data.filieres_locked))
       .catch(() => {})
-  }, [academicYear])
+  }, [loadClasses])
 
   // Charger étudiants quand sélection change
   const loadStudents = () => {
@@ -840,7 +841,9 @@ export default function AccueilPedagogiqueDashboard() {
     setSelectedFiliere(filiere)
     setSelectedLicense(license)
     setSearch('')
-    setActiveTab('inscrits')
+    if (activeTab === 'anciens') {
+      setFilterFiliereAnciens(String(filiere?.id || ''))
+    }
     if (license) setSidebarOpen(false)
   }
 
