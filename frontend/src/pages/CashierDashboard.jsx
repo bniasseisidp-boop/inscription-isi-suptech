@@ -721,11 +721,11 @@ export default function CashierDashboard() {
 
   const loadPayments = useCallback(() => {
     setLoading(true)
-    getCashierPayments({ search })
+    getCashierPayments({ search, annee_scolaire: selectedAnnee })
       .then(({ data }) => setPayments(data.data || []))
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [search])
+  }, [search, selectedAnnee])
 
   const loadImpayesMois = useCallback((mois) => {
     setLoadingImp(true)

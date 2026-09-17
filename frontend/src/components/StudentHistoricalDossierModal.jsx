@@ -47,6 +47,7 @@ export default function StudentHistoricalDossierModal({
   const [loading, setLoading] = useState(false)
   const [dossierData, setDossierData] = useState(null)
   const [selectedSemestreId, setSelectedSemestreId] = useState('ALL')
+  const [selectedAnnee, setSelectedAnnee] = useState(null)
   const [downloadingDoc, setDownloadingDoc] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const [editedNotes, setEditedNotes] = useState({})
@@ -81,19 +82,29 @@ export default function StudentHistoricalDossierModal({
     }
   }
 
+  const loadDossierForYear = (targetYear = null) => {
+    if (!student?.id) return
+    setLoading(true)
+    const params = targetYear ? { annee: targetYear } : {}
+    getStudentDossierHistorique(student.id, params)
+      .then(({ data }) => {
+        setDossierData(data)
+        if (data.active_year) {
+          setSelectedAnnee(data.active_year)
+        }
+      })
+      .catch(() => {
+        toast.error('Erreur lors du chargement du dossier étudiant')
+      })
+      .finally(() => setLoading(false))
+  }
+
   useEffect(() => {
     if (isOpen && student?.id) {
-      setLoading(true)
       setActiveTab('notes')
       setSelectedSemestreId('ALL')
-      getStudentDossierHistorique(student.id)
-        .then(({ data }) => {
-          setDossierData(data)
-        })
-        .catch(() => {
-          toast.error('Erreur lors du chargement du dossier étudiant')
-        })
-        .finally(() => setLoading(false))
+      setSelectedAnnee(null)
+      loadDossierForYear(null)
     } else {
       setDossierData(null)
     }

@@ -857,7 +857,26 @@ class AdminController extends Controller
     /** All payments report */
     public function payments(Request $request)
     {
-        $payments = Payment::with(['student.filiere', 'student.license', 'saiseur'])
+        $annee = $request->query('annee_scolaire', $request->query('annee_universitaire', $request->query('annee', '2026-2027')));
+
+        $query = Payment::with(['student.filiere', 'student.license', 'saiseur']);
+
+        if ($annee && $annee !== 'ALL') {
+            if ($annee === '2026-2027') {
+                $query->where(function ($q) {
+                    $q->where('annee', '2026-2027')
+                      ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', '2026-2027')->orWhere('matricule', 'like', 'ISI-2026-%'));
+                })->where(function ($q) {
+                    $q->where('annee', '2026-2027')->orWhereNull('annee')->orWhere('created_at', '>=', '2026-01-01');
+                });
+            } elseif ($annee === 'ANCIENS') {
+                $query->where('annee', '!=', '2026-2027');
+            } else {
+                $query->where('annee', $annee);
+            }
+        }
+
+        $payments = $query
             ->when($request->statut, fn($q) => $q->where('statut', $request->statut))
             ->when($request->type, fn($q) => $q->where('type', $request->type))
             ->when($request->mois, fn($q) => $q->where('mois', $request->mois))
@@ -1226,21 +1245,19 @@ class AdminController extends Controller
     {
         $student->loadMissing(['filiere', 'license.semestres.modules.matieres', 'payments', 'notes.matiere.module.semestre', 'user']);
 
-        // Check canonical store first for 100% exact fidelity with visualiseur_etudiants.html
         $jsonPath = file_exists(storage_path('app/canonical_all_students.json')) ? storage_path('app/canonical_all_students.json') : (file_exists(storage_path('canonical_all_students.json')) ? storage_path('canonical_all_students.json') : base_path('storage/app/canonical_all_students.json'));
-        $canonicalStudent = null;
-        if (file_exists($jsonPath)) {
-            static $canonicalCache = null;
-            if ($canonicalCache === null) {
-                $canonicalCache = json_decode(file_get_contents($jsonPath), true) ?: [];
-            }
-            
-            $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
-            $idCc = $student->id_cc;
-            $id = $student->id;
-            $name = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
+        
+        static $canonicalCache = null;
+        if ($canonicalCache === null && file_exists($jsonPath)) {
+            $canonicalCache = json_decode(file_get_contents($jsonPath), true) ?: [];
+        }
 
-            $matchedRecords = [];
+        $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+        $idCc = $student->id_cc;
+        $name = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
+
+        $matchedRecords = [];
+        if (!empty($canonicalCache)) {
             foreach ($canonicalCache as $c) {
                 $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $c['matricule'] ?? ''));
                 $cName = strtolower(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')));
@@ -1251,34 +1268,62 @@ class AdminController extends Controller
                     $matchedRecords[] = $c;
                 }
             }
+        }
 
-            $reqYear = request('annee_scolaire') ?? request('annee_universitaire') ?? request('annee');
-            if (!empty($matchedRecords)) {
-                if ($reqYear) {
-                    foreach ($matchedRecords as $r) {
-                        if (($r['annee'] ?? '') === $reqYear || ($r['annee_universitaire'] ?? '') === $reqYear) {
-                            $canonicalStudent = $r;
-                            break;
-                        }
+        // If not in canonical cache, check student's stored dossiers_historique JSON
+        if (empty($matchedRecords) && !empty($student->dossiers_historique)) {
+            $matchedRecords = is_array($student->dossiers_historique) ? $student->dossiers_historique : json_decode($student->dossiers_historique, true);
+        }
+
+        // Build list of all available career years for this student
+        $anneesCursus = [];
+        $dossiersByYear = [];
+        foreach ($matchedRecords as $r) {
+            $yr = trim($r['annee'] ?? $r['annee_universitaire'] ?? '2024-2025');
+            $niv = trim($r['niveau'] ?? 'Licence');
+            $fil = trim($r['filiere'] ?? 'Tronc Commun');
+            $modCount = count($r['modules'] ?? []);
+            $hasNotes = $modCount > 0;
+            $moy = floatval($r['moyenne_generale'] ?? 0);
+
+            // Short level representation
+            $nivCourt = $niv;
+            if (preg_match('/(Licences*d|Ld|Masters*d|Md)/i', $niv, $mNiv)) {
+                $nivCourt = $mNiv[1];
+            }
+
+            $anneesCursus[] = [
+                'annee' => $yr,
+                'niveau' => $niv,
+                'niveau_court' => $nivCourt,
+                'filiere' => $fil,
+                'has_notes' => $hasNotes,
+                'modules_count' => $modCount,
+                'moyenne' => $moy,
+            ];
+            $dossiersByYear[$yr] = $r;
+        }
+
+        $reqYear = request('annee_scolaire') ?? request('annee_universitaire') ?? request('annee');
+        $canonicalStudent = null;
+
+        if ($reqYear && isset($dossiersByYear[$reqYear])) {
+            $canonicalStudent = $dossiersByYear[$reqYear];
+        } elseif (!empty($matchedRecords)) {
+            // Find record with most populated modules or latest
+            $best = null;
+            foreach ($matchedRecords as $r) {
+                if (!empty($r['modules']) && count($r['modules']) > 0) {
+                    if (!$best || count($r['modules']) > count($best['modules'] ?? [])) {
+                        $best = $r;
                     }
-                }
-                if (!$canonicalStudent) {
-                    // Pick the record with the most populated modules/grades, or latest record
-                    $bestWithModules = null;
-                    foreach ($matchedRecords as $r) {
-                        if (!empty($r['modules']) && count($r['modules']) > 0) {
-                            if (!$bestWithModules || count($r['modules']) > count($bestWithModules['modules'] ?? [])) {
-                                $bestWithModules = $r;
-                            }
-                        }
-                    }
-                    $canonicalStudent = $bestWithModules ?: end($matchedRecords);
                 }
             }
+            $canonicalStudent = $best ?: end($matchedRecords);
         }
 
         if ($canonicalStudent) {
-            // Build semestres_data directly from authentic canonical modules
+            $activeYear = trim($canonicalStudent['annee'] ?? $canonicalStudent['annee_universitaire'] ?? '2024-2025');
             $semestresMap = [];
             $semLabels = $canonicalStudent['semestres_dossier'] ?? ['S1', 'S2'];
             foreach ($semLabels as $sIdx => $sKey) {
@@ -1296,142 +1341,106 @@ class AdminController extends Controller
                     'credits_obtenus' => $sCred,
                     'total_credits_obtenus' => $sCred,
                     'moyenne_semestre' => $sAvg > 0 ? $sAvg : null,
-                    'valide' => $sCred >= 30 || $sAvg >= 10,
+                    'valide' => $sAvg >= 10.0,
                     'appreciation' => $sApp,
                     'modules' => [],
                 ];
             }
 
-            foreach ($canonicalStudent['modules'] ?? [] as $mIdx => $mod) {
-                $sKey = $mod['semestre'] ?? 'S1';
-                if (!isset($semestresMap[$sKey])) {
-                    $semestresMap[$sKey] = [
-                        'id' => $sKey,
-                        'numero' => count($semestresMap) + 1,
-                        'libelle' => "Semestre ({$sKey})",
-                        'credits_requis' => 30,
-                        'total_credits_requis' => 30,
-                        'credits_obtenus' => 0,
-                        'total_credits_obtenus' => 0,
-                        'moyenne_semestre' => null,
-                        'valide' => false,
-                        'appreciation' => '',
-                        'modules' => [],
+            if (!empty($canonicalStudent['modules']) && is_array($canonicalStudent['modules'])) {
+                foreach ($canonicalStudent['modules'] as $mIdx => $mod) {
+                    $semKey = strtoupper(trim($mod['semestre'] ?? 'S1'));
+                    if (!isset($semestresMap[$semKey])) {
+                        $semNum = ($semKey === 'S2' || stripos($semKey, '2') !== false) ? 2 : 1;
+                        $semestresMap[$semKey] = [
+                            'id' => $semKey,
+                            'numero' => $semNum,
+                            'libelle' => "Semestre {$semNum} ({$semKey})",
+                            'credits_requis' => 30,
+                            'total_credits_requis' => 30,
+                            'credits_obtenus' => 0,
+                            'total_credits_obtenus' => 0,
+                            'moyenne_semestre' => null,
+                            'valide' => false,
+                            'appreciation' => '',
+                            'modules' => [],
+                        ];
+                    }
+
+                    $matieresList = [];
+                    if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
+                        foreach ($mod['matieres'] as $matIdx => $mat) {
+                            $cc = isset($mat['cc']) && $mat['cc'] !== '' && $mat['cc'] !== null ? floatval($mat['cc']) : null;
+                            $exam = isset($mat['exam']) ? floatval($mat['exam']) : (isset($mat['examen']) ? floatval($mat['examen']) : null);
+                            $moy = isset($mat['moy']) ? floatval($mat['moy']) : (($cc !== null && $exam !== null) ? round(($cc * 0.4) + ($exam * 0.6), 2) : ($exam ?? $cc));
+                            
+                            $matieresList[] = [
+                                'id' => "canon-{$mIdx}-{$matIdx}",
+                                'nom' => $mat['matiere'] ?? $mat['nom'] ?? 'Matière',
+                                'code' => 'MAT-' . ($matIdx + 1),
+                                'coeff' => floatval($mat['coeff'] ?? 2),
+                                'credits' => floatval($mat['credits'] ?? 2),
+                                'cc' => $cc,
+                                'examen' => $exam,
+                                'moyenne' => $moy,
+                                'valide' => ($moy >= 10.0),
+                                'appreciation' => $mat['appreciation'] ?? $mat['val'] ?? ($moy >= 10 ? 'Validé' : 'Ajourné'),
+                            ];
+                        }
+                    }
+
+                    $semestresMap[$semKey]['modules'][] = [
+                        'id' => "canon-mod-{$mIdx}",
+                        'nom' => $mod['ue_nom'] ?? $mod['nom'] ?? "Module " . ($mIdx + 1),
+                        'code' => "UE-" . ($mIdx + 1),
+                        'credits' => floatval($mod['ue_credits'] ?? $mod['credits'] ?? 6),
+                        'moyenne_ue' => isset($mod['moy_ue']) ? floatval($mod['moy_ue']) : null,
+                        'valide' => !empty($mod['ue_valide']),
+                        'statut' => $mod['statut_ue'] ?? ($mod['ue_valide'] ? 'VALIDÉ' : 'EN COURS'),
+                        'matieres' => $matieresList,
                     ];
                 }
-
-                $matieresList = [];
-                foreach ($mod['matieres'] ?? [] as $matIdx => $mat) {
-                    $matieresList[] = [
-                        'id' => "mat_{$mIdx}_{$matIdx}",
-                        'nom' => $mat['matiere'] ?? 'Matière',
-                        'code' => $mat['code'] ?? '',
-                        'coeff' => $mat['coeff'] ?? 1,
-                        'credits' => $mat['credits'] ?? 2,
-                        'cc' => $mat['cc'],
-                        'examen' => $mat['exam'],
-                        'moyenne' => $mat['moy'],
-                        'valide' => ($mat['val'] ?? '') === 'VALIDÉ' || ($mat['moy'] ?? 0) >= 10,
-                        'appreciation' => $mat['appreciation'] ?? '',
-                    ];
-                }
-
-                $semestresMap[$sKey]['modules'][] = [
-                    'id' => "ue_{$mIdx}",
-                    'nom' => $mod['ue_nom'] ?? 'UE',
-                    'code' => $mod['ue_nom'] ?? 'UE',
-                    'credits' => $mod['ue_credits'] ?? 6,
-                    'moyenne_ue' => $mod['moy_ue'],
-                    'valide' => $mod['ue_valide'] ?? false,
-                    'statut' => $mod['statut_ue'] ?? ($mod['ue_valide'] ? 'MODULE VALIDÉ' : 'AJOURNÉ'),
-                    'matieres' => $matieresList,
-                ];
             }
 
-            $scolariteDue = floatval($canonicalStudent['compta_scolarite_due'] ?? ($canonicalStudent['compta_debit_total'] ?? 780000));
+            // Financial Data for this specific year
+            $scolariteDue = floatval($canonicalStudent['compta_scolarite_due'] ?? $canonicalStudent['compta_debit_total'] ?? 780000);
             $totalPaye = floatval($canonicalStudent['compta_total_paye'] ?? 0);
             $soldeRestant = floatval($canonicalStudent['compta_solde_restant'] ?? max(0, $scolariteDue - $totalPaye));
-            $estEnRegle = $soldeRestant <= 0;
+            $estEnRegle = $soldeRestant <= 0 && $totalPaye > 0;
 
-            // Authentic receipts from canonical
             $paiementsList = [];
-            $paidMonthsSet = [];
-            foreach ($canonicalStudent['paiements'] ?? [] as $p) {
-                $m = ucfirst(strtolower(trim($p['mois'] ?? '')));
-                if (!empty($m) && !in_array(strtolower($m), ['ouverture', 'inscription', 'acompte', 'autre', 'reliquat'])) {
-                    $paidMonthsSet[$m] = true;
-                }
-                $paiementsList[] = [
-                    'id' => $p['id_recette'] ?? null,
-                    'recu_numero' => $p['num_recu'] ?? ('REC-' . ($p['id_recette'] ?? '')),
-                    'date' => $p['date'] ?? '',
-                    'heure' => $p['heure'] ?? '',
-                    'type' => $p['nature'] ?? 'Mensualité',
-                    'mois' => $p['mois'] ?? '',
-                    'montant' => $p['montant'] ?? 0,
-                    'methode' => $p['mode'] ?? 'especes',
-                    'statut' => 'complete',
-                ];
-            }
-            if (empty($paiementsList)) {
-                $paiementsList = $student->payments->map(function ($p) use (&$paidMonthsSet) {
-                    $m = ucfirst(strtolower(trim($p->mois_label ?: $p->mois ?: '')));
-                    if (!empty($m)) $paidMonthsSet[$m] = true;
-                    return [
-                        'id' => $p->id,
-                        'recu_numero' => $p->recu_numero ?: ('REC-' . $p->id),
-                        'date' => $p->created_at ? $p->created_at->format('d/m/Y') : '',
-                        'heure' => $p->created_at ? $p->created_at->format('H:i') : '',
-                        'type' => $p->type,
-                        'mois' => $p->mois_label ?: $p->mois,
-                        'montant' => floatval($p->montant),
-                        'methode' => $p->methode,
-                        'statut' => $p->statut,
+            if (!empty($canonicalStudent['paiements']) && is_array($canonicalStudent['paiements'])) {
+                foreach ($canonicalStudent['paiements'] as $pIdx => $p) {
+                    $paiementsList[] = [
+                        'id' => "canon-pay-{$pIdx}",
+                        'recu_numero' => !empty($p['id_recette']) ? "REC-{$p['id_recette']}" : "REC-{$pIdx}",
+                        'date' => $p['date'] ?? '',
+                        'heure' => $p['heure'] ?? '12:00',
+                        'type' => (stripos($p['nature'] ?? '', 'inscription') !== false) ? 'inscription' : 'mensualite',
+                        'mois' => $p['mois'] ?? 'Mensualité',
+                        'montant' => floatval($p['montant'] ?? 0),
+                        'methode' => $p['mode'] ?? 'espèces',
+                        'statut' => 'complete',
                     ];
-                })->values()->all();
+                }
             }
 
-            $allStandardMonths = ['Octobre', 'Novembre', 'Décembre', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet'];
             $unpaidMonths = [];
-            foreach ($allStandardMonths as $m) {
-                if (!isset($paidMonthsSet[$m])) {
-                    $unpaidMonths[] = $m;
-                }
-            }
-
-            $fraisMensuel = 70000;
-            if (!empty($canonicalStudent['paiements'])) {
-                foreach ($canonicalStudent['paiements'] as $p) {
-                    if (floatval($p['montant'] ?? 0) > 0 && !in_array(strtolower($p['nature'] ?? ''), ['inscription', 'ouverture'])) {
-                        $fraisMensuel = floatval($p['montant']);
-                        break;
-                    }
-                }
-            }
-
-            if ($soldeRestant > 0) {
-                $nbMoisDus = max(1, intval(round($soldeRestant / $fraisMensuel)));
-                $unpaidMonths = array_slice($unpaidMonths, 0, $nbMoisDus);
-                if (empty($unpaidMonths)) {
-                    $unpaidMonths = ['Arriérés (' . number_format($soldeRestant, 0, ',', ' ') . ' FCFA)'];
-                }
-            } else {
-                $unpaidMonths = [];
+            if (!$estEnRegle && !empty($canonicalStudent['dernier_paiement_label'])) {
+                $unpaidMonths = [$canonicalStudent['dernier_paiement_label']];
             }
 
             return response()->json([
                 'student' => $student,
-                'canonical' => [
-                    'moyenne_s1' => $canonicalStudent['moyenne_s1'] ?? 0,
-                    'moyenne_s2' => $canonicalStudent['moyenne_s2'] ?? 0,
+                'active_year' => $activeYear,
+                'annees_cursus' => $anneesCursus,
+                'canonical_data' => [
+                    'annee' => $activeYear,
+                    'niveau' => $canonicalStudent['niveau'] ?? $student->niveau_entree,
+                    'filiere' => $canonicalStudent['filiere'] ?? ($student->filiere->nom ?? 'Tronc Commun'),
                     'moyenne_generale' => $canonicalStudent['moyenne_generale'] ?? 0,
-                    'credits_s1' => $canonicalStudent['credits_s1'] ?? 0,
-                    'credits_s2' => $canonicalStudent['credits_s2'] ?? 0,
                     'credits_total' => $canonicalStudent['credits_total'] ?? 0,
-                    'appreciation_s1' => $canonicalStudent['appreciation_s1'] ?? '',
-                    'appreciation_s2' => $canonicalStudent['appreciation_s2'] ?? '',
-                    'statut_validation' => $canonicalStudent['statut_validation'] ?? '',
-                    'decision' => $canonicalStudent['decision'] ?? '',
+                    'decision' => $canonicalStudent['decision'] ?? 'En cours',
                 ],
                 'semestres_data' => array_values($semestresMap),
                 'total_du' => $scolariteDue,
@@ -1450,157 +1459,25 @@ class AdminController extends Controller
             ]);
         }
 
-        // Fallback for newly created students without canonical data
-        $notes = $student->notes;
-        $notesByMatiere = [];
-        foreach ($notes as $n) {
-            $notesByMatiere[$n->matiere_id] = $n;
-        }
-
-        $semestresData = [];
-        $license = $student->license;
-
-        if ($license && $license->semestres) {
-            foreach ($license->semestres->sortBy('numero') as $sem) {
-                $modulesData = [];
-                $semTotalPond = 0;
-                $semTotalCreditsCoef = 0;
-                $semCreditsObtenus = 0;
-                $semCreditsTotal = floatval($sem->credits_requis ?: 30);
-
-                foreach ($sem->modules->sortBy('ordre') as $mod) {
-                    $matieresData = [];
-                    $ueTotalPond = 0;
-                    $ueTotalCoeff = 0;
-                    $ueCredits = floatval($mod->credits ?: 6);
-                    $hasNotes = false;
-
-                    foreach ($mod->matieres->sortBy('ordre') as $mat) {
-                        $note = $notesByMatiere[$mat->id] ?? null;
-                        $coeff = floatval($mat->coef ?: 1.0);
-                        $cc = $note && $note->mcc !== null ? floatval($note->mcc) : null;
-                        $exam = $note && $note->examen !== null ? floatval($note->examen) : null;
-                        
-                        $moy = null;
-                        $valide = false;
-                        $appreciation = 'Non évalué';
-
-                        if ($cc !== null || $exam !== null) {
-                            $hasNotes = true;
-                            $cVal = $cc ?? 0;
-                            $eVal = $exam ?? 0;
-                            $moy = round(($cVal * 0.4) + ($eVal * 0.6), 2);
-                            $valide = $moy >= 10.0;
-                            if ($moy >= 16) $appreciation = 'Très bien';
-                            elseif ($moy >= 14) $appreciation = 'Bien';
-                            elseif ($moy >= 12) $appreciation = 'Assez bien';
-                            elseif ($moy >= 10) $appreciation = 'Passable';
-                            else $appreciation = 'Insuffisant / Ajourné';
-
-                            $ueTotalPond += ($moy * $coeff);
-                            $ueTotalCoeff += $coeff;
-                        }
-
-                        $matieresData[] = [
-                            'id' => $mat->id,
-                            'nom' => $mat->nom,
-                            'code' => $mat->code,
-                            'coeff' => $coeff,
-                            'credits' => floatval($mat->credits ?: 2.0),
-                            'cc' => $cc,
-                            'examen' => $exam,
-                            'moyenne' => $moy,
-                            'valide' => $valide,
-                            'appreciation' => $appreciation,
-                        ];
-                    }
-
-                    $isDummy = str_starts_with($mod->nom, 'Bulletin ') || str_starts_with($mod->nom, 'BULLETIN ') || str_starts_with($mod->code, 'BULLET-');
-                    if ($isDummy && !$hasNotes) {
-                        continue;
-                    }
-
-                    $moyUe = $ueTotalCoeff > 0 ? round($ueTotalPond / $ueTotalCoeff, 2) : 0;
-                    $ueValide = $moyUe >= 10.0 && $hasNotes;
-                    $statutUe = $ueValide ? 'MODULE VALIDÉ' : ($hasNotes ? 'AJOURNÉ' : 'EN COURS');
-
-                    if ($ueValide) {
-                        $semCreditsObtenus += $ueCredits;
-                    }
-
-                    if ($hasNotes) {
-                        $semTotalPond += ($moyUe * $ueCredits);
-                        $semTotalCreditsCoef += $ueCredits;
-                    }
-
-                    $modulesData[] = [
-                        'id' => $mod->id,
-                        'nom' => $mod->nom,
-                        'code' => $mod->code,
-                        'credits' => $ueCredits,
-                        'moyenne_ue' => $hasNotes ? $moyUe : null,
-                        'valide' => $ueValide,
-                        'statut' => $statutUe,
-                        'matieres' => $matieresData,
-                    ];
-                }
-
-                $moySemestre = $semTotalCreditsCoef > 0 ? round($semTotalPond / $semTotalCreditsCoef, 2) : 0;
-                $semValide = $moySemestre >= 10.0;
-
-                $semestresData[] = [
-                    'id' => $sem->id,
-                    'numero' => $sem->numero,
-                    'libelle' => $sem->libelle,
-                    'credits_requis' => $semCreditsTotal,
-                    'total_credits_requis' => $semCreditsTotal,
-                    'credits_obtenus' => $semCreditsObtenus,
-                    'total_credits_obtenus' => $semCreditsObtenus,
-                    'moyenne_semestre' => $semTotalCreditsCoef > 0 ? $moySemestre : null,
-                    'valide' => $semValide,
-                    'modules' => $modulesData,
-                ];
-            }
-        }
-
-        // Caisse Data
-        $scolariteDue = floatval($student->frais_scolarite_total ?: ($student->compta_debit_total ?: 780000));
-        $totalPaye = $student->payments->whereIn('statut', ['complete', 'valide'])->sum('montant');
-        if ($totalPaye == 0 && floatval($student->compta_total_paye) > 0) {
-            $totalPaye = floatval($student->compta_total_paye);
-        }
-
-        $soldeRestant = floatval($student->compta_solde_restant ?? max(0, $scolariteDue - $totalPaye));
-        $estEnRegle = $student->estEnRegle() || ($soldeRestant <= 0 && $scolariteDue > 0);
-
+        // Fallback
         return response()->json([
-            'student'          => $student,
-            'semestres_data'   => $semestresData,
-            'caisse_data'      => [
-                'total_du'       => $scolariteDue,
-                'total_paye'     => $totalPaye,
-                'solde_restant'  => $soldeRestant,
-                'est_en_regle'   => $estEnRegle,
-                'mois_non_payes' => $estEnRegle ? [] : $student->mois_non_payes,
-                'paiements'      => $student->payments->map(function ($p) {
-                    return [
-                        'id'          => $p->id,
-                        'recu_numero' => $p->recu_numero ?: ('REC-' . $p->id),
-                        'date'        => $p->created_at ? $p->created_at->format('d/m/Y') : '',
-                        'heure'       => $p->created_at ? $p->created_at->format('H:i') : '',
-                        'type'        => $p->type,
-                        'mois'        => $p->mois_label ?: $p->mois,
-                        'montant'     => floatval($p->montant),
-                        'methode'     => $p->methode,
-                        'statut'      => $p->statut,
-                    ];
-                })->values()->all(),
+            'student' => $student,
+            'active_year' => $student->annee_scolaire,
+            'annees_cursus' => $anneesCursus,
+            'semestres_data' => [],
+            'caisse_data' => [
+                'total_du' => floatval($student->compta_debit_total ?? 780000),
+                'total_paye' => floatval($student->compta_total_paye ?? 0),
+                'solde_restant' => floatval($student->compta_solde_restant ?? 0),
+                'est_en_regle' => ($student->compta_solde_restant <= 0),
+                'mois_non_payes' => [],
+                'paiements' => [],
             ],
         ]);
     }
 
     /** Modifier les notes du relevé historique / canonical d'un étudiant */
-    public function updateHistoricalNotes(Request $request, Student $student)
+    public (Request $request, Student $student)
     {
         $validated = $request->validate([
             'notes' => 'required|array',

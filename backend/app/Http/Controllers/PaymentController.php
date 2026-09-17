@@ -38,18 +38,31 @@ class PaymentController extends Controller
     /** Cashier list: all payments */
     public function index(Request $request)
     {
-        $payments = Payment::with(['student.filiere', 'student.license', 'saiseur'])
+        $annee = $request->query('annee_scolaire', $request->query('annee_universitaire', $request->query('annee', '2026-2027')));
+
+        $query = Payment::with(['student.filiere', 'student.license', 'saiseur']);
+
+        if ($annee && $annee !== 'ALL') {
+            if ($annee === '2026-2027') {
+                $query->where(function ($q) {
+                    $q->where('annee', '2026-2027')
+                      ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', '2026-2027')->orWhere('matricule', 'like', 'ISI-2026-%'));
+                })->where(function ($q) {
+                    $q->where('annee', '2026-2027')->orWhereNull('annee')->orWhere('created_at', '>=', '2026-01-01');
+                });
+            } elseif ($annee === 'ANCIENS') {
+                $query->where('annee', '!=', '2026-2027');
+            } else {
+                $query->where('annee', $annee);
+            }
+        }
+
+        $payments = $query
             ->when($request->search, fn($q) => $q->whereHas('student', function ($sq) use ($request) {
                 $sq->where('nom', 'like', '%' . $request->search . '%')
                    ->orWhere('prenom', 'like', '%' . $request->search . '%')
                    ->orWhere('matricule', 'like', '%' . $request->search . '%');
             }))
-            ->when($request->annee_scolaire && $request->annee_scolaire !== 'ALL', function ($q) use ($request) {
-                $q->where(function ($q2) use ($request) {
-                    $q2->where('annee', $request->annee_scolaire)
-                       ->orWhereHas('student', fn($sq) => $sq->where('annee_scolaire', $request->annee_scolaire));
-                });
-            })
             ->when($request->statut, fn($q) => $q->where('statut', $request->statut))
             ->when($request->type, fn($q) => $q->where('type', $request->type))
             ->latest()
