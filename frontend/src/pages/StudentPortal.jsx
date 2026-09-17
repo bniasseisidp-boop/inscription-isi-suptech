@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, useCallback } from 'react'
+import React, { Fragment, useState, useEffect, createContext, useContext, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -1543,7 +1543,7 @@ export default function StudentPortal() {
                               <tbody className="divide-y divide-slate-100">
                                 {b.modules && b.modules.length > 0 ? (
                                   b.modules.map((mod, mIdx) => (
-                                    <React.Fragment key={mod.module?.id || mIdx}>
+                                    <Fragment key={mod.module?.id || mIdx}>
                                       {/* UE Row */}
                                       <tr className="bg-slate-50/70 font-bold text-slate-800">
                                         <td colSpan={5} className="py-2 px-3 text-isiblue-800">
@@ -1582,7 +1582,7 @@ export default function StudentPortal() {
                                           </td>
                                         </tr>
                                       ))}
-                                    </React.Fragment>
+                                    </Fragment>
                                   ))
                                 ) : b.lignes && b.lignes.length > 0 ? (
                                   b.lignes.map((l, lIdx) => (
