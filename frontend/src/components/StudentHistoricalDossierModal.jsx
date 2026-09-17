@@ -2,9 +2,29 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
-  X, GraduationCap, Wallet, User, FileText, CheckCircle2,
-  AlertTriangle, Download, ChevronRight, Award, BookOpen,
-  CreditCard, Calendar, Clock, RefreshCw, Eye, ShieldCheck, Mail, Pencil, Check
+  X,
+  GraduationCap,
+  Wallet,
+  User,
+  FileText,
+  CheckCircle2,
+  AlertTriangle,
+  Download,
+  ChevronRight,
+  Award,
+  BookOpen,
+  CreditCard,
+  Calendar,
+  Clock,
+  RefreshCw,
+  Eye,
+  ShieldCheck,
+  Mail,
+  Pencil,
+  Check,
+  Edit3,
+  Save,
+  AlertCircle
 } from 'lucide-react'
 import {
   getStudentDossierHistorique, updateStudentHistoricalNotes, downloadBulletinBlob, downloadAttestationInscriptionBlob,
@@ -398,6 +418,21 @@ export default function StudentHistoricalDossierModal({
                                 <span className="text-xs text-slate-500">({mod.credits} Crédits)</span>
                               </div>
                               <div className="flex items-center gap-3">
+                                {!editMode ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditMode(true)}
+                                    className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-[11px] flex items-center gap-1 transition"
+                                    title="Modifier les notes de ce module"
+                                  >
+                                    <Edit3 size={12} />
+                                    Modifier
+                                  </button>
+                                ) : (
+                                  <span className="text-[11px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                                    ✏️ Saisie en cours
+                                  </span>
+                                )}
                                 <span className="text-xs font-bold">
                                   Moyenne UE : <strong className={mod.valide ? 'text-emerald-700' : 'text-amber-700'}>
                                     {mod.moyenne_ue > 0 ? `${mod.moyenne_ue} / 20` : 'Non calculée'}
