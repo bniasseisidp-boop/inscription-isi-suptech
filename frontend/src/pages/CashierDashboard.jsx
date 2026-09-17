@@ -1621,8 +1621,8 @@ export default function CashierDashboard() {
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                   <div className="flex items-center justify-end gap-1.5">
-                                    <button
-                                      onClick={() => setHistoricalDossierStudent(s)}
+                                                                        <button
+                                      onClick={() => { setDossierStudent(s); setShowDossierModal(true); }}
                                       className="px-2.5 py-1 rounded-lg text-xs font-bold bg-isiblue-50 hover:bg-isiblue-100 text-isiblue-700 flex items-center gap-1 transition-colors"
                                       title="Consulter tous les reçus et notes"
                                     >
@@ -1631,9 +1631,16 @@ export default function CashierDashboard() {
                                     <button
                                       onClick={() => setBrowserSelected(s)}
                                       className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition-colors shadow-sm"
-                                      title="Encaisser un paiement pour cet étudiant"
+                                      title="Encaisser un paiement / arriérés"
                                     >
                                       <CreditCard size={12} /> Encaisser
+                                    </button>
+                                    <button
+                                      onClick={() => { setSelectedStudentForReins(s); setShowReinscriptionModal(true); }}
+                                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1 transition-colors shadow-sm"
+                                      title="Réinscrire cet étudiant en 2026-2027"
+                                    >
+                                      <RefreshCw size={12} /> Réinscrire
                                     </button>
                                   </div>
                                 </td>
@@ -1855,6 +1862,38 @@ export default function CashierDashboard() {
           </AnimatePresence>
         </div>
       </div>
+    
+      {/* Historical Dossier Modal */}
+      {showDossierModal && (
+        <StudentHistoricalDossierModal
+          isOpen={showDossierModal}
+          student={dossierStudent}
+          onClose={() => { setShowDossierModal(false); setDossierStudent(null); }}
+          onOpenReinscription={(st) => {
+            setShowDossierModal(false);
+            setSelectedStudentForReins(st);
+            setShowReinscriptionModal(true);
+          }}
+          onOpenQuickPay={(st) => {
+            setShowDossierModal(false);
+            setBrowserSelected(st);
+          }}
+        />
+      )}
+
+      {/* Reinscription Modal */}
+      {showReinscriptionModal && (
+        <ReinscriptionModal
+          isOpen={showReinscriptionModal}
+          initialStudent={selectedStudentForReins}
+          onClose={() => { setShowReinscriptionModal(false); setSelectedStudentForReins(null); }}
+          onSuccess={() => {
+            loadStats();
+            loadAnciensCaisse();
+            loadInscrits();
+          }}
+        />
+      )}
     </div>
   )
 }

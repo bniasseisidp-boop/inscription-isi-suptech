@@ -20,6 +20,7 @@ export default function StudentHistoricalDossierModal({
   onClose,
   student,
   onOpenReinscription = null,
+  onOpenQuickPay = null,
   isDark = false
 }) {
   const [activeTab, setActiveTab] = useState('notes') // 'notes' | 'caisse' | 'identite'
@@ -49,22 +50,28 @@ export default function StudentHistoricalDossierModal({
   if (!isOpen || !student) return null
 
   const st = dossierData?.student || student
+  const canonical = dossierData?.canonical || {}
   const semestres = dossierData?.semestres_data || []
   const caisse = dossierData?.caisse_data || {}
   const paiements = caisse.paiements || []
+
+  // Extract authentic metrics
+  const s1Moy = canonical.moyenne_s1 !== undefined ? canonical.moyenne_s1 : (semestres[0]?.moyenne_semestre || 0)
+  const s1Cred = canonical.credits_s1 !== undefined ? canonical.credits_s1 : (semestres[0]?.credits_obtenus || 0)
+  const s1App = canonical.appreciation_s1 || semestres[0]?.appreciation || (s1Moy >= 14 ? 'Bien' : (s1Moy >= 12 ? 'Assez bien' : (s1Moy >= 10 ? 'Passable' : 'Insuffisant')))
+
+  const s2Moy = canonical.moyenne_s2 !== undefined ? canonical.moyenne_s2 : (semestres[1]?.moyenne_semestre || 0)
+  const s2Cred = canonical.credits_s2 !== undefined ? canonical.credits_s2 : (semestres[1]?.credits_obtenus || 0)
+  const s2App = canonical.appreciation_s2 || semestres[1]?.appreciation || (s2Moy >= 16 ? 'Très bon travail' : (s2Moy >= 14 ? 'Bien' : (s2Moy >= 10 ? 'Passable' : 'Insuffisant')))
+
+  const genMoy = canonical.moyenne_generale !== undefined ? canonical.moyenne_generale : ((s1Moy + s2Moy) > 0 ? ((s1Moy + s2Moy) / 2).toFixed(2) : 0)
+  const genCred = canonical.credits_total !== undefined ? canonical.credits_total : (s1Cred + s2Cred)
+  const statVal = canonical.statut_validation || (genCred >= 60 ? 'VALIDÉ / ADMIS (60/60 ECTS)' : (genMoy >= 10 ? 'VALIDÉ PAR COMPENSATION' : 'AJOURNÉ / SESSION 2'))
 
   // Filter semestres based on selected filter
   const visibleSemestres = selectedSemestreId === 'ALL'
     ? semestres
     : semestres.filter(s => String(s.id) === String(selectedSemestreId))
-
-  // Calculate annual metrics
-  const totalCreditsRequis = semestres.reduce((acc, s) => acc + (s.credits_requis || 30), 0)
-  const totalCreditsObtenus = semestres.reduce((acc, s) => acc + (s.credits_obtenus || 0), 0)
-  const moySemestres = semestres.filter(s => s.moyenne_semestre > 0)
-  const moyenneGenerale = moySemestres.length > 0
-    ? (moySemestres.reduce((acc, s) => acc + s.moyenne_semestre, 0) / moySemestres.length).toFixed(2)
-    : 0
 
   const handleDownloadDoc = async (type, semestreId = null) => {
     setDownloadingDoc(type + (semestreId ? `-${semestreId}` : ''))
@@ -132,7 +139,7 @@ export default function StudentHistoricalDossierModal({
                 </span>
                 {caisse.solde_restant <= 0 ? (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-100 font-bold flex items-center gap-1 border border-emerald-400/30">
-                    <CheckCircle2 size={12} /> En règle
+                    <CheckCircle2 size={12} /> Soldé (0 FCFA)
                   </span>
                 ) : (
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-100 font-bold flex items-center gap-1 border border-amber-400/30">
@@ -227,72 +234,84 @@ export default function StudentHistoricalDossierModal({
               {/* TAB 1: NOTES & RELEVE LMD */}
               {activeTab === 'notes' && (
                 <div className="space-y-6">
-                  {/* Semester KPI Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {semestres.map((sem) => (
-                      <div
-                        key={sem.id}
-                        className="p-4 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm flex flex-col justify-between"
+                  {/* Exact 3 KPI summary cards from visualiseur_etudiants.html */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Card 1: Moyenne S1 */}
+                    <div className="p-4 rounded-2xl border border-sky-200 bg-sky-50/60 shadow-sm flex flex-col justify-between">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                        MOYENNE S1
+                      </div>
+                      <div className="my-2">
+                        <div className="text-3xl font-black text-emerald-700">
+                          {s1Moy > 0 ? `${s1Moy} / 20` : '0.00 / 20'}
+                        </div>
+                        <div className="flex items-center justify-between text-xs mt-1.5 font-medium">
+                          <span className="text-slate-600">{s1Cred} / 30 Crédits ECTS</span>
+                          <span className="font-bold text-isiblue-800">{s1App}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadDoc('bulletin', 'S1')}
+                        disabled={downloadingDoc === 'bulletin-S1'}
+                        className="w-full mt-2 py-1.5 px-3 rounded-lg bg-white/80 hover:bg-white text-isiblue-700 border border-sky-200 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                            {sem.libelle}
-                          </span>
-                          <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                            sem.valide ? 'bg-emerald-100 text-emerald-800' : (sem.moyenne_semestre > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700')
-                          }`}>
-                            {sem.decision || 'En cours'}
-                          </span>
-                        </div>
-                        <div className="my-3">
-                          <div className="text-2xl font-black text-slate-900">
-                            {sem.moyenne_semestre > 0 ? `${sem.moyenne_semestre} / 20` : 'En attente'}
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {sem.credits_obtenus} / {sem.credits_requis || 30} Crédits ECTS
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadDoc('bulletin', sem.id)}
-                          disabled={downloadingDoc === `bulletin-${sem.id}`}
-                          className="w-full mt-2 py-1.5 px-3 rounded-lg bg-isiblue-50 hover:bg-isiblue-100 text-isiblue-700 text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                        >
-                          <Download size={13} />
-                          {downloadingDoc === `bulletin-${sem.id}` ? 'Génération...' : `Bulletin ${sem.libelle}`}
-                        </button>
-                      </div>
-                    ))}
+                        <Download size={13} />
+                        {downloadingDoc === 'bulletin-S1' ? 'Génération...' : 'Bulletin Semestre 1'}
+                      </button>
+                    </div>
 
-                    <div className="p-4 rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-white shadow-sm flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">
-                          Moyenne Générale Annuelle
-                        </span>
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                          {moyenneGenerale >= 10 ? 'ADMIS / VALIDÉ' : (moyenneGenerale > 0 ? 'AJOURNÉ' : 'EN COURS')}
-                        </span>
+                    {/* Card 2: Moyenne S2 */}
+                    <div className="p-4 rounded-2xl border border-purple-200 bg-purple-50/60 shadow-sm flex flex-col justify-between">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                        MOYENNE S2
                       </div>
-                      <div className="my-3">
-                        <div className="text-2xl font-black text-indigo-950">
-                          {moyenneGenerale > 0 ? `${moyenneGenerale} / 20` : 'En cours'}
+                      <div className="my-2">
+                        <div className="text-3xl font-black text-emerald-700">
+                          {s2Moy > 0 ? `${s2Moy} / 20` : '0.00 / 20'}
                         </div>
-                        <p className="text-xs text-indigo-600 mt-0.5">
-                          {totalCreditsObtenus} / {totalCreditsRequis || 60} Crédits ECTS validés
-                        </p>
+                        <div className="flex items-center justify-between text-xs mt-1.5 font-medium">
+                          <span className="text-slate-600">{s2Cred} / 30 Crédits ECTS</span>
+                          <span className="font-bold text-purple-800">{s2App}</span>
+                        </div>
                       </div>
-                      <div className="text-xs font-semibold text-slate-500">
-                        Règle LMD : Validation par Module (UE ≥ 10/20)
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadDoc('bulletin', 'S2')}
+                        disabled={downloadingDoc === 'bulletin-S2'}
+                        className="w-full mt-2 py-1.5 px-3 rounded-lg bg-white/80 hover:bg-white text-purple-700 border border-purple-200 text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+                      >
+                        <Download size={13} />
+                        {downloadingDoc === 'bulletin-S2' ? 'Génération...' : 'Bulletin Semestre 2'}
+                      </button>
+                    </div>
+
+                    {/* Card 3: Moyenne Générale Annuelle */}
+                    <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 shadow-sm flex flex-col justify-between">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                        MOYENNE GÉNÉRALE ANNUELLE
+                      </div>
+                      <div className="my-2">
+                        <div className="text-3xl font-black text-emerald-700">
+                          {genMoy > 0 ? `${genMoy} / 20` : '0.00 / 20'}
+                        </div>
+                        <div className="flex items-center justify-between text-xs mt-1.5 font-medium">
+                          <span className="text-slate-600">{genCred} / 60 Crédits ECTS</span>
+                          <span className="font-extrabold text-emerald-800">{statVal}</span>
+                        </div>
+                      </div>
+                      <div className="w-full mt-2 py-1.5 px-3 rounded-lg bg-emerald-100/70 text-emerald-900 border border-emerald-200 text-center text-xs font-bold">
+                        {genCred >= 60 ? '🏆 Année validée avec succès' : (genMoy >= 10 ? '✅ Validé par compensation' : '⚠️ Session de rattrapage')}
                       </div>
                     </div>
                   </div>
 
-                  {/* Filter Semestres */}
-                  <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200 pb-3">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">Détail des Matières par Module (UE)</h3>
-                      <p className="text-xs text-slate-500">Compensation automatique au sein de chaque Unité d'Enseignement</p>
-                    </div>
+                  {/* Semester Filter Tabs */}
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <BookOpen size={16} className="text-isiblue-600" />
+                      Unités d'Enseignement & Matières
+                    </h3>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
@@ -355,7 +374,7 @@ export default function StudentHistoricalDossierModal({
                                 <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
                                   mod.valide ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
                                 }`}>
-                                  {mod.statut_ue}
+                                  {mod.statut}
                                 </span>
                               </div>
                             </div>
@@ -446,6 +465,61 @@ export default function StudentHistoricalDossierModal({
                     </div>
                   </div>
 
+                  {/* Arrears Notice & Action */}
+                  {caisse.solde_restant > 0 ? (
+                    <div className="p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center gap-3">
+                        <AlertTriangle className="text-amber-600 shrink-0" size={24} />
+                        <div>
+                          <div className="text-sm font-bold text-amber-900">
+                            Arriérés à encaisser avant réinscription : {safeFmt(caisse?.solde_restant)} FCFA
+                          </div>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Cet étudiant doit régler son reliquat avant la finalisation de sa réinscription.
+                          </p>
+                        </div>
+                      </div>
+                      {onOpenQuickPay && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose()
+                            onOpenQuickPay(st)
+                          }}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5"
+                        >
+                          <CreditCard size={14} /> Encaisser le reliquat
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="text-emerald-600 shrink-0" size={24} />
+                        <div>
+                          <div className="text-sm font-bold text-emerald-900">
+                            Scolarité entièrement soldée (0 FCFA restant)
+                          </div>
+                          <p className="text-xs text-emerald-700 mt-0.5">
+                            L'étudiant est 100% en règle financièrement et éligible pour la réinscription.
+                          </p>
+                        </div>
+                      </div>
+                      {onOpenReinscription && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose()
+                            onOpenReinscription(st)
+                          }}
+                          className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-md transition flex items-center gap-1.5"
+                        >
+                          <RefreshCw size={14} /> Réinscrire en 2026-2027
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Receipts Table */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -475,7 +549,7 @@ export default function StudentHistoricalDossierModal({
                             {paiements.map((p, pIdx) => (
                               <tr key={p.id || pIdx} className="hover:bg-slate-50/50 transition">
                                 <td className="p-3 font-mono font-bold text-isiblue-700">
-                                  #{p.id || pIdx + 1}
+                                  {p.recu_numero || `#${p.id || pIdx + 1}`}
                                 </td>
                                 <td className="p-3 text-slate-700">{p.date || '—'}</td>
                                 <td className="p-3 font-semibold uppercase text-slate-900">{p.type || 'Mensualité'}</td>
@@ -502,103 +576,122 @@ export default function StudentHistoricalDossierModal({
               {/* TAB 3: IDENTITE & DOCUMENTS */}
               {activeTab === 'identite' && (
                 <div className="space-y-6">
-                  {/* General Information Grid */}
+                  {/* Detailed Student Identity */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">État Civil & Contact</h4>
-                      <div className="text-xs space-y-2 text-slate-700">
-                        <div><strong>Nom & Prénom :</strong> {st.prenom} {st.nom}</div>
-                        <div><strong>Sexe :</strong> {st.sexe || 'N/A'}</div>
-                        <div><strong>Date de Naissance :</strong> {st.date_naissance ? new Date(st.date_naissance).toLocaleDateString('fr-FR') : 'N/A'}</div>
-                        <div><strong>Lieu de Naissance :</strong> {st.lieu_naissance || 'N/A'}</div>
-                        <div><strong>Nationalité :</strong> {st.nationalite || 'Sénégalaise'}</div>
-                        <div><strong>Téléphone :</strong> {st.telephone || 'N/A'}</div>
-                        <div><strong>Email :</strong> {st.user?.email || st.email || 'N/A'}</div>
-                        <div><strong>Adresse :</strong> {st.adresse || 'N/A'}</div>
+                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                        <User size={14} className="text-isiblue-600" /> État Civil & Coordonnées
+                      </h4>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Nom complet :</span>
+                          <span className="font-bold text-slate-900">{st.nom_complet || `${st.prenom} ${st.nom}`}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Date & Lieu de naissance :</span>
+                          <span className="font-semibold text-slate-800">
+                            {st.date_naissance ? `${st.date_naissance} à ${st.lieu_naissance || '—'}` : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Nationalité & Sexe :</span>
+                          <span className="font-semibold text-slate-800">{st.nationalite || 'Sénégalaise'} ({st.sexe || 'N/A'})</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Téléphone étudiant :</span>
+                          <span className="font-mono font-bold text-isiblue-700">{st.telephone || '—'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Email :</span>
+                          <span className="font-medium text-slate-800">{st.email || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Adresse / Domicile :</span>
+                          <span className="font-medium text-slate-800">{st.adresse || '—'}</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">Inscription Académique</h4>
-                      <div className="text-xs space-y-2 text-slate-700">
-                        <div><strong>Matricule ISI :</strong> <span className="font-mono font-bold text-isiblue-700">{st.matricule}</span></div>
-                        <div><strong>Année Scolaire :</strong> {st.annee_scolaire}</div>
-                        <div><strong>Filière :</strong> {st.filiere?.nom || 'N/A'}</div>
-                        <div><strong>Classe / Niveau :</strong> {st.license?.nom || st.niveau_entree || 'N/A'}</div>
-                        <div><strong>Type :</strong> {st.type_inscription || 'Réinscription'}</div>
-                        <div><strong>Statut dossier :</strong> <span className="font-bold text-emerald-700">Validé / Inscrit</span></div>
+                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                        <GraduationCap size={14} className="text-isiblue-600" /> Cursus & Inscription
+                      </h4>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Matricule permanent :</span>
+                          <span className="font-mono font-bold text-isiblue-700">{st.matricule}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Année scolaire :</span>
+                          <span className="font-bold text-slate-900">{st.annee_scolaire}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Filière d'études :</span>
+                          <span className="font-bold text-slate-900">{st.filiere?.nom || '—'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-200/60 pb-1.5">
+                          <span className="text-slate-500">Classe / Cycle :</span>
+                          <span className="font-bold text-slate-900">{st.license?.nom || st.niveau_entree || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Date d'inscription :</span>
+                          <span className="font-semibold text-slate-800">
+                            {st.created_at ? new Date(st.created_at).toLocaleDateString('fr-FR') : '—'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Official Document Generation Grid */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      Génération Immédiate des Documents Officiels
+                  {/* Official Documents Download Hub */}
+                  <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                      <FileText size={16} className="text-isiblue-600" /> Documents Administratifs Officiels (PDF)
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                       <button
                         type="button"
                         onClick={() => handleDownloadDoc('attestation')}
                         disabled={downloadingDoc === 'attestation'}
-                        className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-isiblue-400 hover:shadow-md transition text-left flex flex-col justify-between gap-2"
+                        className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-isiblue-50/50 hover:border-isiblue-300 transition text-left flex items-center justify-between group"
                       >
-                        <div className="flex items-center justify-between">
-                          <FileText size={18} className="text-isiblue-600" />
-                          <Download size={14} className="text-slate-400" />
-                        </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-900">Attestation d'Inscription</div>
-                          <div className="text-[10px] text-slate-500">Document officiel avec QR Code</div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-isiblue-700">
+                            Attestation d'Inscription
+                          </div>
+                          <div className="text-[10px] text-slate-500">Format officiel Direction</div>
                         </div>
+                        <Download size={15} className="text-slate-400 group-hover:text-isiblue-600 transition" />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleDownloadDoc('certificat')}
                         disabled={downloadingDoc === 'certificat'}
-                        className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-isiblue-400 hover:shadow-md transition text-left flex flex-col justify-between gap-2"
+                        className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-isiblue-50/50 hover:border-isiblue-300 transition text-left flex items-center justify-between group"
                       >
-                        <div className="flex items-center justify-between">
-                          <Award size={18} className="text-emerald-600" />
-                          <Download size={14} className="text-slate-400" />
-                        </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-900">Certificat de Scolarité</div>
-                          <div className="text-[10px] text-slate-500">Pour démarches administratives</div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-isiblue-700">
+                            Certificat de Scolarité
+                          </div>
+                          <div className="text-[10px] text-slate-500">Format officiel LMD</div>
                         </div>
+                        <Download size={15} className="text-slate-400 group-hover:text-isiblue-600 transition" />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleDownloadDoc('fiche')}
                         disabled={downloadingDoc === 'fiche'}
-                        className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-isiblue-400 hover:shadow-md transition text-left flex flex-col justify-between gap-2"
+                        className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-isiblue-50/50 hover:border-isiblue-300 transition text-left flex items-center justify-between group"
                       >
-                        <div className="flex items-center justify-between">
-                          <GraduationCap size={18} className="text-indigo-600" />
-                          <Download size={14} className="text-slate-400" />
-                        </div>
                         <div>
-                          <div className="text-xs font-bold text-slate-900">Fiche Pédagogique</div>
-                          <div className="text-[10px] text-slate-500">Récapitulatif d'inscription</div>
+                          <div className="text-xs font-bold text-slate-900 group-hover:text-isiblue-700">
+                            Fiche d'Inscription
+                          </div>
+                          <div className="text-[10px] text-slate-500">Dossier administratif complet</div>
                         </div>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadDoc('bulletin')}
-                        disabled={downloadingDoc?.startsWith('bulletin')}
-                        className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-isiblue-400 hover:shadow-md transition text-left flex flex-col justify-between gap-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <BookOpen size={18} className="text-amber-600" />
-                          <Download size={14} className="text-slate-400" />
-                        </div>
-                        <div>
-                          <div className="text-xs font-bold text-slate-900">Bulletin Officiel</div>
-                          <div className="text-[10px] text-slate-500">Notes & moyennes LMD</div>
-                        </div>
+                        <Download size={15} className="text-slate-400 group-hover:text-isiblue-600 transition" />
                       </button>
                     </div>
                   </div>
@@ -606,6 +699,19 @@ export default function StudentHistoricalDossierModal({
               )}
             </>
           )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="bg-slate-50 border-t border-slate-200 px-6 py-3.5 flex items-center justify-between shrink-0">
+          <span className="text-xs text-slate-500">
+            Dossier LMD • ISI SUPTECH • Année {st.annee_scolaire}
+          </span>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition"
+          >
+            Fermer le dossier
+          </button>
         </div>
       </motion.div>
     </div>

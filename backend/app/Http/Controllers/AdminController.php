@@ -1182,6 +1182,176 @@ class AdminController extends Controller
     {
         $student->loadMissing(['filiere', 'license.semestres.modules.matieres', 'payments', 'notes.matiere.module.semestre', 'user']);
 
+        // Check canonical store first for 100% exact fidelity with visualiseur_etudiants.html
+        $jsonPath = storage_path('canonical_all_students.json');
+        $canonicalStudent = null;
+        if (file_exists($jsonPath)) {
+            static $canonicalCache = null;
+            if ($canonicalCache === null) {
+                $canonicalCache = json_decode(file_get_contents($jsonPath), true) ?: [];
+            }
+            
+            $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+            $idCc = $student->id_cc;
+            $id = $student->id;
+            $name = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
+
+            foreach ($canonicalCache as $c) {
+                $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $c['matricule'] ?? ''));
+                if (!empty($mat) && $mat === $cMat) {
+                    $canonicalStudent = $c;
+                    break;
+                }
+                if ($idCc && isset($c['id_cc']) && intval($c['id_cc']) === intval($idCc)) {
+                    $canonicalStudent = $c;
+                    break;
+                }
+                if ($id && isset($c['id']) && intval($c['id']) === intval($id)) {
+                    $canonicalStudent = $c;
+                    break;
+                }
+                $cName = strtolower(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')));
+                if (!empty($name) && $name === $cName) {
+                    $canonicalStudent = $c;
+                    break;
+                }
+            }
+        }
+
+        if ($canonicalStudent) {
+            // Build semestres_data directly from authentic canonical modules
+            $semestresMap = [];
+            $semLabels = $canonicalStudent['semestres_dossier'] ?? ['S1', 'S2'];
+            foreach ($semLabels as $sIdx => $sKey) {
+                $semNum = ($sIdx + 1);
+                $sAvg = ($sKey === 'S1' || $semNum === 1) ? ($canonicalStudent['moyenne_s1'] ?? 0) : ($canonicalStudent['moyenne_s2'] ?? 0);
+                $sCred = ($sKey === 'S1' || $semNum === 1) ? ($canonicalStudent['credits_s1'] ?? 0) : ($canonicalStudent['credits_s2'] ?? 0);
+                $sApp = ($sKey === 'S1' || $semNum === 1) ? ($canonicalStudent['appreciation_s1'] ?? '') : ($canonicalStudent['appreciation_s2'] ?? '');
+
+                $semestresMap[$sKey] = [
+                    'id' => $sKey,
+                    'numero' => $semNum,
+                    'libelle' => "Semestre {$semNum} ({$sKey})",
+                    'credits_requis' => 30,
+                    'total_credits_requis' => 30,
+                    'credits_obtenus' => $sCred,
+                    'total_credits_obtenus' => $sCred,
+                    'moyenne_semestre' => $sAvg > 0 ? $sAvg : null,
+                    'valide' => $sCred >= 30 || $sAvg >= 10,
+                    'appreciation' => $sApp,
+                    'modules' => [],
+                ];
+            }
+
+            foreach ($canonicalStudent['modules'] ?? [] as $mIdx => $mod) {
+                $sKey = $mod['semestre'] ?? 'S1';
+                if (!isset($semestresMap[$sKey])) {
+                    $semestresMap[$sKey] = [
+                        'id' => $sKey,
+                        'numero' => count($semestresMap) + 1,
+                        'libelle' => "Semestre ({$sKey})",
+                        'credits_requis' => 30,
+                        'total_credits_requis' => 30,
+                        'credits_obtenus' => 0,
+                        'total_credits_obtenus' => 0,
+                        'moyenne_semestre' => null,
+                        'valide' => false,
+                        'appreciation' => '',
+                        'modules' => [],
+                    ];
+                }
+
+                $matieresList = [];
+                foreach ($mod['matieres'] ?? [] as $matIdx => $mat) {
+                    $matieresList[] = [
+                        'id' => "mat_{$mIdx}_{$matIdx}",
+                        'nom' => $mat['matiere'] ?? 'Matière',
+                        'code' => $mat['code'] ?? '',
+                        'coeff' => $mat['coeff'] ?? 1,
+                        'credits' => $mat['credits'] ?? 2,
+                        'cc' => $mat['cc'],
+                        'examen' => $mat['exam'],
+                        'moyenne' => $mat['moy'],
+                        'valide' => ($mat['val'] ?? '') === 'VALIDÉ' || ($mat['moy'] ?? 0) >= 10,
+                        'appreciation' => $mat['appreciation'] ?? '',
+                    ];
+                }
+
+                $semestresMap[$sKey]['modules'][] = [
+                    'id' => "ue_{$mIdx}",
+                    'nom' => $mod['ue_nom'] ?? 'UE',
+                    'code' => $mod['ue_nom'] ?? 'UE',
+                    'credits' => $mod['ue_credits'] ?? 6,
+                    'moyenne_ue' => $mod['moy_ue'],
+                    'valide' => $mod['ue_valide'] ?? false,
+                    'statut' => $mod['statut_ue'] ?? ($mod['ue_valide'] ? 'MODULE VALIDÉ' : 'AJOURNÉ'),
+                    'matieres' => $matieresList,
+                ];
+            }
+
+            $scolariteDue = floatval($canonicalStudent['compta_scolarite_due'] ?? ($canonicalStudent['compta_debit_total'] ?? 780000));
+            $totalPaye = floatval($canonicalStudent['compta_total_paye'] ?? 0);
+            $soldeRestant = floatval($canonicalStudent['compta_solde_restant'] ?? max(0, $scolariteDue - $totalPaye));
+            $estEnRegle = $soldeRestant <= 0;
+
+            // Authentic receipts from canonical
+            $paiementsList = [];
+            foreach ($canonicalStudent['paiements'] ?? [] as $p) {
+                $paiementsList[] = [
+                    'id' => $p['id_recette'] ?? null,
+                    'recu_numero' => $p['num_recu'] ?? ('REC-' . ($p['id_recette'] ?? '')),
+                    'date' => $p['date'] ?? '',
+                    'heure' => $p['heure'] ?? '',
+                    'type' => $p['nature'] ?? 'Mensualité',
+                    'mois' => $p['mois'] ?? '',
+                    'montant' => $p['montant'] ?? 0,
+                    'methode' => $p['mode'] ?? 'especes',
+                    'statut' => 'complete',
+                ];
+            }
+            if (empty($paiementsList)) {
+                $paiementsList = $student->payments->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'recu_numero' => $p->recu_numero ?: ('REC-' . $p->id),
+                        'date' => $p->created_at ? $p->created_at->format('d/m/Y') : '',
+                        'heure' => $p->created_at ? $p->created_at->format('H:i') : '',
+                        'type' => $p->type,
+                        'mois' => $p->mois_label ?: $p->mois,
+                        'montant' => floatval($p->montant),
+                        'methode' => $p->methode,
+                        'statut' => $p->statut,
+                    ];
+                })->values()->all();
+            }
+
+            return response()->json([
+                'student' => $student,
+                'canonical' => [
+                    'moyenne_s1' => $canonicalStudent['moyenne_s1'] ?? 0,
+                    'moyenne_s2' => $canonicalStudent['moyenne_s2'] ?? 0,
+                    'moyenne_generale' => $canonicalStudent['moyenne_generale'] ?? 0,
+                    'credits_s1' => $canonicalStudent['credits_s1'] ?? 0,
+                    'credits_s2' => $canonicalStudent['credits_s2'] ?? 0,
+                    'credits_total' => $canonicalStudent['credits_total'] ?? 0,
+                    'appreciation_s1' => $canonicalStudent['appreciation_s1'] ?? '',
+                    'appreciation_s2' => $canonicalStudent['appreciation_s2'] ?? '',
+                    'statut_validation' => $canonicalStudent['statut_validation'] ?? '',
+                    'decision' => $canonicalStudent['decision'] ?? '',
+                ],
+                'semestres_data' => array_values($semestresMap),
+                'caisse_data' => [
+                    'total_du' => $scolariteDue,
+                    'total_paye' => $totalPaye,
+                    'solde_restant' => $soldeRestant,
+                    'est_en_regle' => $estEnRegle,
+                    'mois_non_payes' => $estEnRegle ? [] : ($student->mois_non_payes ?: ['Arriérés de scolarité']),
+                    'paiements' => $paiementsList,
+                ],
+            ]);
+        }
+
+        // Fallback for newly created students without canonical data
         $notes = $student->notes;
         $notesByMatiere = [];
         foreach ($notes as $n) {
@@ -1220,7 +1390,6 @@ class AdminController extends Controller
                             $hasNotes = true;
                             $cVal = $cc ?? 0;
                             $eVal = $exam ?? 0;
-                            // Calcul officiel ISI SUPTECH : 40% Contrôle Continu + 60% Examen
                             $moy = round(($cVal * 0.4) + ($eVal * 0.6), 2);
                             $valide = $moy >= 10.0;
                             if ($moy >= 16) $appreciation = 'Très bien';
@@ -1247,7 +1416,6 @@ class AdminController extends Controller
                         ];
                     }
 
-                    // Ignorer les modules fantômes sans aucune note s'ils commencent par "Bulletin"
                     $isDummy = str_starts_with($mod->nom, 'Bulletin ') || str_starts_with($mod->nom, 'BULLETIN ') || str_starts_with($mod->code, 'BULLET-');
                     if ($isDummy && !$hasNotes) {
                         continue;
@@ -1317,24 +1485,18 @@ class AdminController extends Controller
                 'mois_non_payes' => $estEnRegle ? [] : $student->mois_non_payes,
                 'paiements'      => $student->payments->map(function ($p) {
                     return [
-                        'id'       => $p->id,
-                        'date'     => $p->date_paiement ? $p->date_paiement->format('d/m/Y') : $p->created_at->format('d/m/Y'),
-                        'montant'  => $p->montant,
-                        'type'     => $p->type,
-                        'mois'     => $p->mois,
-                        'methode'  => $p->methode,
-                        'statut'   => $p->statut,
-                        'numero_recu' => $p->recu_numero ?: $p->wave_transaction_id,
-                        'recu_url' => $p->recu_pdf_path ? asset('storage/' . $p->recu_pdf_path) : null,
+                        'id'          => $p->id,
+                        'recu_numero' => $p->recu_numero ?: ('REC-' . $p->id),
+                        'date'        => $p->created_at ? $p->created_at->format('d/m/Y') : '',
+                        'heure'       => $p->created_at ? $p->created_at->format('H:i') : '',
+                        'type'        => $p->type,
+                        'mois'        => $p->mois_label ?: $p->mois,
+                        'montant'     => floatval($p->montant),
+                        'methode'     => $p->methode,
+                        'statut'      => $p->statut,
                     ];
-                }),
+                })->values()->all(),
             ],
-            'total_paye'       => $totalPaye,
-            'mois_payes'       => $student->mois_payes_cle,
-            'mois_non_payes'   => $estEnRegle ? [] : $student->mois_non_payes,
-            'est_en_regle'     => $estEnRegle,
-            'notes_par_annee'  => $notes->groupBy('annee_scolaire'),
-            'total_paiements'  => $student->payments->count(),
         ]);
     }
 }
