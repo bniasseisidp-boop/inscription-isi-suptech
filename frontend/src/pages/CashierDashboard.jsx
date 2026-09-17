@@ -1085,6 +1085,7 @@ export default function CashierDashboard() {
                   className="bg-transparent text-xs font-bold text-isiblue-700 outline-none cursor-pointer"
                 >
                   <option value="2026-2027">2026-2027 (En cours)</option>
+                    <option value="ALL">Toutes les années (Global)</option>
                   {availableYears.filter(y => y !== "2026-2027").map(y => (
                     <option key={y} value={y}>{y}</option>
                   ))}

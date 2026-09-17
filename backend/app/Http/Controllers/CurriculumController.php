@@ -628,8 +628,11 @@ class CurriculumController extends Controller
         ]);
     }
 
-        public function telechargerMonBulletin(Request $request, $semestreKey, PDFService $pdfService, BulletinService $bulletinService)
+            public function telechargerMonBulletin(Request $request, $semestreKey, PDFService $pdfService, BulletinService $bulletinService)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
+
         $user = $request->user();
         if (!$user) {
             return response()->json(['message' => 'Non authentifié'], 401);
@@ -637,13 +640,15 @@ class CurriculumController extends Controller
 
         $student = Student::where('user_id', $user->id)->with(['license', 'filiere'])->first()
             ?? Student::where('email', $user->email)->with(['license', 'filiere'])->first()
-            ?? Student::whereRaw("LOWER(TRIM(email)) = ?", [strtolower(trim($user->email))])->with(['license', 'filiere'])->first();
+            ?? Student::whereRaw("LOWER(TRIM(email)) = ?", [strtolower(trim($user->email))])->with(['license', 'filiere'])->first()
+            ?? Student::where('matricule', $user->matricule ?? '')->with(['license', 'filiere'])->first()
+            ?? Student::where('matricule', $user->email)->with(['license', 'filiere'])->first();
 
         if (!$student) {
             return response()->json(['message' => 'Étudiant introuvable pour ce compte'], 404);
         }
 
-        $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? '2024-2025');
+        $anneeScolaire = $request->query('annee_scolaire', $request->input('annee_scolaire', $student->annee_scolaire ?? '2024-2025'));
         $semKey = strtoupper(trim((string)$semestreKey));
         $semNum = is_numeric($semestreKey) ? intval($semestreKey) : (intval(preg_replace('/[^0-9]/', '', $semKey)) ?: 1);
 
@@ -680,20 +685,24 @@ class CurriculumController extends Controller
             }
         }
 
-        // Fallback si Semestre ID numérique en base de données
-        if (is_numeric($semestreKey)) {
-            $semestreObj = Semestre::find($semestreKey);
-            if ($semestreObj) {
-                $path = $student->license?->calcul_simple
-                    ? $pdfService->generateBulletinSimple($student, $semestreObj, $anneeScolaire, null)
-                    : $pdfService->generateBulletin($student, $semestreObj, $anneeScolaire, null);
-                $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
-                if (file_exists($full)) {
-                    return response()->file($full, [
-                        'Content-Type'        => 'application/pdf',
-                        'Content-Disposition' => 'inline; filename="bulletin_S' . $semestreObj->numero_global . '.pdf"',
-                    ]);
-                }
+        // Fallback si Semestre modèle
+        $semestreModel = is_numeric($semestreKey) ? Semestre::find($semestreKey) : null;
+        if (!$semestreModel && $semNum > 0) {
+            $semestreModel = $student->license?->semestres()->where('numero', $semNum)->first() ?? Semestre::where('numero', $semNum)->first();
+        }
+        if (!$semestreModel) {
+            $semestreModel = $student->license?->semestres()->first() ?? Semestre::first();
+        }
+        if ($semestreModel) {
+            $path = $semestreModel->license?->calcul_simple
+                ? $pdfService->generateBulletinSimple($student, $semestreModel, $anneeScolaire, null)
+                : $pdfService->generateBulletin($student, $semestreModel, $anneeScolaire, null);
+            $full = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+            if (file_exists($full)) {
+                return response()->file($full, [
+                    'Content-Type'        => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="bulletin_S' . $semestreModel->numero_global . '.pdf"',
+                ]);
             }
         }
 

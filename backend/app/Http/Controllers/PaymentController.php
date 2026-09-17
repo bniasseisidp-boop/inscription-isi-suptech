@@ -36,7 +36,7 @@ class PaymentController extends Controller
     }
 
     /** Cashier list: all payments */
-    public function index(Request $request)
+        public function index(Request $request)
     {
         $annee = $request->query('annee_scolaire', $request->query('annee_universitaire', $request->query('annee', '2026-2027')));
 
@@ -44,11 +44,36 @@ class PaymentController extends Controller
 
         if ($annee && $annee !== 'ALL') {
             if ($annee === '2026-2027') {
-                $query->where('annee', '2026-2027');
+                $query->where(function ($q) {
+                    $q->where('annee', '2026-2027')
+                      ->orWhere(function ($sub) {
+                          $sub->where(function ($sub2) {
+                              $sub2->whereNull('annee')->orWhere('annee', '')->orWhere('annee', '2026-2027');
+                          })->whereHas('student', function ($sq) {
+                              $sq->where('matricule', 'like', 'ISI-2026-%')
+                                 ->orWhere('annee_scolaire', '2026-2027');
+                          });
+                      });
+                });
             } elseif ($annee === 'ANCIENS') {
-                $query->where('annee', '!=', '2026-2027');
+                $query->where(function ($q) {
+                    $q->where('annee', '!=', '2026-2027')
+                      ->orWhereHas('student', function ($sq) {
+                          $sq->whereNotNull('dossiers_historique');
+                      });
+                });
             } else {
-                $query->where('annee', $annee);
+                $query->where(function ($q) use ($annee) {
+                    $q->where('annee', $annee)
+                      ->orWhere(function ($sub) use ($annee) {
+                          $sub->where(function ($sub2) {
+                              $sub2->whereNull('annee')->orWhere('annee', '');
+                          })->whereHas('student', function ($sq) use ($annee) {
+                              $sq->where('annee_scolaire', $annee)
+                                 ->orWhere('dossiers_historique', 'like', '%"annee":"' . $annee . '"%');
+                          });
+                      });
+                });
             }
         }
 
@@ -668,7 +693,7 @@ class PaymentController extends Controller
         return response()->json($query->paginate($request->per_page ?? 25));
     }
 
-    public function stats(Request $request)
+        public function stats(Request $request)
     {
         $annee = $request->query('annee_scolaire') 
               ?? $request->query('annee_universitaire') 
@@ -690,13 +715,37 @@ class PaymentController extends Controller
             $pQuery->whereIn('statut', ['complete', 'valide', 'succes', 'effectue', 'reussi', 'PAYE']);
         }
         
-        // Strict isolation of current school year 2026-2027: do NOT sum prior antecedent years
         if ($annee === '2026-2027' || !$annee) {
-            $pQuery->where('annee', '2026-2027');
+            $pQuery->where(function ($q) {
+                $q->where('annee', '2026-2027')
+                  ->orWhere(function ($sub) {
+                      $sub->where(function ($sub2) {
+                          $sub2->whereNull('annee')->orWhere('annee', '')->orWhere('annee', '2026-2027');
+                      })->whereHas('student', function ($sq) {
+                          $sq->where('matricule', 'like', 'ISI-2026-%')
+                             ->orWhere('annee_scolaire', '2026-2027');
+                      });
+                  });
+            });
         } elseif ($annee === 'ANCIENS') {
-            $pQuery->where('annee', '!=', '2026-2027');
+            $pQuery->where(function ($q) {
+                $q->where('annee', '!=', '2026-2027')
+                  ->orWhereHas('student', function ($sq) {
+                      $sq->whereNotNull('dossiers_historique');
+                  });
+            });
         } elseif ($annee !== 'ALL') {
-            $pQuery->where('annee', $annee);
+            $pQuery->where(function ($q) use ($annee) {
+                $q->where('annee', $annee)
+                  ->orWhere(function ($sub) use ($annee) {
+                      $sub->where(function ($sub2) {
+                          $sub2->whereNull('annee')->orWhere('annee', '');
+                      })->whereHas('student', function ($sq) use ($annee) {
+                          $sq->where('annee_scolaire', $annee)
+                             ->orWhere('dossiers_historique', 'like', '%"annee":"' . $annee . '"%');
+                      });
+                  });
+            });
         }
 
         $sQuery = Student::query();
@@ -721,13 +770,43 @@ class PaymentController extends Controller
         $totalInscrits = (clone $sQuery)->where('statut_inscription', 'accepte')->count();
         $totalReliquats = (clone $sQuery)->sum('compta_solde_restant');
 
+        $totalJour = (clone $pQuery)->where(function ($q) use ($today) {
+            $q->whereDate('date_paiement', $today)
+              ->orWhere(function ($sub) use ($today) {
+                  $sub->whereNull('date_paiement')->whereDate('created_at', $today);
+              });
+        })->sum('montant');
+
+        $totalMois = (clone $pQuery)->where(function ($q) use ($thisYear, $thisMonth) {
+            $q->where(function ($q1) use ($thisYear, $thisMonth) {
+                $q1->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth);
+            })->orWhere(function ($q2) use ($thisYear, $thisMonth) {
+                $q2->whereNull('date_paiement')->whereYear('created_at', $thisYear)->whereMonth('created_at', $thisMonth);
+            });
+        })->sum('montant');
+
+        $countJour = (clone $pQuery)->where(function ($q) use ($today) {
+            $q->whereDate('date_paiement', $today)
+              ->orWhere(function ($sub) use ($today) {
+                  $sub->whereNull('date_paiement')->whereDate('created_at', $today);
+              });
+        })->count();
+
+        $countMois = (clone $pQuery)->where(function ($q) use ($thisYear, $thisMonth) {
+            $q->where(function ($q1) use ($thisYear, $thisMonth) {
+                $q1->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth);
+            })->orWhere(function ($q2) use ($thisYear, $thisMonth) {
+                $q2->whereNull('date_paiement')->whereYear('created_at', $thisYear)->whereMonth('created_at', $thisMonth);
+            });
+        })->count();
+
         return response()->json([
-            'total_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->sum('montant'),
-            'total_mois'      => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->sum('montant'),
+            'total_jour'      => $totalJour,
+            'total_mois'      => $totalMois,
             'total_annee'     => $effectiveTotalAnnee,
             'total_reliquats' => (float)$totalReliquats,
-            'count_jour'      => (clone $pQuery)->whereDate('date_paiement', $today)->count(),
-            'count_mois'      => (clone $pQuery)->whereYear('date_paiement', $thisYear)->whereMonth('date_paiement', $thisMonth)->count(),
+            'count_jour'      => $countJour,
+            'count_mois'      => $countMois,
             'count_annee'     => (clone $pQuery)->count(),
             'total_attente'   => (clone $sQuery)->where('statut_inscription', 'en_attente_paiement')->count(),
             'total_inscrits'  => $totalInscrits,
