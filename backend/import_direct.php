@@ -70,7 +70,7 @@ if (Schema::hasTable('matieres')) {
     });
 }
 
-// Ensure notes table exists
+// Ensure notes table and columns exist
 if (!Schema::hasTable('notes')) {
     Schema::create('notes', function (Blueprint $table) {
         $table->id();
@@ -81,6 +81,27 @@ if (!Schema::hasTable('notes')) {
         $table->string('semestre', 10)->default('S1');
         $table->string('annee_universitaire', 20)->default('2024-2025');
         $table->timestamps();
+    });
+} else {
+    Schema::table('notes', function (Blueprint $table) {
+        if (!Schema::hasColumn('notes', 'student_id')) {
+            $table->unsignedBigInteger('student_id')->nullable();
+        }
+        if (!Schema::hasColumn('notes', 'matiere_id')) {
+            $table->unsignedBigInteger('matiere_id')->nullable();
+        }
+        if (!Schema::hasColumn('notes', 'note_cc')) {
+            $table->decimal('note_cc', 5, 2)->nullable();
+        }
+        if (!Schema::hasColumn('notes', 'note_examen')) {
+            $table->decimal('note_examen', 5, 2)->nullable();
+        }
+        if (!Schema::hasColumn('notes', 'semestre')) {
+            $table->string('semestre', 10)->default('S1')->nullable();
+        }
+        if (!Schema::hasColumn('notes', 'annee_universitaire')) {
+            $table->string('annee_universitaire', 20)->default('2024-2025')->nullable();
+        }
     });
 }
 
@@ -303,12 +324,20 @@ foreach ($data as $idx => $item) {
 
                     $existsNote = DB::table('notes')->where('student_id', $studentId)->where('matiere_id', $matiereId)->first();
                     $noteData = [
-                        'note_cc' => $cc,
-                        'note_examen' => $exam,
-                        'semestre' => (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1',
-                        'annee_universitaire' => $annee,
                         'updated_at' => $now,
                     ];
+                    if (Schema::hasColumn('notes', 'note_cc')) $noteData['note_cc'] = $cc;
+                    elseif (Schema::hasColumn('notes', 'cc')) $noteData['cc'] = $cc;
+                    
+                    if (Schema::hasColumn('notes', 'note_examen')) $noteData['note_examen'] = $exam;
+                    elseif (Schema::hasColumn('notes', 'note_exam')) $noteData['note_exam'] = $exam;
+                    elseif (Schema::hasColumn('notes', 'examen')) $noteData['examen'] = $exam;
+
+                    if (Schema::hasColumn('notes', 'semestre')) {
+                        $noteData['semestre'] = (stripos($mod['ue_nom'] ?? $mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['semestre'] ?? '', 'S2') !== false) ? 'S2' : 'S1';
+                    }
+                    if (Schema::hasColumn('notes', 'annee_universitaire')) $noteData['annee_universitaire'] = $annee;
+                    elseif (Schema::hasColumn('notes', 'annee')) $noteData['annee'] = $annee;
 
                     if ($existsNote) {
                         DB::table('notes')->where('id', $existsNote->id)->update($noteData);
