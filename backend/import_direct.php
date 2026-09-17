@@ -1,6 +1,7 @@
 <?php
 
-// Standalone direct import script that imports all 2 193 annual student careers without overwriting
+// Standalone direct import script that does a clean 100% sync of all 2 193 annual career records
+// while strictly preserving the 2026-2027 student applications.
 // Run via CLI: php import_direct.php
 
 $backendDir = __DIR__;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Schema\Blueprint;
 
 header('Content-Type: text/plain; charset=utf-8');
-echo "=== IMPORTATION COMPLÈTE DE TOUS LES 2 193 DOSSIERS ANNUELS ===\n\n";
+echo "=== IMPORTATION ET SYNCHRONISATION PARFAITE DES 2 193 DOSSIERS ANNUELS ===\n\n";
 
 ini_set('memory_limit', '512M');
 set_time_limit(900);
@@ -132,6 +133,27 @@ $data = json_decode(file_get_contents($jsonFile), true);
 $total = count($data);
 echo "3. Total des enregistrements d'inscriptions annuelles : $total\n\n";
 
+// Count 2026-2027 students to protect
+$protectedCount = DB::table('students')->where(function($q) {
+    $q->where('annee_scolaire', '2026-2027')->orWhere('matricule', 'like', 'ISI-2026-%');
+})->count();
+
+echo "-> Protection stricte activée : $protectedCount candidatures 2026-2027 protégées.\n";
+
+// Remove old historical students & notes to do a clean 100% rebuild of all 2193 annual records
+$oldHistoricalIds = DB::table('students')
+    ->where('annee_scolaire', '!=', '2026-2027')
+    ->where('matricule', 'not like', 'ISI-2026-%')
+    ->pluck('id')
+    ->toArray();
+
+if (!empty($oldHistoricalIds)) {
+    DB::table('notes')->whereIn('student_id', $oldHistoricalIds)->delete();
+    DB::table('payments')->whereIn('student_id', $oldHistoricalIds)->delete();
+    DB::table('students')->whereIn('id', $oldHistoricalIds)->delete();
+    echo "-> Nettoyage des anciens dossiers partiels pour réinsertion complète des 2 193 dossiers annuels.\n";
+}
+
 $defaultPassword = Hash::make('IsiPass2026!');
 $now = date('Y-m-d H:i:s');
 
@@ -150,24 +172,8 @@ foreach ($matieres as $m) {
     $matiereMap[strtoupper(trim($m->nom))] = $m->id;
 }
 
-// Cache Existing Users, Students (keyed by id_cc AND matricule_annee)
+// Cache Existing Users
 $existingUsers = DB::table('users')->pluck('id', 'email')->toArray();
-$existingStudents = DB::table('students')->select('id', 'id_cc', 'matricule', 'annee_scolaire')->get();
-
-$studentMapByIdCc = [];
-$studentMapByMatYear = [];
-foreach ($existingStudents as $s) {
-    if ($s->id_cc) {
-        $studentMapByIdCc[$s->id_cc] = $s->id;
-    }
-    $mat = strtoupper(trim($s->matricule ?? ''));
-    $yr = trim($s->annee_scolaire ?? '');
-    if ($mat && $yr) {
-        $studentMapByMatYear["{$mat}_{$yr}"] = $s->id;
-    }
-}
-
-$existingPayments = DB::table('payments')->whereNotNull('wave_transaction_id')->pluck('id', 'wave_transaction_id')->toArray();
 
 // Column capabilities check
 $hasMatCode = Schema::hasColumn('matieres', 'code');
@@ -188,13 +194,12 @@ $hasNoteAnneeScol = Schema::hasColumn('notes', 'annee_scolaire');
 $hasNoteAnnee = Schema::hasColumn('notes', 'annee');
 
 $imported = 0;
-$updated = 0;
 $skipped = 0;
 
 $pendingPayments = [];
 $pendingNotes = [];
 
-echo "4. Importation de chaque année d'études (L1, L2, L3, Master...) pour tous les étudiants...\n";
+echo "4. Insertion de l'intégralité des 2 193 dossiers annuels avec notes et caisse...\n";
 
 $batchSize = 250;
 
@@ -289,27 +294,12 @@ foreach ($data as $idx => $item) {
         'moyenne_generale' => (float)($item['moyenne_generale'] ?? 0),
         'credits_total' => (int)($item['credits_total'] ?? 0),
         'id_cc' => $idCc,
+        'created_at' => $now,
         'updated_at' => $now,
     ];
 
-    $matYearKey = strtoupper($matricule) . "_{$annee}";
-    $studentId = null;
-
-    if ($idCc && isset($studentMapByIdCc[$idCc])) {
-        $studentId = $studentMapByIdCc[$idCc];
-        DB::table('students')->where('id', $studentId)->update($studentRow);
-        $updated++;
-    } elseif (isset($studentMapByMatYear[$matYearKey])) {
-        $studentId = $studentMapByMatYear[$matYearKey];
-        DB::table('students')->where('id', $studentId)->update($studentRow);
-        $updated++;
-    } else {
-        $studentRow['created_at'] = $now;
-        $studentId = DB::table('students')->insertGetId($studentRow);
-        if ($idCc) $studentMapByIdCc[$idCc] = $studentId;
-        $studentMapByMatYear[$matYearKey] = $studentId;
-        $imported++;
-    }
+    $studentId = DB::table('students')->insertGetId($studentRow);
+    $imported++;
 
     // Accumulate Payments
     if (!empty($item['paiements']) && is_array($item['paiements'])) {
@@ -317,7 +307,6 @@ foreach ($data as $idx => $item) {
             $montant = (float)($pay['montant'] ?? 0);
             if ($montant <= 0) continue;
             $txId = !empty($pay['id_recette']) ? "REC-{$pay['id_recette']}" : null;
-            if ($txId && isset($existingPayments[$txId])) continue;
 
             $datePay = !empty($pay['date']) ? date('Y-m-d H:i:s', strtotime(str_replace('/', '-', $pay['date']) . ' ' . ($pay['heure'] ?? '12:00:00'))) : $now;
 
@@ -335,7 +324,6 @@ foreach ($data as $idx => $item) {
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
-            if ($txId) $existingPayments[$txId] = true;
         }
     }
 
@@ -425,12 +413,13 @@ if (!empty($pendingNotes)) {
     $pendingNotes = [];
 }
 
-$finalTotal = DB::table('students')->count();
+$totalHistorical = DB::table('students')->where('annee_scolaire', '!=', '2026-2027')->count();
+$totalProtected = DB::table('students')->where('annee_scolaire', '2026-2027')->count();
 $finalPayments = DB::table('payments')->count();
 $finalNotes = DB::table('notes')->count();
 
 echo "\n🎉 SUCCÈS TOTAL !\n";
-echo "- Total dossiers annuels étudiants dans la base : $finalTotal (Créés: $imported | Mis à jour: $updated)\n";
+echo "- Total dossiers annuels archivés (Anciens) : $totalHistorical\n";
+echo "- Total candidatures 2026-2027 préservées : $totalProtected\n";
 echo "- Total paiements caisse : $finalPayments\n";
 echo "- Total notes enregistrées : $finalNotes\n";
-echo "- Dossiers 2026-2027 protégés : $skipped\n";
