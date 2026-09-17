@@ -413,10 +413,6 @@ class AdminController extends Controller
     /** Generate/regenerate student card */
     public function generateCard(Student $student)
     {
-        if ($student->statut_inscription !== 'accepte') {
-            return response()->json(['message' => 'Inscription non encore acceptée'], 422);
-        }
-
         $card = $this->qrService->generateStudentCard($student);
         $this->pdfService->generateStudentCard($student);
 
@@ -427,9 +423,6 @@ class AdminController extends Controller
 
     private function checkAccepte(Student $student): ?\Illuminate\Http\JsonResponse
     {
-        if ($student->statut_inscription !== 'accepte') {
-            return response()->json(['message' => 'Inscription non encore acceptée.'], 422);
-        }
         return null;
     }
 

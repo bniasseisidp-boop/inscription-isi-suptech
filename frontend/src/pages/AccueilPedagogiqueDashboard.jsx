@@ -1488,8 +1488,11 @@ export default function AccueilPedagogiqueDashboard() {
                 <h2 className="text-isiblue-700 font-bold text-xl flex items-center gap-2"><GraduationCap size={20} className="text-isigold-600"/> Programme & Notes</h2>
                 <button onClick={() => setShowProgramme(false)} className="p-2 rounded-xl text-slate-400 hover:text-isiblue-700 hover:bg-slate-100 transition-all"><X size={20}/></button>
               </div>
-              <CurriculumManager searchStudents={async (q) => {
-                const { data } = await getPedagogiqueStudents({ search: q })
+              <CurriculumManager searchStudents={async (q, annee) => {
+                const params = { search: q }
+                if (annee && annee !== 'ALL') params.annee_scolaire = annee
+                else params.annee_scolaire = 'ALL'
+                const { data } = await getPedagogiqueStudents(params)
                 return data.data || data || []
               }}/>
             </div>

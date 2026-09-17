@@ -133,6 +133,17 @@ class PaymentController extends Controller
             'notes'        => $request->notes,
         ]);
 
+        // Mettre a jour la comptabilite globale de l'etudiant (arrieres / total paye)
+        $payeAvant = floatval($student->compta_total_paye ?? 0);
+        $soldeAvant = floatval($student->compta_solde_restant ?? 0);
+        $nouveauPaye = $payeAvant + floatval($request->montant);
+        $nouveauSolde = max(0, $soldeAvant - floatval($request->montant));
+        $student->update([
+            'compta_total_paye'    => $nouveauPaye,
+            'compta_solde_restant' => $nouveauSolde,
+            'compta_est_en_regle'  => $nouveauSolde <= 0,
+        ]);
+
         // ── Inscription : activation ──
         if ($request->type === 'inscription' && $statut === 'complete') {
             $student->update([

@@ -694,7 +694,19 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
   const [student, setStudent] = useState(null)
   const [notesForm, setNotesForm] = useState({})
   const [anneeScolaire, setAnneeScolaire] = useState('2026-2027')
-  const availableYears = ['2026-2027', '2025-2026', '2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']
+  const availableYears = [
+    { value: 'ALL', label: 'Toutes les années' },
+    { value: '2026-2027', label: '2026-2027 (En cours)' },
+    { value: '2025-2026', label: '2025-2026' },
+    { value: '2024-2025', label: '2024-2025' },
+    { value: '2023-2024', label: '2023-2024' },
+    { value: '2022-2023', label: '2022-2023' },
+    { value: '2021-2022', label: '2021-2022' },
+    { value: '2020-2021', label: '2020-2021' },
+    { value: '2019-2020', label: '2019-2020' },
+    { value: '2018-2019', label: '2018-2019' },
+    { value: '2017-2018', label: '2017-2018' },
+  ]
   const [saving, setSaving] = useState(false)
   const [bulletin, setBulletin] = useState(null)
   const [downloading, setDownloading] = useState(false)
@@ -705,24 +717,26 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
     if (search.length < 2 || !searchStudents) { setResults([]); return }
     const t = setTimeout(() => {
       searchStudents(search, anneeScolaire).then(list => setResults(list || [])).catch(() => {})
-    }, 350)
+    }, 300)
     return () => clearTimeout(t)
-  }, [search, searchStudents])
+  }, [search, searchStudents, anneeScolaire])
 
   const loadVerrou = useCallback(() => {
     if (!sem) return
-    getVerrouStatus(sem.id, { annee_scolaire: anneeScolaire })
+    const yearToUse = anneeScolaire === 'ALL' ? (student?.annee_scolaire || '2026-2027') : anneeScolaire
+    getVerrouStatus(sem.id, { annee_scolaire: yearToUse })
       .then(({ data }) => setVerrouille(data.verrouille))
       .catch(() => {})
-  }, [sem, anneeScolaire])
+  }, [sem, anneeScolaire, student])
 
   useEffect(() => { loadVerrou() }, [loadVerrou])
 
   const handleToggleVerrou = async () => {
     if (!sem) return
     setTogglingVerrou(true)
+    const yearToUse = anneeScolaire === 'ALL' ? (student?.annee_scolaire || '2026-2027') : anneeScolaire
     try {
-      await toggleVerrouNotes(sem.id, { annee_scolaire: anneeScolaire, verrouille: !verrouille })
+      await toggleVerrouNotes(sem.id, { annee_scolaire: yearToUse, verrouille: !verrouille })
       setVerrouille(v => !v)
       toast.success(!verrouille ? 'Saisie des notes verrouillée pour les professeurs.' : 'Saisie des notes déverrouillée.')
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
@@ -733,53 +747,54 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   const loadBulletin = useCallback(() => {
     if (!student || !sem) return
-    getBulletin(sem.id, student.id, { annee_scolaire: anneeScolaire })
-      .then(({ data }) => setBulletin(data))
+    const yearToUse = anneeScolaire === 'ALL' ? (student?.annee_scolaire || '2026-2027') : anneeScolaire
+    getBulletin(sem.id, student.id, { annee_scolaire: yearToUse })
+      .then(({ data }) => {
+        setBulletin(data)
+        const form = {}
+        if (data?.lignes) {
+          data.lignes.forEach(l => {
+            if (l.matiere?.id) {
+              form[l.matiere.id] = {
+                mcc: l.mcc !== null && l.mcc !== undefined ? l.mcc : (l.moy_cont !== null && l.moy_cont !== undefined ? l.moy_cont : ''),
+                examen: l.examen !== null && l.examen !== undefined ? l.examen : (l.compo !== null && l.compo !== undefined ? l.compo : ''),
+              }
+            }
+          })
+        } else if (data?.modules) {
+          data.modules.forEach(m => {
+            (m.lignes || []).forEach(l => {
+              if (l.matiere?.id) {
+                form[l.matiere.id] = {
+                  mcc: l.mcc !== null && l.mcc !== undefined ? l.mcc : '',
+                  examen: l.examen !== null && l.examen !== undefined ? l.examen : '',
+                }
+              }
+            })
+          })
+        }
+        setNotesForm(form)
+      })
       .catch(() => setBulletin(null))
   }, [student, sem, anneeScolaire])
 
   useEffect(() => { loadBulletin() }, [loadBulletin])
 
-  useEffect(() => {
-    if (!bulletin) return
-    const initial = {}
-    if (bulletin.modules) {
-      bulletin.modules.forEach(mod => {
-        (mod.lignes || []).forEach(l => {
-          if (l.matiere?.id) {
-            initial[l.matiere.id] = {
-              mcc: l.mcc !== null && l.mcc !== undefined ? l.mcc : '',
-              examen: l.examen !== null && l.examen !== undefined ? l.examen : '',
-            }
-          }
-        })
-      })
-    } else if (bulletin.lignes) {
-      bulletin.lignes.forEach(l => {
-        if (l.matiere?.id) {
-          initial[l.matiere.id] = {
-            mcc: l.mcc !== null && l.mcc !== undefined ? l.mcc : '',
-            examen: l.examen !== null && l.examen !== undefined ? l.examen : '',
-          }
-        }
-      })
-    }
-    setNotesForm(initial)
-  }, [bulletin])
-
   const handleSave = async () => {
+    if (!student) { toast.error('Veuillez sélectionner un étudiant'); return }
     const notes = Object.entries(notesForm)
       .filter(([, v]) => (v?.mcc ?? '') !== '' || (v?.examen ?? '') !== '')
       .map(([matiere_id, v]) => ({
         matiere_id: Number(matiere_id),
-        mcc: v.mcc !== '' && v.mcc !== undefined ? Number(v.mcc) : null,
-        examen: v.examen !== '' && v.examen !== undefined ? Number(v.examen) : null,
+        mcc: v.mcc !== '' && v.mcc !== undefined && v.mcc !== null ? Number(v.mcc) : null,
+        examen: v.examen !== '' && v.examen !== undefined && v.examen !== null ? Number(v.examen) : null,
       }))
     if (notes.length === 0) { toast.error('Saisis au moins une note'); return }
     setSaving(true)
+    const yearToUse = anneeScolaire === 'ALL' ? (student?.annee_scolaire || '2026-2027') : anneeScolaire
     try {
-      await saisirNotesEtudiant(student.id, { annee_scolaire: anneeScolaire, notes })
-      toast.success('Notes enregistrées !')
+      await saisirNotesEtudiant(student.id, { annee_scolaire: yearToUse, notes })
+      toast.success('Notes enregistrées et bulletin recalculé !')
       loadBulletin()
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') }
     finally { setSaving(false) }
@@ -789,8 +804,9 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
     if (!student || !sem) return
     const appreciation = window.prompt('Appréciation du conseil de classe (optionnel) :', '') ?? ''
     setDownloading(true)
+    const yearToUse = anneeScolaire === 'ALL' ? (student?.annee_scolaire || '2026-2027') : anneeScolaire
     try {
-      const { data } = await downloadBulletinPdf(sem.id, student.id, { annee_scolaire: anneeScolaire, appreciation: appreciation || null })
+      const { data } = await downloadBulletinPdf(sem.id, student.id, { annee_scolaire: yearToUse, appreciation: appreciation || null })
       const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
       window.open(url, '_blank')
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
@@ -801,18 +817,19 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   return (
     <div className="space-y-4">
+      {/* Sélecteur de Semestre & Verrou */}
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex flex-wrap gap-2">
           {semestres.map(s => (
             <button key={s.id} onClick={() => setActiveSem(s.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${activeSem === s.id ? 'bg-isiblue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeSem === s.id ? 'bg-isiblue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
               {s.libelle}
             </button>
           ))}
         </div>
         {sem && (
           <button onClick={handleToggleVerrou} disabled={togglingVerrou}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold disabled:opacity-50 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 ${
               verrouille ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}>
             {verrouille ? <Lock size={13}/> : <Unlock size={13}/>}
@@ -821,81 +838,177 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
         )}
       </div>
 
+      {/* Barre de recherche et filtre d'année */}
       <div className="light-card p-4 space-y-3">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[220px] relative">
-            <label className="text-xs text-slate-500 block mb-1">Étudiant</label>
+          <div className="flex-1 min-w-[240px] relative">
+            <label className="text-xs text-slate-500 block mb-1 font-semibold">Étudiant</label>
             {student ? (
-              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                <span className="text-sm font-semibold">{student.prenom} {student.nom} <span className="text-xs text-isiblue-600 font-mono">{student.matricule}</span></span>
-                <button onClick={() => { setStudent(null); setNotesForm({}); setBulletin(null) }}><X size={14}/></button>
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                <div>
+                  <span className="text-sm font-bold text-slate-800">{student.prenom} {student.nom}</span>
+                  <span className="text-xs text-isiblue-600 font-mono ml-2 font-bold">{student.matricule}</span>
+                  <span className="text-[11px] ml-2 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">
+                    {student.annee_scolaire || anneeScolaire}
+                  </span>
+                </div>
+                <button onClick={() => { setStudent(null); setNotesForm({}); setBulletin(null) }} className="text-slate-400 hover:text-red-500 p-1"><X size={16}/></button>
               </div>
             ) : (
-              <input className="form-input-light" placeholder="Chercher par nom ou matricule..." value={search} onChange={e => setSearch(e.target.value)}/>
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                <input
+                  className="form-input-light pl-9 w-full"
+                  placeholder="Chercher un étudiant par nom, prénom ou matricule..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
             )}
             {!student && results.length > 0 && (
-              <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
+              <div className="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
                 {results.map(s => (
-                  <button key={s.id} onClick={() => { setStudent(s); if (s.annee_scolaire) setAnneeScolaire(s.annee_scolaire); setResults([]); setSearch('') }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm">
-                    {s.prenom} {s.nom} <span className="text-xs text-slate-400">{s.matricule}</span>
+                  <button key={s.id} onClick={() => {
+                      setStudent(s);
+                      if (s.annee_scolaire && anneeScolaire !== s.annee_scolaire && anneeScolaire !== 'ALL') {
+                        setAnneeScolaire(s.annee_scolaire);
+                      }
+                      setResults([]);
+                      setSearch('');
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-isiblue-50 transition-colors text-sm flex items-center justify-between border-b border-slate-100 last:border-0">
+                    <div>
+                      <div className="font-semibold text-slate-800">{s.prenom} {s.nom}</div>
+                      <div className="text-xs text-slate-400 font-mono">{s.matricule} • {s.filiere?.nom || s.license?.nom || 'Niveau standard'}</div>
+                    </div>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-isiblue-100 text-isiblue-700 border border-isiblue-200 flex-shrink-0">
+                      {s.annee_scolaire || '2026-2027'}
+                    </span>
                   </button>
                 ))}
               </div>
             )}
           </div>
           <div>
-            <label className="text-xs text-slate-500 block mb-1 font-semibold">Année scolaire</label>
-            <select className="form-input-light w-36 font-bold text-isiblue-700 bg-white" value={anneeScolaire} onChange={e => setAnneeScolaire(e.target.value)}>
-              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            <label className="text-xs text-slate-500 block mb-1 font-semibold">Année scolaire (Filtre)</label>
+            <select
+              className="form-input-light w-44 font-bold text-isiblue-700 bg-white"
+              value={anneeScolaire}
+              onChange={e => setAnneeScolaire(e.target.value)}
+            >
+              {availableYears.map(y => <option key={y.value} value={y.value}>{y.label}</option>)}
             </select>
           </div>
         </div>
       </div>
 
+      {/* Grille de Saisie et Modification des notes */}
       {student && sem && (
         <div className="light-card overflow-hidden">
-          <div className="p-3 border-b border-slate-100 bg-slate-50/60 text-sm font-semibold text-slate-700">{sem.libelle} — Saisie des notes</div>
+          <div className="p-3 border-b border-slate-100 bg-slate-50/80 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-isiblue-600"></span>
+              {sem.libelle} — Saisie & Modification des notes ({anneeScolaire === 'ALL' ? (student.annee_scolaire || '2026-2027') : anneeScolaire})
+            </div>
+            <div className="text-xs text-slate-500">
+              Barème : Devoir {calculSimple ? '(50%)' : '(40%)'} + Examen {calculSimple ? '(50%)' : '(60%)'}
+            </div>
+          </div>
           <div className="overflow-x-auto">
           <table className="data-table-light">
-            <thead><tr><th>Matière</th><th>Coef</th><th>Devoir /20 {calculSimple ? '(50%)' : '(40%)'}</th><th>Examen /20 {calculSimple ? '(50%)' : '(60%)'}</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Matière</th>
+                <th>Coef</th>
+                <th>Devoir / CC (/20) {calculSimple ? '(50%)' : '(40%)'}</th>
+                <th>Examen (/20) {calculSimple ? '(50%)' : '(60%)'}</th>
+                <th>Moyenne calculée</th>
+              </tr>
+            </thead>
             <tbody>
-              {allMatieres.map(mat => (
-                <tr key={mat.id}>
-                  <td className="text-sm">{mat.nom}</td>
-                  <td className="text-xs font-bold">{mat.coef}</td>
-                  <td>
-                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-20 !py-1"
-                      value={notesForm[mat.id]?.mcc ?? ''}
-                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], mcc: e.target.value } }))}/>
-                  </td>
-                  <td>
-                    <input type="number" min="0" max="20" step="0.25" className="form-input-light w-24 !py-1"
-                      value={notesForm[mat.id]?.examen ?? ''}
-                      onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], examen: e.target.value } }))}/>
+              {allMatieres.map(mat => {
+                const mccVal = notesForm[mat.id]?.mcc ?? ''
+                const examVal = notesForm[mat.id]?.examen ?? ''
+                const mccNum = mccVal !== '' ? parseFloat(mccVal) : null
+                const examNum = examVal !== '' ? parseFloat(examVal) : null
+                let liveMoy = null
+                if (calculSimple && mccNum !== null && examNum !== null) {
+                  liveMoy = ((mccNum + examNum) / 2).toFixed(2)
+                } else if (!calculSimple && mccNum !== null && examNum !== null) {
+                  liveMoy = ((mccNum * 0.4) + (examNum * 0.6)).toFixed(2)
+                } else if (examNum !== null) {
+                  liveMoy = examNum.toFixed(2)
+                } else if (mccNum !== null) {
+                  liveMoy = mccNum.toFixed(2)
+                }
+
+                return (
+                  <tr key={mat.id}>
+                    <td className="text-sm font-semibold text-slate-800">
+                      {mat.nom}
+                      {mat.code && <span className="text-xs text-slate-400 font-mono ml-1.5">({mat.code})</span>}
+                    </td>
+                    <td className="text-xs font-bold text-slate-700">{mat.coef}</td>
+                    <td>
+                      <input
+                        type="number" min="0" max="20" step="0.25"
+                        placeholder="Ex: 14"
+                        className="form-input-light w-24 !py-1 font-semibold text-slate-800"
+                        value={mccVal}
+                        onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], mcc: e.target.value } }))}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number" min="0" max="20" step="0.25"
+                        placeholder="Ex: 16.5"
+                        className="form-input-light w-24 !py-1 font-semibold text-slate-800"
+                        value={examVal}
+                        onChange={e => setNotesForm(f => ({ ...f, [mat.id]: { ...f[mat.id], examen: e.target.value } }))}
+                      />
+                    </td>
+                    <td>
+                      {liveMoy !== null ? (
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${Number(liveMoy) >= 10 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                          {liveMoy} / 20
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {allMatieres.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-6 text-slate-400 text-sm">
+                    Aucune matière configurée pour ce semestre.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
           </div>
-          <div className="p-3 border-t border-slate-100 flex flex-wrap gap-2">
-            <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
-              {saving ? 'Enregistrement...' : 'Enregistrer les notes'}
+          <div className="p-3 border-t border-slate-100 flex flex-wrap gap-2 justify-between items-center bg-slate-50/50">
+            <button onClick={handleSave} disabled={saving} className="btn-primary text-sm disabled:opacity-50 flex items-center gap-1.5">
+              {saving ? 'Enregistrement...' : '💾 Enregistrer les notes'}
             </button>
-            <button onClick={handleDownloadPdf} disabled={downloading || !bulletin} className="btn-secondary-light text-sm flex items-center gap-1.5 disabled:opacity-50">
-              <Download size={14}/> {downloading ? 'Génération...' : 'Télécharger le bulletin PDF'}
+            <button onClick={handleDownloadPdf} disabled={downloading} className="btn-secondary-light text-sm flex items-center gap-1.5 disabled:opacity-50">
+              <Download size={14}/> {downloading ? 'Génération...' : '📄 Télécharger le bulletin PDF'}
             </button>
           </div>
         </div>
       )}
 
+      {/* Synthèse du bulletin calculé en direct */}
       {bulletin && calculSimple && (
         <div className="light-card p-4">
-          <h4 className="font-semibold text-isiblue-700 mb-3 text-sm">Bulletin calculé — {bulletin.semestre?.libelle}</h4>
+          <h4 className="font-semibold text-isiblue-700 mb-3 text-sm flex items-center gap-2">
+            <span>📊 Synthèse du Bulletin</span> — {bulletin.semestre?.libelle}
+          </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne du semestre</div><div className="text-xl font-black text-slate-800">{bulletin.moyenne_semestre ?? '—'} / 20</div></div>
-            <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Mention</div><div className="text-xl font-black text-slate-800">{bulletin.mention ?? '—'}</div></div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100"><div className="text-xs text-slate-400">Moyenne du semestre</div><div className="text-xl font-black text-slate-800">{bulletin.moyenne_semestre ?? '—'} / 20</div></div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100"><div className="text-xs text-slate-400">Mention</div><div className="text-xl font-black text-slate-800">{bulletin.mention ?? '—'}</div></div>
           </div>
           <div className="overflow-x-auto">
           <table className="data-table-light">
@@ -903,12 +1016,12 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
             <tbody>
               {(bulletin.lignes || []).map((l, i) => (
                 <tr key={i}>
-                  <td className="text-sm">{l.matiere?.nom}</td>
+                  <td className="text-sm font-semibold">{l.matiere?.nom}</td>
                   <td className="text-sm">{l.moy_cont ?? '—'}</td>
                   <td className="text-sm">{l.compo ?? '—'}</td>
                   <td className="text-sm font-bold">{l.moyenne_generale ?? '—'}</td>
                   <td className="text-xs">{l.matiere?.coef}</td>
-                  <td className="text-xs">{l.appreciation ?? '—'}</td>
+                  <td className="text-xs font-semibold text-isiblue-600">{l.appreciation ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -919,23 +1032,26 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
       {bulletin && !calculSimple && (
         <div className="light-card p-4">
-          <h4 className="font-semibold text-isiblue-700 mb-3 text-sm">Bulletin calculé — {bulletin.semestre?.libelle}</h4>
+          <h4 className="font-semibold text-isiblue-700 mb-3 text-sm flex items-center gap-2">
+            <span>📊 Synthèse du Bulletin</span> — {bulletin.semestre?.libelle}
+          </h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Moyenne générale</div><div className="text-xl font-black text-slate-800">{bulletin.moyenne_generale ?? '—'}</div></div>
-            <div className="bg-slate-50 rounded-xl p-3"><div className="text-xs text-slate-400">Crédits</div><div className="text-xl font-black text-slate-800">{bulletin.credits_obtenus} / {bulletin.credits_requis}</div></div>
-            <div className={`rounded-xl p-3 ${bulletin.valide ? 'bg-emerald-50' : 'bg-red-50'}`}>
-              <div className="text-xs text-slate-400">Statut</div>
-              <div className={`text-xl font-black ${bulletin.valide ? 'text-emerald-600' : 'text-red-600'}`}>{bulletin.valide ? 'Validé' : 'Non validé'}</div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100"><div className="text-xs text-slate-400">Moyenne générale</div><div className="text-xl font-black text-slate-800">{bulletin.moyenne_generale ?? '—'} / 20</div></div>
+            <div className="bg-slate-50 rounded-xl p-3 border border-slate-100"><div className="text-xs text-slate-400">Crédits validés</div><div className="text-xl font-black text-slate-800">{bulletin.credits_obtenus ?? 0} / {bulletin.credits_requis ?? 30}</div></div>
+            <div className={`rounded-xl p-3 border ${bulletin.valide ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="text-xs text-slate-400">Décision du Semestre</div>
+              <div className={`text-xl font-black ${bulletin.valide ? 'text-emerald-600' : 'text-red-600'}`}>{bulletin.valide ? 'Validé' : 'Ajourné / Non validé'}</div>
             </div>
           </div>
           <div className="overflow-x-auto">
           <table className="data-table-light">
-            <thead><tr><th>UE</th><th>Moyenne</th><th>Statut</th></tr></thead>
+            <thead><tr><th>UE / Module</th><th>Moyenne UE</th><th>Crédits</th><th>Statut</th></tr></thead>
             <tbody>
               {(bulletin.modules || []).map((m, i) => (
                 <tr key={i}>
-                  <td className="text-sm">{m.module.nom} <span className="text-xs text-slate-400 font-mono">({m.module.code})</span></td>
-                  <td className="text-sm font-bold">{m.moyenne_ue ?? '—'}</td>
+                  <td className="text-sm font-semibold">{m.module?.nom} <span className="text-xs text-slate-400 font-mono">({m.module?.code})</span></td>
+                  <td className="text-sm font-bold">{m.moyenne_ue ?? '—'} / 20</td>
+                  <td className="text-xs font-bold text-slate-700">{m.module?.credits ?? 0} ECTS</td>
                   <td>{m.valide ? <span className="badge-accepted">Validé</span> : <span className="badge-pending">Non validé</span>}</td>
                 </tr>
               ))}

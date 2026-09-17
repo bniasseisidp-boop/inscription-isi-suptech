@@ -466,14 +466,25 @@ class CurriculumController extends Controller
         ]);
 
         foreach ($validated['notes'] as $entry) {
-            Note::updateOrCreate(
-                ['student_id' => $student->id, 'matiere_id' => $entry['matiere_id'], 'annee_scolaire' => $validated['annee_scolaire']],
-                array_filter([
-                    'mcc'       => $entry['mcc'] ?? null,
-                    'examen'    => $entry['examen'] ?? null,
-                    'saisi_par' => $request->user()->id,
-                ], fn ($v) => $v !== null)
-            );
+            $mcc = isset($entry['mcc']) && $entry['mcc'] !== '' && $entry['mcc'] !== null ? floatval($entry['mcc']) : null;
+            $examen = isset($entry['examen']) && $entry['examen'] !== '' && $entry['examen'] !== null ? floatval($entry['examen']) : null;
+
+            if ($mcc === null && $examen === null) {
+                // If both are cleared, remove or set null
+                Note::where('student_id', $student->id)
+                    ->where('matiere_id', $entry['matiere_id'])
+                    ->where('annee_scolaire', $validated['annee_scolaire'])
+                    ->delete();
+            } else {
+                Note::updateOrCreate(
+                    ['student_id' => $student->id, 'matiere_id' => $entry['matiere_id'], 'annee_scolaire' => $validated['annee_scolaire']],
+                    [
+                        'mcc'       => $mcc,
+                        'examen'    => $examen,
+                        'saisi_par' => $request->user()?->id,
+                    ]
+                );
+            }
         }
 
         return response()->json(['message' => 'Notes enregistrées.']);
@@ -493,9 +504,31 @@ class CurriculumController extends Controller
     }
 
     /** PDF du bulletin officiel (format ISI SUPTECH), généré par Admin ou Accueil Pédagogique. */
-    public function downloadBulletin(Semestre $semestre, Student $student, Request $request, \App\Services\PDFService $pdfService)
+        public function downloadBulletin($semestre, Student $student, Request $request, \App\Services\PDFService $pdfService)
     {
-        if (!$student->estEnRegle()) {
+        // Resolve Semestre if string or model
+        if (!($semestre instanceof Semestre) || !$semestre->exists) {
+            $semNum = is_numeric($semestre) ? intval($semestre) : intval(preg_replace('/[^0-9]/', '', (string)$semestre));
+            $resolved = null;
+            if ($semNum > 0) {
+                $resolved = $student->license?->semestres()->where('numero', $semNum)->first()
+                    ?? Semestre::where('numero', $semNum)->first();
+            }
+            if (!$resolved && is_numeric($semestre)) {
+                $resolved = Semestre::find($semestre);
+            }
+            if (!$resolved) {
+                $resolved = $student->license?->semestres()->first() ?? Semestre::first();
+            }
+            $semestre = $resolved;
+        }
+
+        if (!$semestre) {
+            return response()->json(['message' => 'Semestre introuvable pour ce bulletin.'], 404);
+        }
+
+        $isStaff = $request->user() && in_array($request->user()->role, ['admin', 'pedagogique', 'cashier']);
+        if (!$isStaff && !$student->estEnRegle()) {
             return response()->json([
                 'message' => "Impossible de générer le bulletin : {$student->prenom} {$student->nom} n'est pas à jour de ses paiements.",
             ], 422);
@@ -518,7 +551,7 @@ class CurriculumController extends Controller
 
         return response()->file($full, [
             'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="bulletin_' . ($student->matricule ?? $student->id) . '_S' . $semestre->numero_global . '.pdf"',
+            'Content-Disposition' => 'inline; filename="bulletin_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '_S' . ($semestre->numero_global ?? $semestre->numero ?? 1) . '.pdf"',
         ]);
     }
 }

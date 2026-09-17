@@ -2089,9 +2089,12 @@ export default function AdminDashboard() {
 
               {/* PROGRAMME & NOTES */}
               {active === 'programme' && (
-                <CurriculumManager searchStudents={async (q) => {
-                  const { data } = await getAdminStudents({ search: q, statut: 'accepte' })
-                  return data.data || []
+                <CurriculumManager searchStudents={async (q, annee) => {
+                  const params = { search: q }
+                  if (annee && annee !== 'ALL') params.annee_scolaire = annee
+                  else params.annee_scolaire = 'ALL'
+                  const { data } = await getAdminStudents(params)
+                  return data.data || data || []
                 }}/>
               )}
 
