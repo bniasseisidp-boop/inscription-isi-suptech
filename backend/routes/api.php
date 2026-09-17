@@ -60,6 +60,13 @@ Route::post('/webhook/wave', [PaymentController::class, 'waveWebhook']);
 // ─── Authenticated routes ────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
+    // Universal Staff Re-inscription, Dossier & Invite Routes (accessible sans préfixe ou avec préfixes)
+    Route::post('/etudiants/reinscrire', [AdminController::class, 'reinscrireStudent']);
+    Route::post('/etudiants/{student}/send-invite', [AdminController::class, 'sendStudentInvite']);
+    Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+    Route::post('/etudiants/{student}/modifier-notes-dossier', [AdminController::class, 'updateHistoricalNotes']);
+    Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
+
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/me/photo', [AuthController::class, 'updatePhoto']);
