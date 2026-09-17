@@ -105,18 +105,20 @@ class ImportCanonicalStudents extends Command
                 ]);
             }
 
-            // Update or Create Student
-            $student = Student::where('matricule', $matricule)->first();
+            $solde = (float)($item['compta_solde_restant'] ?? 0);
+
+            // Complete Student payload covering all non-nullable columns in strict MySQL
             $dataToSave = [
                 'user_id' => $user->id,
                 'matricule' => $matricule,
                 'nom' => $nom,
                 'prenom' => $prenom,
-                'sexe' => $item['sexe'] ?? 'M',
+                'sexe' => ($item['sexe'] ?? 'M') === 'F' ? 'F' : 'M',
                 'date_naissance' => !empty($item['date_naissance']) ? date('Y-m-d', strtotime(str_replace('/', '-', $item['date_naissance']))) : null,
                 'lieu_naissance' => $item['lieu_naissance'] ?? 'Dakar',
                 'adresse' => $item['adresse'] ?? 'Dakar',
                 'nationalite' => $item['nationalite'] ?? 'Sénégalaise',
+                'pays_residence' => 'Sénégal',
                 'telephone' => $item['telephone'] ?? '+221',
                 'filiere_id' => $filiereId,
                 'niveau_entree' => $niveau,
@@ -124,14 +126,20 @@ class ImportCanonicalStudents extends Command
                 'annee_scolaire' => $annee,
                 'statut_inscription' => 'accepte',
                 'inscription_payee' => true,
+                'statut_documents' => 'valide',
+                'est_transfert' => 0,
+                'profil_complet' => 1,
+                'avance_paiement' => 0,
                 'compta_debit_total' => (float)($item['compta_debit_total'] ?? 0),
                 'compta_total_paye' => (float)($item['compta_total_paye'] ?? 0),
-                'compta_solde_restant' => (float)($item['compta_solde_restant'] ?? 0),
+                'compta_solde_restant' => $solde,
+                'compta_est_en_regle' => ($solde <= 0 ? 1 : 0),
                 'moyenne_generale' => (float)($item['moyenne_generale'] ?? 0),
                 'credits_total' => (int)($item['credits_total'] ?? 0),
                 'id_cc' => $item['id_cc'] ?? null,
             ];
 
+            $student = Student::where('matricule', $matricule)->first();
             if ($student) {
                 $student->update($dataToSave);
                 $updated++;
