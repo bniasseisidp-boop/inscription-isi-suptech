@@ -44,36 +44,11 @@ class PaymentController extends Controller
 
         if ($annee && $annee !== 'ALL') {
             if ($annee === '2026-2027') {
-                $query->where(function ($q) {
-                    $q->where('annee', '2026-2027')
-                      ->orWhere(function ($sub) {
-                          $sub->whereYear('date_paiement', 2026)
-                              ->where(function ($sub2) {
-                                  $sub2->where('annee', '2026-2027')
-                                       ->orWhere('annee', '2026')
-                                       ->orWhereNull('annee')
-                                       ->orWhere('annee', '');
-                              });
-                      });
-                })->where(function ($q) {
-                    $q->where('annee', '2026-2027')
-                      ->orWhereYear('date_paiement', 2026);
-                })->whereNotIn('annee', ['2024-2025', '2023-2024', '2022-2023', '2021-2022', '2020-2021', '2019-2020', '2018-2019', '2017-2018']);
+                $query->where('annee', '2026-2027');
             } elseif ($annee === 'ANCIENS') {
-                $query->where(function ($q) {
-                    $q->where('annee', '!=', '2026-2027')
-                      ->whereYear('date_paiement', '<', 2026);
-                });
+                $query->where('annee', '!=', '2026-2027');
             } else {
-                $query->where(function ($q) use ($annee) {
-                    $q->where('annee', $annee)
-                      ->orWhere(function ($sub) use ($annee) {
-                          $yr = intval(substr($annee, 0, 4));
-                          if ($yr > 2000) {
-                              $sub->whereYear('date_paiement', $yr)->whereNull('annee');
-                          }
-                      });
-                });
+                $query->where('annee', $annee);
             }
         }
 
@@ -714,21 +689,11 @@ class PaymentController extends Controller
         if (\Illuminate\Support\Facades\Schema::hasColumn('payments', 'statut')) {
             $pQuery->whereIn('statut', ['complete', 'valide', 'succes', 'effectue', 'reussi', 'PAYE']);
         }
-
+        
         if ($annee === '2026-2027' || !$annee) {
-            $pQuery->where(function ($q) {
-                $q->where('annee', '2026-2027')
-                  ->orWhere(function ($sub) {
-                      $sub->whereYear('date_paiement', 2026)
-                          ->whereHas('student', function ($sq) {
-                              $sq->where('matricule', 'like', 'ISI-2026-%')
-                                 ->orWhere('annee_scolaire', '2026-2027');
-                          });
-                  });
-            })->where(function ($q) {
-                $q->where('annee', '2026-2027')
-                  ->orWhereYear('date_paiement', 2026);
-            });
+            $pQuery->where('annee', '2026-2027');
+        } elseif ($annee === 'ANCIENS') {
+            $pQuery->where('annee', '!=', '2026-2027');
         } elseif ($annee !== 'ALL') {
             $pQuery->where('annee', $annee);
         }
