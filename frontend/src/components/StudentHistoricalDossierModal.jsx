@@ -148,7 +148,7 @@ export default function StudentHistoricalDossierModal({
           toast.error('Aucun semestre trouvé pour ce bulletin')
           return
         }
-        res = await downloadBulletinBlob(st.id, semId)
+        res = await downloadBulletinBlob(st.id, semId, { annee_scolaire: activeYear })
         filename = `bulletin_${st.matricule.replace(/[^A-Za-z0-9]/g, '_')}_S${semId}.pdf`
       } else if (type === 'attestation') {
         res = await downloadAttestationInscriptionBlob(st.id)

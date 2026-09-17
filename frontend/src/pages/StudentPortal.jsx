@@ -696,10 +696,21 @@ export default function StudentPortal() {
     const anneeToUse = annee || selectedBulletinYear || bulletins?.annee_scolaire || '2024-2025'
     try {
       const { data } = await downloadMonBulletinPdf(semestreId, { annee_scolaire: anneeToUse })
-      const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
-      window.open(url, '_blank')
-    } catch (e) { toast.error(e.response?.data?.message || 'Erreur génération PDF') }
-    finally { setDownloadingBulletin(null) }
+      const blob = new Blob([data], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `bulletin_${semestreId}_${anneeToUse.replace(/[^0-9]/g, '')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success('Bulletin téléchargé avec succès !')
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de la génération du bulletin PDF')
+    } finally {
+      setDownloadingBulletin(null)
+    }
   }
 
   const handlePay = async (type, mois = null) => {
