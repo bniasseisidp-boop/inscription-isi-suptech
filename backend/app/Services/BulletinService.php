@@ -26,8 +26,16 @@ class BulletinService
         $module->loadMissing('matieres');
         $notes = $student->notes()
             ->whereIn('matiere_id', $module->matieres->pluck('id'))
-            ->where('annee_scolaire', $anneeScolaire)
+            ->when($anneeScolaire && $anneeScolaire !== 'ALL', function ($q) use ($anneeScolaire) {
+                $q->where('annee_scolaire', $anneeScolaire);
+            })
             ->get()->keyBy('matiere_id');
+
+        if ($notes->isEmpty()) {
+            $notes = $student->notes()
+                ->whereIn('matiere_id', $module->matieres->pluck('id'))
+                ->get()->keyBy('matiere_id');
+        }
 
         $lignes = [];
         $sommeCoef = 0;

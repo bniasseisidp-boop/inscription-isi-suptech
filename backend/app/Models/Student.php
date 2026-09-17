@@ -183,6 +183,16 @@ class Student extends Model
     /** Months with unpaid mensualité up to current month (dernier mois exclu — déjà réglé via l'inscription) */
     public function getMoisNonPayesAttribute(): array
     {
+        // Si l'étudiant est déjà en règle ou n'a aucun solde restant dû
+        $solde = floatval($this->compta_solde_restant ?? 0);
+        $debit = floatval($this->compta_debit_total ?? 0);
+        $paye = floatval($this->compta_total_paye ?? 0);
+        $enRegle = (bool)($this->compta_est_en_regle ?? false);
+
+        if ($enRegle || ($debit > 0 && $solde <= 0) || ($paye >= $debit && $debit > 0)) {
+            return [];
+        }
+
         if (!$this->inscription_payee || $this->statut_inscription !== 'accepte') {
             return [];
         }
@@ -316,6 +326,15 @@ class Student extends Model
      *  — condition requise pour generer son bulletin officiel. */
     public function estEnRegle(): bool
     {
+        $solde = floatval($this->compta_solde_restant ?? 0);
+        $debit = floatval($this->compta_debit_total ?? 0);
+        $paye = floatval($this->compta_total_paye ?? 0);
+        $enRegle = (bool)($this->compta_est_en_regle ?? false);
+
+        if ($enRegle || ($debit > 0 && $solde <= 0) || ($paye >= $debit && $debit > 0)) {
+            return true;
+        }
+
         return (bool) $this->inscription_payee && empty($this->mois_non_payes);
     }
 

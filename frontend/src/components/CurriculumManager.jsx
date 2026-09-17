@@ -740,6 +740,33 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
 
   useEffect(() => { loadBulletin() }, [loadBulletin])
 
+  useEffect(() => {
+    if (!bulletin) return
+    const initial = {}
+    if (bulletin.modules) {
+      bulletin.modules.forEach(mod => {
+        (mod.lignes || []).forEach(l => {
+          if (l.matiere?.id) {
+            initial[l.matiere.id] = {
+              mcc: l.mcc !== null && l.mcc !== undefined ? l.mcc : '',
+              examen: l.examen !== null && l.examen !== undefined ? l.examen : '',
+            }
+          }
+        })
+      })
+    } else if (bulletin.lignes) {
+      bulletin.lignes.forEach(l => {
+        if (l.matiere?.id) {
+          initial[l.matiere.id] = {
+            mcc: l.mcc !== null && l.mcc !== undefined ? l.mcc : '',
+            examen: l.examen !== null && l.examen !== undefined ? l.examen : '',
+          }
+        }
+      })
+    }
+    setNotesForm(initial)
+  }, [bulletin])
+
   const handleSave = async () => {
     const notes = Object.entries(notesForm)
       .filter(([, v]) => (v?.mcc ?? '') !== '' || (v?.examen ?? '') !== '')
@@ -809,7 +836,7 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
             {!student && results.length > 0 && (
               <div className="absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden max-h-56 overflow-y-auto">
                 {results.map(s => (
-                  <button key={s.id} onClick={() => { setStudent(s); setResults([]); setSearch('') }}
+                  <button key={s.id} onClick={() => { setStudent(s); if (s.annee_scolaire) setAnneeScolaire(s.annee_scolaire); setResults([]); setSearch('') }}
                     className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm">
                     {s.prenom} {s.nom} <span className="text-xs text-slate-400">{s.matricule}</span>
                   </button>
@@ -818,8 +845,10 @@ function NotesTab({ licenseId, semestres, activeSem, setActiveSem, sem, searchSt
             )}
           </div>
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Année scolaire</label>
-            <input className="form-input-light w-32" value={anneeScolaire} onChange={e => setAnneeScolaire(e.target.value)}/>
+            <label className="text-xs text-slate-500 block mb-1 font-semibold">Année scolaire</label>
+            <select className="form-input-light w-36 font-bold text-isiblue-700 bg-white" value={anneeScolaire} onChange={e => setAnneeScolaire(e.target.value)}>
+              {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
           </div>
         </div>
       </div>

@@ -702,6 +702,8 @@ export default function AccueilPedagogiqueDashboard() {
   const [expandedFilieres, setExpandedFilieres] = useState({})
   const [selectedFiliere, setSelectedFiliere]   = useState(null)
   const [selectedLicense, setSelectedLicense]   = useState(null)
+  const [academicYear, setAcademicYear] = useState('ALL')
+  const [historicalStudent, setHistoricalStudent] = useState(null)
   const [activeTab, setActiveTab]       = useState('inscrits') // 'inscrits' | 'candidats'
 
   const [students, setStudents]         = useState([])
@@ -770,20 +772,24 @@ export default function AccueilPedagogiqueDashboard() {
   const handleLogout = async () => { await logout(); navigate('/') }
 
   // Charger filières + classes + settings au montage
-  useEffect(() => {
-    getPedagogiqueClasses()
+  const loadClasses = () => {
+    getPedagogiqueClasses({ annee_scolaire: academicYear })
       .then(({ data }) => { setClasses(data); setFilieres(data) })
       .catch(() => {})
+  }
+
+  useEffect(() => {
+    loadClasses()
     getPedagogiqueSettings()
       .then(({ data }) => setFilieresLocked(data.filieres_locked))
       .catch(() => {})
-  }, [])
+  }, [academicYear])
 
   // Charger étudiants quand sélection change
-  useEffect(() => {
+  const loadStudents = () => {
     if (!selectedFiliere && !selectedLicense) return
     setLoadingStudents(true)
-    const params = {}
+    const params = { annee_scolaire: academicYear }
     if (selectedFiliere) params.filiere_id = selectedFiliere.id
     if (selectedLicense) params.license_id = selectedLicense.id
 
@@ -794,7 +800,11 @@ export default function AccueilPedagogiqueDashboard() {
       })
       .catch(() => {})
       .finally(() => setLoadingStudents(false))
-  }, [selectedFiliere, selectedLicense])
+  }
+
+  useEffect(() => {
+    loadStudents()
+  }, [selectedFiliere, selectedLicense, academicYear])
 
   const loadAnciens = async (page = 1) => {
     setAnciensLoading(true)
@@ -1256,6 +1266,154 @@ export default function AccueilPedagogiqueDashboard() {
                   </div>
                 )
               )}
+
+              {/* ── Anciens Étudiants & Archives ── */}
+              {activeTab === 'anciens' && (
+                <div className="space-y-4">
+                  {/* Filtres de recherche archives */}
+                  <div className="light-card p-4">
+                    <div className="flex flex-wrap gap-3 items-end">
+                      <div className="flex-1 min-w-[220px]">
+                        <label className="text-xs font-semibold text-slate-500 block mb-1">Recherche (Nom, matricule, tél...)</label>
+                        <div className="relative">
+                          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                          <input className="form-input-light pl-9 py-2 text-sm" placeholder="Ex: Ndéné, 411-24..., 77..."
+                            value={searchAnciens} onChange={e => setSearchAnciens(e.target.value)}/>
+                        </div>
+                      </div>
+
+                      <div className="w-44">
+                        <label className="text-xs font-semibold text-slate-500 block mb-1">Année académique</label>
+                        <select className="form-input-light py-2 text-sm font-semibold text-isiblue-700"
+                          value={filterAnneeAnciens} onChange={e => setFilterAnneeAnciens(e.target.value)}>
+                          <option value="ALL">🌟 Toutes les années</option>
+                          <option value="2026-2027">2026-2027</option>
+                          <option value="2025-2026">2025-2026</option>
+                          <option value="2024-2025">2024-2025</option>
+                          <option value="2023-2024">2023-2024</option>
+                          <option value="2022-2023">2022-2023</option>
+                          <option value="2021-2022">2021-2022</option>
+                          <option value="2020-2021">2020-2021</option>
+                          <option value="2019-2020">2019-2020</option>
+                          <option value="2018-2019">2018-2019</option>
+                          <option value="2017-2018">2017-2018</option>
+                        </select>
+                      </div>
+
+                      <div className="w-56">
+                        <label className="text-xs font-semibold text-slate-500 block mb-1">Filière</label>
+                        <select className="form-input-light py-2 text-sm"
+                          value={filterFiliereAnciens} onChange={e => setFilterFiliereAnciens(e.target.value)}>
+                          <option value="">Toutes les filières</option>
+                          {filieres.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                        </select>
+                      </div>
+
+                      <button onClick={() => loadAnciens(1)} className="btn-secondary-light py-2 px-3 text-sm flex items-center gap-1.5">
+                        <RefreshCw size={14} className={anciensLoading ? 'animate-spin' : ''}/> Actualiser
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tableau des anciens */}
+                  {anciensLoading ? (
+                    <div className="flex justify-center py-16"><div className="spinner"/></div>
+                  ) : anciensList.length === 0 ? (
+                    <div className="light-card text-center py-16 text-slate-400">
+                      <BookOpen size={44} className="mx-auto mb-3 opacity-30"/>
+                      <p>Aucun étudiant trouvé pour ces critères dans les archives</p>
+                    </div>
+                  ) : (
+                    <div className="light-card overflow-hidden">
+                      <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-200 flex justify-between items-center text-xs text-slate-500 font-semibold">
+                        <span>Total : {anciensPagination.total || anciensList.length} étudiant(s)</span>
+                        <span>Page {anciensPagination.current || 1} sur {anciensPagination.last || 1}</span>
+                      </div>
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-slate-200 bg-slate-50/40">
+                            <th className="text-left px-4 py-3 text-isiblue-700 text-xs font-semibold uppercase">Étudiant</th>
+                            <th className="text-left px-4 py-3 text-isiblue-700 text-xs font-semibold uppercase">Matricule</th>
+                            <th className="text-left px-4 py-3 text-isiblue-700 text-xs font-semibold uppercase">Filière / Niveau</th>
+                            <th className="text-left px-4 py-3 text-isiblue-700 text-xs font-semibold uppercase">Année</th>
+                            <th className="text-left px-4 py-3 text-isiblue-700 text-xs font-semibold uppercase">Situation Caisse</th>
+                            <th className="px-4 py-3 text-right text-isiblue-700 text-xs font-semibold uppercase">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {anciensList.map((s, i) => (
+                            <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50/80 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-isiblue-700 to-isiblue-400 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                    {(s.prenom?.[0] || '').toUpperCase()}{(s.nom?.[0] || '').toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <div className="text-slate-900 font-bold text-sm">{s.prenom} {s.nom}</div>
+                                    <div className="text-slate-400 text-xs">{s.telephone || 'Pas de tél'}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 font-mono text-xs font-bold text-isiblue-600">{s.matricule || '—'}</td>
+                              <td className="px-4 py-3 text-xs text-slate-600">
+                                <div className="font-semibold text-slate-800">{s.filiere?.nom || '—'}</div>
+                                <div className="text-slate-400">{s.license?.nom || 'Niveau non spécifié'}</div>
+                              </td>
+                              <td className="px-4 py-3 text-xs font-semibold text-slate-600">
+                                <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{s.annee_scolaire || '—'}</span>
+                              </td>
+                              <td className="px-4 py-3 text-xs">
+                                {Number(s.compta_solde_restant || 0) <= 0 ? (
+                                  <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    ✅ En règle (0 FCFA)
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                    ⚠️ Solde : {Number(s.compta_solde_restant).toLocaleString()} FCFA
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button onClick={() => setHistoricalStudent(s)}
+                                    className="px-2.5 py-1 bg-isiblue-50 hover:bg-isiblue-100 text-isiblue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                                    title="Voir notes LMD, relevé et reçus">
+                                    <BookOpen size={12}/> Notes &amp; Caisse
+                                  </button>
+                                  <button onClick={() => setSelectedStudentForReins(s)}
+                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"
+                                    title="Réinscrire pour la nouvelle année">
+                                    <GraduationCap size={12}/> Réinscrire
+                                  </button>
+                                  <button onClick={() => setDetailStudentId(s.id)}
+                                    className="p-1 hover:bg-slate-100 text-slate-500 rounded-lg" title="Fiche complète">
+                                    <Eye size={14}/>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      {/* Pagination */}
+                      {anciensPagination.last > 1 && (
+                        <div className="p-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+                          <button disabled={anciensPagination.current <= 1} onClick={() => loadAnciens(anciensPagination.current - 1)}
+                            className="btn-secondary-light py-1 px-3 disabled:opacity-40">
+                            Précédent
+                          </button>
+                          <span>Page {anciensPagination.current} sur {anciensPagination.last}</span>
+                          <button disabled={anciensPagination.current >= anciensPagination.last} onClick={() => loadAnciens(anciensPagination.current + 1)}
+                            className="btn-secondary-light py-1 px-3 disabled:opacity-40">
+                            Suivant
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1521,16 +1679,21 @@ export default function AccueilPedagogiqueDashboard() {
         )}
       </AnimatePresence>
               <StudentHistoricalDossierModal
-        isOpen={showDossierModal}
-        onClose={() => { setShowDossierModal(false); setDossierStudent(null); }}
-        student={dossierStudent}
+        isOpen={Boolean(historicalStudent || dossierStudent || showDossierModal)}
+        onClose={() => { setHistoricalStudent(null); setDossierStudent(null); setShowDossierModal(false); }}
+        student={historicalStudent || dossierStudent}
         onOpenReinscription={(st) => {
           setSelectedStudentForReins(st)
           setShowReinscriptionModal(true)
         }}
       />
 
-      <ReinscriptionModal isOpen={showReinscriptionModal} onClose={() => setShowReinscriptionModal(false)} onSuccess={() => loadStudents()} />
+      <ReinscriptionModal
+        isOpen={Boolean(showReinscriptionModal || selectedStudentForReins)}
+        initialStudent={selectedStudentForReins}
+        onClose={() => { setShowReinscriptionModal(false); setSelectedStudentForReins(null); }}
+        onSuccess={() => { setShowReinscriptionModal(false); setSelectedStudentForReins(null); loadStudents(); loadAnciens(); }}
+      />
     </div>
   )
 }
