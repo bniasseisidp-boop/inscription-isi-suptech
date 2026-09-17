@@ -1154,104 +1154,122 @@ class AdminController extends Controller
             'send_email'          => 'nullable|boolean',
         ]);
 
-        $student = Student::with(['filiere', 'license', 'user'])->findOrFail($validated['student_id']);
-        $license = License::with('filiere')->findOrFail($validated['license_id']);
+        DB::beginTransaction();
+        try {
+            $student = Student::with(['filiere', 'license', 'user'])->findOrFail($validated['student_id']);
+            $license = License::with('filiere')->findOrFail($validated['license_id']);
 
-        // Frais de tenue (non applicable en réinscription)
-        $settings = \Illuminate\Support\Facades\DB::table('site_settings')->pluck('valeur', 'cle');
-        $fraisTenue = floatval($settings['frais_tenue'] ?? 60000);
+            // Frais de tenue (0 FCFA en réinscription)
+            $settings = IlluminateSupportFacadesDB::table('site_settings')->pluck('valeur', 'cle');
+            $fraisTenue = floatval($settings['frais_tenue'] ?? 60000);
 
-        // Frais automatiques : licence frais_reinscription OU (frais_inscription - tenue)
-        $fraisAuto = $license->frais_reinscription && floatval($license->frais_reinscription) > 0
-            ? floatval($license->frais_reinscription)
-            : max(0, floatval($license->frais_inscription ?? 0) - $fraisTenue);
+            // Frais automatiques : licence frais_reinscription OU (frais_inscription - tenue)
+            $fraisAuto = $license->frais_reinscription && floatval($license->frais_reinscription) > 0
+                ? floatval($license->frais_reinscription)
+                : max(0, floatval($license->frais_inscription ?? 0) - $fraisTenue);
 
-        $fraisAppliques = $validated['frais_reinscription'] !== null && floatval($validated['frais_reinscription']) > 0
-            ? floatval($validated['frais_reinscription'])
-            : $fraisAuto;
+            $fraisAppliques = $validated['frais_reinscription'] !== null && floatval($validated['frais_reinscription']) > 0
+                ? floatval($validated['frais_reinscription'])
+                : $fraisAuto;
 
-        // Mettre à jour l'historique de parcours (dossiers_historique)
-        $historique = is_array($student->dossiers_historique)
-            ? $student->dossiers_historique
-            : (json_decode($student->dossiers_historique ?? '[]', true) ?: []);
+            // Mettre à jour l'historique de parcours (dossiers_historique)
+            $historique = is_array($student->dossiers_historique)
+                ? $student->dossiers_historique
+                : (json_decode($student->dossiers_historique ?? '[]', true) ?: []);
 
-        $hasCurrent = false;
-        foreach ($historique as &$entry) {
-            if (($entry['annee'] ?? '') === $validated['annee_scolaire'] || ($entry['annee_universitaire'] ?? '') === $validated['annee_scolaire']) {
-                $entry['filiere_id'] = $validated['filiere_id'];
-                $entry['license_id'] = $validated['license_id'];
-                $entry['classe'] = $license->nom;
-                $entry['filiere'] = $license->filiere?->nom;
-                $entry['frais_reinscription'] = $fraisAppliques;
-                $hasCurrent = true;
-                break;
+            $hasCurrent = false;
+            foreach ($historique as &$entry) {
+                if (($entry['annee'] ?? '') === $validated['annee_scolaire'] || ($entry['annee_universitaire'] ?? '') === $validated['annee_scolaire']) {
+                    $entry['filiere_id'] = $validated['filiere_id'];
+                    $entry['license_id'] = $validated['license_id'];
+                    $entry['classe'] = $license->nom;
+                    $entry['filiere'] = $license->filiere?->nom;
+                    $entry['frais_reinscription'] = $fraisAppliques;
+                    $hasCurrent = true;
+                    break;
+                }
             }
-        }
-        if (!$hasCurrent) {
-            $historique[] = [
-                'annee'               => $validated['annee_scolaire'],
-                'annee_universitaire' => $validated['annee_scolaire'],
+            if (!$hasCurrent) {
+                $historique[] = [
+                    'annee'               => $validated['annee_scolaire'],
+                    'annee_universitaire' => $validated['annee_scolaire'],
+                    'filiere_id'          => $validated['filiere_id'],
+                    'license_id'          => $validated['license_id'],
+                    'classe'              => $license->nom,
+                    'filiere'             => $license->filiere?->nom,
+                    'frais_reinscription' => $fraisAppliques,
+                    'date_reinscription'  => now()->toDateString(),
+                ];
+            }
+
+            $ancienParcours = "Réinscription effectuée le " . now()->format('d/m/Y H:i') . " vers " . ($license->nom ?? 'Nouveau Niveau') . " (" . $validated['annee_scolaire'] . ").";
+            $notesAdmin = trim(($student->notes_admin ? $student->notes_admin . "\n" : "") . $ancienParcours);
+
+            $emailFinal = !empty($validated['email']) ? trim($validated['email']) : ($student->email ?: ($student->user?->email ?: null));
+
+            // Mettre à jour l'étudiant
+            $student->update([
                 'filiere_id'          => $validated['filiere_id'],
                 'license_id'          => $validated['license_id'],
-                'classe'              => $license->nom,
-                'filiere'             => $license->filiere?->nom,
-                'frais_reinscription' => $fraisAppliques,
-                'date_reinscription'  => now()->toDateString(),
-            ];
-        }
-
-        $ancienParcours = "Réinscription effectuée le " . now()->format('d/m/Y H:i') . " vers " . ($license->nom ?? 'Nouveau Niveau') . " (" . $validated['annee_scolaire'] . ").";
-        $notesAdmin = trim(($student->notes_admin ? $student->notes_admin . "\n" : "") . $ancienParcours);
-
-        $emailFinal = !empty($validated['email']) ? trim($validated['email']) : ($student->email ?: ($student->user?->email ?: null));
-
-        // Mettre à jour l'étudiant
-        $student->update([
-            'filiere_id'          => $validated['filiere_id'],
-            'license_id'          => $validated['license_id'],
-            'annee_scolaire'      => $validated['annee_scolaire'],
-            'statut_inscription'  => 'accepte',
-            'inscription_payee'   => false, // En attente de règlement à la caisse
-            'frais_scolarite_total' => $fraisAppliques,
-            'compta_solde_restant'  => $fraisAppliques,
-            'email'               => $emailFinal ?: $student->email,
-            'dossiers_historique' => $historique,
-            'notes_admin'         => $notesAdmin,
-        ]);
-
-        // Assurer l'existence du compte utilisateur
-        $user = $student->user;
-        $tempPassword = null;
-        if (!$user) {
-            $tempPassword = \Illuminate\Support\Str::random(8);
-            $userEmail = $emailFinal ?: strtolower(preg_replace('/[^a-z0-9]/', '', $student->prenom) . '.' . preg_replace('/[^a-z0-9]/', '', $student->nom) . ($student->id) . '@suptech.sn');
-            $user = User::create([
-                'name'     => trim($student->prenom . ' ' . $student->nom),
-                'email'    => $userEmail,
-                'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
-                'role'     => 'student',
+                'annee_scolaire'      => $validated['annee_scolaire'],
+                'statut_inscription'  => 'accepte',
+                'inscription_payee'   => false, // En attente de règlement à la caisse
+                'frais_scolarite_total' => $fraisAppliques,
+                'compta_solde_restant'  => $fraisAppliques,
+                'email'               => $emailFinal ?: $student->email,
+                'dossiers_historique' => $historique,
+                'notes_admin'         => $notesAdmin,
             ]);
-            $student->update(['user_id' => $user->id, 'email' => $userEmail]);
-        } elseif ($emailFinal && $user->email !== $emailFinal) {
-            $user->update(['email' => $emailFinal]);
-        }
 
-        // Envoyer email d'invitation si demandé
-        if (!empty($validated['send_email']) && $student->email) {
-            try {
-                \Illuminate\Support\Facades\Mail::to($student->email)->send(
-                    new \AppMailStudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
-                );
-            } catch (\Exception $e) {
-                \Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
+            // Assurer l'existence du compte utilisateur sans crash d'unicité
+            $user = $student->user;
+            $tempPassword = null;
+            if (!$user) {
+                $tempPassword = IlluminateSupportStr::random(8);
+                $userEmail = $emailFinal ?: strtolower(preg_replace('/[^a-z0-9]/', '', $student->prenom) . '.' . preg_replace('/[^a-z0-9]/', '', $student->nom) . ($student->id) . '@suptech.sn');
+                
+                $existingUser = User::where('email', $userEmail)->first();
+                if ($existingUser) {
+                    $user = $existingUser;
+                    $student->update(['user_id' => $user->id]);
+                } else {
+                    $user = User::create([
+                        'name'     => trim($student->prenom . ' ' . $student->nom),
+                        'email'    => $userEmail,
+                        'password' => IlluminateSupportFacadesHash::make($tempPassword),
+                        'role'     => 'student',
+                    ]);
+                    $student->update(['user_id' => $user->id, 'email' => $userEmail]);
+                }
+            } elseif ($emailFinal && $user->email !== $emailFinal) {
+                $userCollision = User::where('email', $emailFinal)->where('id', '!=', $user->id)->first();
+                if (!$userCollision) {
+                    $user->update(['email' => $emailFinal]);
+                }
             }
-        }
 
-        return response()->json([
-            'message'             => "Étudiant {$student->nom_complet} réinscrit avec succès pour {$validated['annee_scolaire']} !",
-            'student'             => $student->fresh(['filiere', 'license', 'user']),
-            'frais_reinscription' => $fraisAppliques,
-        ]);
+            DB::commit();
+
+            // Envoyer email d'invitation si demandé
+            if (!empty($validated['send_email']) && $student->email) {
+                try {
+                    IlluminateSupportFacadesMail::to($student->email)->send(
+                        new AppMailStudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
+                    );
+                } catch (Exception $e) {
+                    Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'message'             => "Étudiant {$student->nom_complet} réinscrit avec succès pour {$validated['annee_scolaire']} !",
+                'student'             => $student->fresh(['filiere', 'license', 'user']),
+                'frais_reinscription' => $fraisAppliques,
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Erreur lors de la réinscription : ' . $e->getMessage()], 422);
+        }
     }
 
     /**
