@@ -1526,7 +1526,7 @@ class AdminController extends Controller
     }
 
     /** Modifier les notes du relevé historique / canonical d'un étudiant */
-    public (Request $request, Student $student)
+    public function updateHistoricalNotes(Request $request, Student $student)
     {
         $validated = $request->validate([
             'notes' => 'required|array',
