@@ -81,9 +81,11 @@ class AdminController extends Controller
             'inscrits_payes'         => $inscritsPayes,
             'inscriptions_payees'    => $inscritsPayes,
             'frais_insc_percus'      => $inscritsPayes,
+            'total_paiements'        => $recettesTotales,
             'recettes_totales'       => $recettesTotales,
-            'total_reliquats'        => (float)$totalReliquats,
+            'paiements_ce_mois'      => (float)$recettesMois,
             'recettes_mois'          => (float)$recettesMois,
+            'total_reliquats'        => (float)$totalReliquats,
             'annee_selectionnee'     => $annee,
         ]);
     }
