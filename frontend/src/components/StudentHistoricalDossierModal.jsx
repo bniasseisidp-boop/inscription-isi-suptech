@@ -4,10 +4,10 @@ import toast from 'react-hot-toast'
 import {
   X, GraduationCap, Wallet, User, FileText, CheckCircle2,
   AlertTriangle, Download, ChevronRight, Award, BookOpen,
-  CreditCard, Calendar, Clock, RefreshCw, Eye, ShieldCheck, Mail
+  CreditCard, Calendar, Clock, RefreshCw, Eye, ShieldCheck, Mail, Pencil, Check
 } from 'lucide-react'
 import {
-  getStudentDossierHistorique, downloadBulletinBlob, downloadAttestationInscriptionBlob,
+  getStudentDossierHistorique, updateStudentHistoricalNotes, downloadBulletinBlob, downloadAttestationInscriptionBlob,
   downloadCertificatScolariteBlob, downloadFicheInscriptionBlob
 } from '../services/api'
 
@@ -28,6 +28,38 @@ export default function StudentHistoricalDossierModal({
   const [dossierData, setDossierData] = useState(null)
   const [selectedSemestreId, setSelectedSemestreId] = useState('ALL')
   const [downloadingDoc, setDownloadingDoc] = useState(null)
+  const [editMode, setEditMode] = useState(false)
+  const [editedNotes, setEditedNotes] = useState({})
+  const [savingNotes, setSavingNotes] = useState(false)
+
+  const handleNoteChange = (matId, field, val) => {
+    setEditedNotes(prev => ({
+      ...prev,
+      [matId]: {
+        ...(prev[matId] || {}),
+        [field]: val
+      }
+    }))
+  }
+
+  const handleSaveNotes = async () => {
+    if (Object.keys(editedNotes).length === 0) {
+      setEditMode(false)
+      return
+    }
+    setSavingNotes(true)
+    try {
+      const { data } = await updateStudentHistoricalNotes(st.id, { notes: editedNotes })
+      setDossierData(data)
+      setEditMode(false)
+      setEditedNotes({})
+      toast.success('Notes modifiées et moyennes recalculées avec succès !')
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Erreur lors de la mise à jour des notes')
+    } finally {
+      setSavingNotes(false)
+    }
+  }
 
   useEffect(() => {
     if (isOpen && student?.id) {
@@ -394,32 +426,75 @@ export default function StudentHistoricalDossierModal({
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                  {mod.matieres?.map(mat => (
-                                    <tr key={mat.id} className="hover:bg-slate-50/50 transition">
-                                      <td className="p-3 font-semibold text-slate-900">
-                                        {mat.nom}
-                                        {mat.code && <span className="text-[10px] text-slate-400 font-mono ml-2">({mat.code})</span>}
-                                      </td>
-                                      <td className="p-3 text-center text-slate-600 font-bold">{mat.coeff}</td>
-                                      <td className="p-3 text-center text-slate-600">{mat.credits}</td>
-                                      <td className="p-3 text-center font-mono">
-                                        {mat.cc !== null ? `${mat.cc} / 20` : '—'}
-                                      </td>
-                                      <td className="p-3 text-center font-mono">
-                                        {mat.examen !== null ? `${mat.examen} / 20` : '—'}
-                                      </td>
-                                      <td className="p-3 text-center">
-                                        <span className={`font-mono font-bold px-2 py-0.5 rounded ${
-                                          mat.valide ? 'bg-emerald-50 text-emerald-700' : (mat.moyenne > 0 ? 'bg-amber-50 text-amber-700' : 'text-slate-400')
-                                        }`}>
-                                          {mat.moyenne !== null ? `${mat.moyenne} / 20` : '—'}
-                                        </span>
-                                      </td>
-                                      <td className="p-3 text-right font-medium text-slate-600">
-                                        {mat.appreciation}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {mod.matieres?.map(mat => {
+                                    const editedCc = editedNotes[mat.id]?.cc
+                                    const editedExam = editedNotes[mat.id]?.exam
+                                    const ccVal = editedCc !== undefined ? editedCc : (mat.cc !== null ? mat.cc : '')
+                                    const examVal = editedExam !== undefined ? editedExam : (mat.examen !== null ? mat.examen : '')
+
+                                    const numCc = ccVal !== '' ? parseFloat(ccVal) : null
+                                    const numExam = examVal !== '' ? parseFloat(examVal) : null
+                                    let liveMoy = mat.moyenne
+                                    let liveApp = mat.appreciation
+                                    let liveVal = mat.valide
+
+                                    if (numCc !== null || numExam !== null) {
+                                      const c = numCc !== null ? numCc : 0
+                                      const e = numExam !== null ? numExam : 0
+                                      liveMoy = Number(((c * 0.4) + (e * 0.6)).toFixed(2))
+                                      liveVal = liveMoy >= 10
+                                      liveApp = liveMoy >= 18 ? 'Excellent' : (liveMoy >= 16 ? 'Très bien' : (liveMoy >= 14 ? 'Bien' : (liveMoy >= 12 ? 'Assez bien' : (liveMoy >= 10 ? 'Passable' : 'Insuffisant'))))
+                                    }
+
+                                    return (
+                                      <tr key={mat.id} className="hover:bg-slate-50/50 transition">
+                                        <td className="p-3 font-semibold text-slate-900">
+                                          {mat.nom}
+                                          {mat.code && <span className="text-[10px] text-slate-400 font-mono ml-2">({mat.code})</span>}
+                                        </td>
+                                        <td className="p-3 text-center text-slate-600 font-bold">{mat.coeff}</td>
+                                        <td className="p-3 text-center text-slate-600">{mat.credits}</td>
+                                        <td className="p-3 text-center font-mono">
+                                          {editMode ? (
+                                            <input
+                                              type="number"
+                                              min="0" max="20" step="0.25"
+                                              placeholder="CC"
+                                              className="w-16 px-1.5 py-1 text-center font-bold bg-white border border-isiblue-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-isiblue-400 focus:outline-none"
+                                              value={ccVal}
+                                              onChange={e => handleNoteChange(mat.id, 'cc', e.target.value)}
+                                            />
+                                          ) : (
+                                            mat.cc !== null ? `${mat.cc} / 20` : '—'
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-center font-mono">
+                                          {editMode ? (
+                                            <input
+                                              type="number"
+                                              min="0" max="20" step="0.25"
+                                              placeholder="Exam"
+                                              className="w-16 px-1.5 py-1 text-center font-bold bg-white border border-isiblue-300 rounded-lg text-slate-900 focus:ring-2 focus:ring-isiblue-400 focus:outline-none"
+                                              value={examVal}
+                                              onChange={e => handleNoteChange(mat.id, 'exam', e.target.value)}
+                                            />
+                                          ) : (
+                                            mat.examen !== null ? `${mat.examen} / 20` : '—'
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                          <span className={`font-mono font-bold px-2 py-0.5 rounded ${
+                                            liveVal ? 'bg-emerald-50 text-emerald-700' : (liveMoy > 0 ? 'bg-amber-50 text-amber-700' : 'text-slate-400')
+                                          }`}>
+                                            {liveMoy !== null ? `${liveMoy} / 20` : '—'}
+                                          </span>
+                                        </td>
+                                        <td className="p-3 text-right font-medium text-slate-600">
+                                          {liveApp}
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
                                 </tbody>
                               </table>
                             </div>

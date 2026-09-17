@@ -78,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);
         Route::post('/etudiants/reinscrire',                  [AdminController::class, 'reinscrireStudent']);
         Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+        Route::post('/etudiants/{student}/modifier-notes-dossier', [AdminController::class, 'updateHistoricalNotes']);
 
         Route::get('/stats', [AdminController::class, 'stats']);
         Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
@@ -177,6 +178,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/reinscrire',                  [AdminController::class, 'reinscrireStudent']);
         Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);
         Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+        Route::post('/etudiants/{student}/modifier-notes-dossier', [AdminController::class, 'updateHistoricalNotes']);
 
         Route::get('/annees-scolaires', [AdminController::class, 'getAnneesScolaires']);
         Route::get('/paiements', [PaymentController::class, 'index']);
@@ -241,6 +243,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/reinscrire',                  [AdminController::class, 'reinscrireStudent']);
         Route::post('/etudiants/{student}/send-invite',       [AdminController::class, 'sendStudentInvite']);
         Route::get('/etudiants/{student}/historique-dossier', [AdminController::class, 'getStudentDossierHistorique']);
+        Route::post('/etudiants/{student}/modifier-notes-dossier', [AdminController::class, 'updateHistoricalNotes']);
         Route::post('/candidats/{student}/accepter',          [AccueilPedagogiqueController::class, 'acceptStudent']);
         // Paramètres pédagogique (lecture seule)
         Route::get('/settings',                               [AdminController::class, 'getPedagogiqueSettings']);

@@ -306,6 +306,7 @@ export default api
 export const reinscrireStudent = (data) => api.post('/admin/etudiants/reinscrire', data)
 export const sendStudentInvite = (id) => api.post(`/admin/etudiants/${id}/send-invite`)
 export const getStudentDossierHistorique = (id) => api.get(`/admin/etudiants/${id}/historique-dossier`)
+export const updateStudentHistoricalNotes = (studentId, data) => api.post(`/admin/etudiants/${studentId}/modifier-notes-dossier`, data)
 
 export const getAcademicYears = () => api.get('/admin/annees-scolaires')
 

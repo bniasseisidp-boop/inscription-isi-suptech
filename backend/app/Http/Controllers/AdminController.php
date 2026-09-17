@@ -1532,4 +1532,115 @@ class AdminController extends Controller
             ],
         ]);
     }
+
+    /** Modifier les notes du relevé historique / canonical d'un étudiant */
+    public function updateHistoricalNotes(Request $request, Student $student)
+    {
+        $validated = $request->validate([
+            'notes' => 'required|array',
+        ]);
+
+        $jsonPath = storage_path('canonical_all_students.json');
+        if (!file_exists($jsonPath)) {
+            return response()->json(['message' => 'Fichier canonique introuvable'], 404);
+        }
+
+        $canonicalCache = json_decode(file_get_contents($jsonPath), true) ?: [];
+        $mat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $student->matricule ?? ''));
+        $idCc = $student->id_cc;
+        $id = $student->id;
+        $name = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
+
+        $targetIndex = null;
+        foreach ($canonicalCache as $idx => $c) {
+            $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $c['matricule'] ?? ''));
+            if (!empty($mat) && $mat === $cMat) { $targetIndex = $idx; break; }
+            if ($idCc && isset($c['id_cc']) && intval($c['id_cc']) === intval($idCc)) { $targetIndex = $idx; break; }
+            if ($id && isset($c['id']) && intval($c['id']) === intval($id)) { $targetIndex = $idx; break; }
+            $cName = strtolower(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')));
+            if (!empty($name) && $name === $cName) { $targetIndex = $idx; break; }
+        }
+
+        if ($targetIndex !== null) {
+            $stData = &$canonicalCache[$targetIndex];
+            $notesInput = $validated['notes'];
+
+            $s1Pond = 0; $s1CreditsCoef = 0; $s1CreditsObt = 0;
+            $s2Pond = 0; $s2CreditsCoef = 0; $s2CreditsObt = 0;
+
+            foreach ($stData['modules'] as $mIdx => &$mod) {
+                $sKey = $mod['semestre'] ?? 'S1';
+                $ueCoeffTot = 0;
+                $uePondTot = 0;
+                $ueCredits = floatval($mod['ue_credits'] ?? 6);
+
+                foreach ($mod['matieres'] as $matIdx => &$matItem) {
+                    $matKey = "mat_{$mIdx}_{$matIdx}";
+                    if (isset($notesInput[$matKey])) {
+                        $newCc = isset($notesInput[$matKey]['cc']) && $notesInput[$matKey]['cc'] !== '' && $notesInput[$matKey]['cc'] !== null ? floatval($notesInput[$matKey]['cc']) : null;
+                        $newExam = isset($notesInput[$matKey]['exam']) && $notesInput[$matKey]['exam'] !== '' && $notesInput[$matKey]['exam'] !== null ? floatval($notesInput[$matKey]['exam']) : null;
+                        
+                        $matItem['cc'] = $newCc !== null ? $newCc : 0;
+                        $matItem['exam'] = $newExam !== null ? $newExam : 0;
+                    }
+
+                    $ccVal = floatval($matItem['cc'] ?? 0);
+                    $examVal = floatval($matItem['exam'] ?? 0);
+                    $moy = round(($ccVal * 0.4) + ($examVal * 0.6), 2);
+                    $matItem['moy'] = $moy;
+                    $matItem['val'] = ($moy >= 10) ? 'VALIDÉ' : 'AJOURNÉ';
+                    $matItem['appreciation'] = match(true) {
+                        $moy >= 18 => 'Excellent',
+                        $moy >= 16 => 'Très bien',
+                        $moy >= 14 => 'Bien',
+                        $moy >= 12 => 'Assez bien',
+                        $moy >= 10 => 'Passable',
+                        default => 'Insuffisant',
+                    };
+
+                    $coeff = floatval($matItem['coeff'] ?? 1);
+                    $ueCoeffTot += $coeff;
+                    $uePondTot += ($moy * $coeff);
+                }
+                unset($matItem);
+
+                $moyUe = $ueCoeffTot > 0 ? round($uePondTot / $ueCoeffTot, 2) : 0;
+                $ueValide = $moyUe >= 10;
+                $mod['moy_ue'] = $moyUe;
+                $mod['ue_valide'] = $ueValide;
+                $mod['statut_ue'] = $ueValide ? 'MODULE VALIDÉ' : 'AJOURNÉ';
+
+                if ($sKey === 'S1') {
+                    $s1Pond += ($moyUe * $ueCredits);
+                    $s1CreditsCoef += $ueCredits;
+                    if ($ueValide) $s1CreditsObt += $ueCredits;
+                } else {
+                    $s2Pond += ($moyUe * $ueCredits);
+                    $s2CreditsCoef += $ueCredits;
+                    if ($ueValide) $s2CreditsObt += $ueCredits;
+                }
+            }
+            unset($mod);
+
+            $moyS1 = $s1CreditsCoef > 0 ? round($s1Pond / $s1CreditsCoef, 2) : floatval($stData['moyenne_s1'] ?? 0);
+            $moyS2 = $s2CreditsCoef > 0 ? round($s2Pond / $s2CreditsCoef, 2) : floatval($stData['moyenne_s2'] ?? 0);
+            $moyGen = ($moyS1 > 0 && $moyS2 > 0) ? round(($moyS1 + $moyS2) / 2, 2) : max($moyS1, $moyS2);
+            $credS1 = $s1CreditsCoef > 0 ? $s1CreditsObt : intval($stData['credits_s1'] ?? 0);
+            $credS2 = $s2CreditsCoef > 0 ? $s2CreditsObt : intval($stData['credits_s2'] ?? 0);
+            $credTot = $credS1 + $credS2;
+
+            $stData['moyenne_s1'] = $moyS1;
+            $stData['moyenne_s2'] = $moyS2;
+            $stData['moyenne_generale'] = $moyGen;
+            $stData['credits_s1'] = $credS1;
+            $stData['credits_s2'] = $credS2;
+            $stData['credits_total'] = $credTot;
+            $stData['statut_validation'] = ($credTot >= 60 || $moyGen >= 10) ? 'ADMIS(E) AU NIVEAU SUPÉRIEUR' : 'AJOURNÉ(E)';
+            $stData['decision'] = ($credTot >= 60 || $moyGen >= 10) ? 'Admis(e)' : 'Ajourné(e)';
+
+            file_put_contents($jsonPath, json_encode($canonicalCache, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+
+        return $this->getStudentDossierHistorique($student);
+    }
 }
