@@ -1199,22 +1199,30 @@ export default function AdminDashboard() {
     catch { toast.error('Erreur') }
   }
   const submitLicense = async () => {
-    try { await createLicense(newLicense); toast.success('Niveau ajouté !'); setNewLicense({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false }); getFilieres().then(({ data }) => setFilieres(data)) }
+      try {
+        await createLicense({
+          ...newLicense,
+          frais_inscription: Number(newLicense.frais_inscription),
+          frais_reinscription: newLicense.frais_reinscription !== '' && newLicense.frais_reinscription !== null ? Number(newLicense.frais_reinscription) : null,
+          frais_mensuel: Number(newLicense.frais_mensuel),
+        });
+        toast.success('Niveau ajouté !'); setNewLicense({ filiere_id: '', nom: '', code: '', duree_annees: 3, mois_debut: 9, mois_fin: 6, frais_inscription: 0, frais_mensuel: 0, calcul_simple: false }); getFilieres().then(({ data }) => setFilieres(data)) }
     catch { toast.error('Erreur') }
   }
   const handleSaveLicense = async () => {
-    if (!editingLicense) return
-    setSavingEdit(true)
-    try {
-      await updateAdminLicense(editingLicense.id, {
-        nom: editingLicense.nom,
-        mois_debut: Number(editingLicense.mois_debut),
-        mois_fin: Number(editingLicense.mois_fin),
-        frais_inscription: Number(editingLicense.frais_inscription),
-        frais_mensuel: Number(editingLicense.frais_mensuel),
-        calcul_simple: !!editingLicense.calcul_simple,
-      })
-      toast.success('Niveau mis à jour !')
+      if (!editingLicense) return
+      setSavingEdit(true)
+      try {
+        await updateAdminLicense(editingLicense.id, {
+          nom: editingLicense.nom,
+          mois_debut: Number(editingLicense.mois_debut),
+          mois_fin: Number(editingLicense.mois_fin),
+          frais_inscription: Number(editingLicense.frais_inscription),
+          frais_reinscription: editingLicense.frais_reinscription !== '' && editingLicense.frais_reinscription !== null ? Number(editingLicense.frais_reinscription) : null,
+          frais_mensuel: Number(editingLicense.frais_mensuel),
+          calcul_simple: !!editingLicense.calcul_simple,
+        })
+        toast.success('Niveau mis à jour !')
       setEditingLicense(null)
       getFilieres().then(({ data }) => setFilieres(data))
     } catch (e) { toast.error(e.response?.data?.message || 'Erreur') } finally { setSavingEdit(false) }
