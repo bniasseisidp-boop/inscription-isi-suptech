@@ -30,6 +30,15 @@ Route::post('/inscription', [StudentController::class, 'preInscription']);
 Route::get('/etudiants/publics', [StudentController::class, 'publicList']);
 Route::post('/qr/verify', [StudentController::class, 'verifyQR']);
 Route::get('/filieres', [AdminController::class, 'filieres']);
+Route::get('/debug-db-counts', function() {
+    return response()->json([
+        'total_students' => \Illuminate\Support\Facades\DB::table('students')->count(),
+        'by_annee' => \Illuminate\Support\Facades\DB::table('students')->select('annee_scolaire', \Illuminate\Support\Facades\DB::raw('count(*) as count'))->groupBy('annee_scolaire')->get(),
+        'by_statut' => \Illuminate\Support\Facades\DB::table('students')->select('statut_inscription', \Illuminate\Support\Facades\DB::raw('count(*) as count'))->groupBy('statut_inscription')->get(),
+        'total_payments' => \Illuminate\Support\Facades\DB::table('payments')->count(),
+        'total_notes' => \Illuminate\Support\Facades\DB::table('notes')->count(),
+    ]);
+});
 
 // Public content routes
 Route::prefix('contenu')->group(function () {
