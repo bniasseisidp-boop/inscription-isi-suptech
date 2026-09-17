@@ -606,6 +606,15 @@ export default function CashierDashboard() {
   const [browserLoading, setBrowserLoading]     = useState(false)
   const [browserSelected, setBrowserSelected]   = useState(null)
 
+  // Anciens Caisse State
+  const [searchAnciensCaisse, setSearchAnciensCaisse] = useState('')
+  const [filiereAnciensCaisse, setFiliereAnciensCaisse] = useState('')
+  const [anneeAnciensCaisse, setAnneeAnciensCaisse] = useState('ALL')
+  const [soldeFilterAnciens, setSoldeFilterAnciens] = useState('ALL')
+  const [anciensCaisseList, setAnciensCaisseList] = useState([])
+  const [anciensCaisseLoading, setAnciensCaisseLoading] = useState(false)
+  const [anciensCaissePagination, setAnciensCaissePagination] = useState({ current: 1, last: 1, total: 0 })
+
   const handleLogout = async () => { await logout(); navigate('/') }
 
   const loadStats = useCallback(() => {
@@ -689,7 +698,7 @@ export default function CashierDashboard() {
     } finally {
       setAnciensCaisseLoading(false)
     }
-  }, [searchAnciensCaisse, anneeAnciensCaisse, filiereAniliereCaisse = filiereAnciensCaisse, soldeFilterAnciens])
+  }, [searchAnciensCaisse, anneeAnciensCaisse, filiereAnciensCaisse, soldeFilterAnciens])
 
   useEffect(() => {
     if (active === 'anciens') {
