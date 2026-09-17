@@ -536,7 +536,7 @@ class CurriculumController extends Controller
                     $modsList[] = [
                         'module' => (object)[
                             'id'      => $modRaw['ue_nom'] ?? ('UE-' . $sKey),
-                            'nom'     => $modRaw['ue_nom'] ?? 'Unité d'Enseignement',
+                            'nom'     => $modRaw['ue_nom'] ?? 'Unite d\'Enseignement',
                             'code'    => $modRaw['ue_nom'] ?? '',
                             'credits' => $ueCredits,
                         ],
