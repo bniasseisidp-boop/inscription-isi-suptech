@@ -223,11 +223,8 @@ class AccueilPedagogiqueController extends Controller
         $cardPath = $this->pdfService->generateStudentCard($student);
         $fullPath = Storage::disk('public')->path($cardPath);
 
-        return response()->download(
-            $fullPath,
-            'carte_' . $student->matricule . '.pdf',
-            ['Content-Type' => 'application/pdf']
-        );
+        $safeName = 'carte_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf';
+        return response()->download($fullPath, $safeName, ['Content-Type' => 'application/pdf']);
     }
 
     /** Télécharger l'attestation de scolarité d'un étudiant */

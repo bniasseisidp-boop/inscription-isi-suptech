@@ -1659,4 +1659,14 @@ class AdminController extends Controller
 
         return $this->getStudentDossierHistorique($student);
     }
+
+    public function downloadCard(Student $student)
+    {
+        if ($err = $this->checkAccepte($student)) return $err;
+        $cardPath = $this->pdfService->generateStudentCard($student);
+        $fullPath = Storage::disk('public')->path($cardPath);
+        $safeName = 'carte_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', ($student->matricule ?? $student->id)) . '.pdf';
+        return response()->download($fullPath, $safeName, ['Content-Type' => 'application/pdf']);
+    }
+
 }

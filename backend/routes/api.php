@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/etudiants/{student}/rejeter', [AdminController::class, 'rejectStudent']);
         Route::post('/etudiants/{student}/verrouiller-profil', [AdminController::class, 'lockProfile']);
         Route::post('/etudiants/{student}/carte', [AdminController::class, 'generateCard']);
+    Route::get('/etudiants/{student}/carte/telecharger', [AdminController::class, 'downloadCard']);
         Route::post('/etudiants/{student}/document', [AdminController::class, 'uploadDocument']);
         Route::put('/etudiants/{student}', [AdminController::class, 'updateStudentProfile']);
         Route::delete('/etudiants/{student}', [AdminController::class, 'deleteStudent']);

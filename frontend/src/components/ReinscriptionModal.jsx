@@ -11,7 +11,7 @@ import {
   getStudentDossierHistorique
 } from '../services/api'
 
-export default function ReinscriptionModal({ isOpen, onClose, onSuccess, initialStudent = null, isDark = false }) {
+export default function ReinscriptionModal({ isOpen, onClose, onSuccess, initialStudent = null, isDark = false, onOpenEncaissement = null }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [searchResults, setSearchResults] = useState([])
