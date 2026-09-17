@@ -9,12 +9,12 @@ use Illuminate\Support\Facades\Hash;
 class ImportCanonicalFast extends Command
 {
     protected $signature = 'app:import-canonical-fast';
-    protected $description = 'Fast batch import for all 2,193 canonical students in 5 seconds';
+    protected $description = 'Complete import of all 2,193 canonical students, filieres, caisse/payments, and notes/grades';
 
     public function handle()
     {
         ini_set('memory_limit', '1024M');
-        set_time_limit(600);
+        set_time_limit(900);
         DB::disableQueryLog();
 
         $path = storage_path('app/canonical_all_students.json');
@@ -23,15 +23,15 @@ class ImportCanonicalFast extends Command
             return 1;
         }
 
-        $this->info("Reading $path ...");
+        $this->info("Loading canonical file: $path (" . round(filesize($path)/1024/1024, 2) . " MB)");
         $data = json_decode(file_get_contents($path), true);
         $total = count($data);
-        $this->info("Total students to import: $total");
+        $this->info("Total students to process: $total");
 
         $defaultPassword = Hash::make('IsiPass2026!');
         $now = date('Y-m-d H:i:s');
 
-        // 1. Preload existing filieres
+        // 1. Preload / Create Filieres
         $filieres = DB::table('filieres')->get();
         $filiereMap = [];
         foreach ($filieres as $f) {
@@ -39,31 +39,48 @@ class ImportCanonicalFast extends Command
             if ($f->code) $filiereMap[strtoupper(trim($f->code))] = $f->id;
         }
 
-        // 2. Preload existing users
-        $existingUsers = DB::table('users')->pluck('id', 'email')->toArray();
+        // 2. Preload Matieres
+        $matieres = DB::table('matieres')->get();
+        $matiereMap = [];
+        foreach ($matieres as $m) {
+            $matiereMap[strtoupper(trim($m->nom))] = $m->id;
+        }
 
-        // 3. Preload existing students
+        // 3. Preload existing Users & Students
+        $existingUsers = DB::table('users')->pluck('id', 'email')->toArray();
         $existingStudents = DB::table('students')->pluck('id', 'matricule')->toArray();
 
-        $usersToInsert = [];
-        $studentsToInsert = [];
-        $paymentsToInsert = [];
+        $this->info("Importing Filieres, Caisse Data, Notes and Students...");
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
 
-        $this->info("Processing data in memory...");
+        $imported = 0;
+        $updated = 0;
+        $skippedCurrent = 0;
+        $paymentsCount = 0;
+        $notesCount = 0;
 
-        foreach ($data as $item) {
+        foreach ($data as $idx => $item) {
             $matricule = trim($item['matricule'] ?? '');
-            if (!$matricule || str_starts_with($matricule, 'ISI-2026-') || ($item['annee'] ?? '') === '2026-2027') {
+            if (!$matricule) {
+                $bar->advance();
+                continue;
+            }
+
+            // Never touch current 2026-2027 applicant registrations
+            if (str_starts_with($matricule, 'ISI-2026-') || ($item['annee'] ?? '') === '2026-2027') {
+                $skippedCurrent++;
+                $bar->advance();
                 continue;
             }
 
             $nom = trim($item['nom'] ?? '');
             $prenom = trim($item['prenom'] ?? '');
             $annee = trim($item['annee'] ?? $item['annee_universitaire'] ?? '2024-2025');
-            $filiereNom = trim($item['filiere'] ?? '');
+            $filiereNom = trim($item['filiere'] ?? 'Tronc Commun');
             $niveau = trim($item['niveau'] ?? 'Licence 1');
 
-            // Filiere
+            // Find or create filiere
             $filiereId = null;
             if ($filiereNom) {
                 $key = strtoupper($filiereNom);
@@ -71,6 +88,7 @@ class ImportCanonicalFast extends Command
                     $filiereId = $filiereMap[$key];
                 } else {
                     $code = substr(strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $filiereNom)), 0, 8);
+                    if (!$code) $code = 'FIL-' . rand(100, 999);
                     $filiereId = DB::table('filieres')->insertGetId([
                         'nom' => $filiereNom,
                         'code' => $code,
@@ -101,6 +119,8 @@ class ImportCanonicalFast extends Command
                 $existingUsers[$email] = $userId;
             }
 
+            $debit = (float)($item['compta_debit_total'] ?? 0);
+            $paye = (float)($item['compta_total_paye'] ?? 0);
             $solde = (float)($item['compta_solde_restant'] ?? 0);
             $birthDate = !empty($item['date_naissance']) ? date('Y-m-d', strtotime(str_replace('/', '-', $item['date_naissance']))) : null;
 
@@ -126,8 +146,8 @@ class ImportCanonicalFast extends Command
                 'est_transfert' => 0,
                 'profil_complet' => 1,
                 'avance_paiement' => 0,
-                'compta_debit_total' => (float)($item['compta_debit_total'] ?? 0),
-                'compta_total_paye' => (float)($item['compta_total_paye'] ?? 0),
+                'compta_debit_total' => $debit,
+                'compta_total_paye' => $paye,
                 'compta_solde_restant' => $solde,
                 'compta_est_en_regle' => ($solde <= 0 ? 1 : 0),
                 'moyenne_generale' => (float)($item['moyenne_generale'] ?? 0),
@@ -137,15 +157,17 @@ class ImportCanonicalFast extends Command
             ];
 
             if (isset($existingStudents[$matricule])) {
-                DB::table('students')->where('id', $existingStudents[$matricule])->update($studentRow);
                 $studentId = $existingStudents[$matricule];
+                DB::table('students')->where('id', $studentId)->update($studentRow);
+                $updated++;
             } else {
                 $studentRow['created_at'] = $now;
                 $studentId = DB::table('students')->insertGetId($studentRow);
                 $existingStudents[$matricule] = $studentId;
+                $imported++;
             }
 
-            // Payments
+            // 4. Import Payments (Caisse)
             if (!empty($item['paiements']) && is_array($item['paiements'])) {
                 foreach ($item['paiements'] as $pay) {
                     $montant = (float)($pay['montant'] ?? 0);
@@ -169,14 +191,81 @@ class ImportCanonicalFast extends Command
                             'created_at' => $now,
                             'updated_at' => $now,
                         ]);
+                        $paymentsCount++;
                     }
                 }
             }
+
+            // 5. Import Modules & Notes (Pédagogie)
+            if (!empty($item['modules']) && is_array($item['modules'])) {
+                foreach ($item['modules'] as $mod) {
+                    if (!empty($mod['matieres']) && is_array($mod['matieres'])) {
+                        foreach ($mod['matieres'] as $mat) {
+                            $matNom = trim($mat['nom'] ?? '');
+                            if (!$matNom) continue;
+
+                            $matKey = strtoupper($matNom);
+                            if (isset($matiereMap[$matKey])) {
+                                $matiereId = $matiereMap[$matKey];
+                            } else {
+                                $code = substr(strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $matNom)), 0, 10);
+                                if (!$code) $code = 'MAT-' . rand(100, 999);
+                                $matiereId = DB::table('matieres')->insertGetId([
+                                    'nom' => $matNom,
+                                    'code' => $code,
+                                    'coefficient' => (int)($mat['coeff'] ?? 2),
+                                    'filiere_id' => $filiereId,
+                                    'created_at' => $now,
+                                    'updated_at' => $now,
+                                ]);
+                                $matiereMap[$matKey] = $matiereId;
+                            }
+
+                            $cc = isset($mat['cc']) && $mat['cc'] !== '' && $mat['cc'] !== null ? (float)$mat['cc'] : null;
+                            $exam = isset($mat['examen']) && $mat['examen'] !== '' && $mat['examen'] !== null ? (float)$mat['examen'] : null;
+
+                            $existsNote = DB::table('notes')->where('student_id', $studentId)->where('matiere_id', $matiereId)->first();
+                            $noteData = [
+                                'note_cc' => $cc,
+                                'note_examen' => $exam,
+                                'semestre' => (stripos($mod['nom'] ?? '', 'Semestre 2') !== false || stripos($mod['code'] ?? '', 'S2') !== false) ? 'S2' : 'S1',
+                                'annee_universitaire' => $annee,
+                                'updated_at' => $now,
+                            ];
+
+                            if ($existsNote) {
+                                DB::table('notes')->where('id', $existsNote->id)->update($noteData);
+                            } else {
+                                $noteData['student_id'] = $studentId;
+                                $noteData['matiere_id'] = $matiereId;
+                                $noteData['created_at'] = $now;
+                                DB::table('notes')->insert($noteData);
+                                $notesCount++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($idx % 50 === 0) {
+                gc_collect_cycles();
+            }
+
+            $bar->advance();
         }
 
-        $this->newLine();
-        $finalCount = DB::table('students')->count();
-        $this->info("✅ SUCCESS: All historical students imported! Total students in database: $finalCount");
+        $bar->finish();
+        $this->newLine(2);
+        $finalTotal = DB::table('students')->count();
+        $finalPayments = DB::table('payments')->count();
+        $finalNotes = DB::table('notes')->count();
+
+        $this->info("🎉 IMPORTATION COMPLÈTE TERMINÉE AVEC SUCCÈS !");
+        $this->info("  - Étudiants totaux en base : $finalTotal (Créés: $imported | Mis à jour: $updated)");
+        $this->info("  - Reçus et paiements caisse : $finalPayments");
+        $this->info("  - Notes et matières pédagogie : $finalNotes");
+        $this->info("  - Candidatures 2026-2027 protégées : $skippedCurrent");
+
         return 0;
     }
 }
