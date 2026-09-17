@@ -1187,7 +1187,7 @@ class AdminController extends Controller
             $license = License::with('filiere')->findOrFail($validated['license_id']);
 
             // Frais de tenue (0 FCFA en réinscription)
-            $settings = IlluminateSupportFacadesDB::table('site_settings')->pluck('valeur', 'cle');
+            $settings = \Illuminate\Support\Facades\DB::table('site_settings')->pluck('valeur', 'cle');
             $fraisTenue = floatval($settings['frais_tenue'] ?? 60000);
 
             // Frais automatiques : licence frais_reinscription OU (frais_inscription - tenue)
@@ -1252,7 +1252,7 @@ class AdminController extends Controller
             $user = $student->user;
             $tempPassword = null;
             if (!$user) {
-                $tempPassword = IlluminateSupportStr::random(8);
+                $tempPassword = \Illuminate\Support\Str::random(8);
                 $userEmail = $emailFinal ?: strtolower(preg_replace('/[^a-z0-9]/', '', $student->prenom) . '.' . preg_replace('/[^a-z0-9]/', '', $student->nom) . ($student->id) . '@suptech.sn');
                 
                 $existingUser = User::where('email', $userEmail)->first();
@@ -1263,7 +1263,7 @@ class AdminController extends Controller
                     $user = User::create([
                         'name'     => trim($student->prenom . ' ' . $student->nom),
                         'email'    => $userEmail,
-                        'password' => IlluminateSupportFacadesHash::make($tempPassword),
+                        'password' => \Illuminate\Support\Facades\Hash::make($tempPassword),
                         'role'     => 'student',
                     ]);
                     $student->update(['user_id' => $user->id, 'email' => $userEmail]);
@@ -1280,8 +1280,8 @@ class AdminController extends Controller
             // Envoyer email d'invitation si demandé
             if (!empty($validated['send_email']) && $student->email) {
                 try {
-                    IlluminateSupportFacadesMail::to($student->email)->send(
-                        new AppMailStudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
+                    \Illuminate\Support\Facades\Mail::to($student->email)->send(
+                        new \App\Mail\StudentInvite($user, $tempPassword ?: 'votre_mot_de_passe_habituel', $student)
                     );
                 } catch (Exception $e) {
                     Log::warning("Erreur envoi email réinscription: " . $e->getMessage());
