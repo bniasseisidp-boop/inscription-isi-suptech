@@ -477,13 +477,7 @@ class CurriculumController extends Controller
             $dossier = $dossiersByYear[$reqYear];
             $semLabels = $dossier['semestres_dossier'] ?? ['S1', 'S2'];
             
-            $modulesBySem = [];
-            if (!empty($dossier['modules']) && is_array($dossier['modules'])) {
-                foreach ($dossier['modules'] as $m) {
-                    $sKey = trim($m['semestre'] ?? 'S1');
-                    $modulesBySem[$sKey][] = $m;
-                }
-            }
+            $allDossierModules = (!empty($dossier['modules']) && is_array($dossier['modules'])) ? $dossier['modules'] : [];
 
             foreach ($semLabels as $sIdx => $sKey) {
                 $semNum = ($sIdx + 1);
@@ -493,7 +487,27 @@ class CurriculumController extends Controller
 
                 $modsList = [];
                 $lignesSimples = [];
-                $modsRaw = $modulesBySem[$sKey] ?? [];
+                
+                // 1. Filtrer les modules du semestre avec support universel (S1/S2, S3/S4, S5/S6)
+                $modsRaw = [];
+                foreach ($allDossierModules as $m) {
+                    $mSem = strtoupper(trim((string)($m['semestre'] ?? '')));
+                    $tSem = strtoupper(trim((string)$sKey));
+                    
+                    if ($mSem === $tSem) {
+                        $modsRaw[] = $m;
+                    } elseif ($sIdx === 0 && in_array($mSem, ['S1', 'S3', 'S5', '1', 'SEMESTRE 1', 'SEMESTRE 3', 'SEMESTRE 5'])) {
+                        $modsRaw[] = $m;
+                    } elseif ($sIdx === 1 && in_array($mSem, ['S2', 'S4', 'S6', '2', 'SEMESTRE 2', 'SEMESTRE 4', 'SEMESTRE 6'])) {
+                        $modsRaw[] = $m;
+                    }
+                }
+
+                // Fallback si aucun tag explicite : partitionner le tableau en deux
+                if (empty($modsRaw) && !empty($allDossierModules)) {
+                    $half = (int)ceil(count($allDossierModules) / 2);
+                    $modsRaw = ($sIdx === 0) ? array_slice($allDossierModules, 0, $half) : array_slice($allDossierModules, $half);
+                }
 
                 foreach ($modsRaw as $modRaw) {
                     $lignes = [];
