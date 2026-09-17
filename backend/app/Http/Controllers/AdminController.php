@@ -621,6 +621,17 @@ class AdminController extends Controller
             'frais_mensuel'     => 'required|numeric|min:0',
             'calcul_simple'     => 'sometimes|boolean',
         ]);
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('licenses', 'frais_reinscription')) {
+            try {
+                \Illuminate\Support\Facades\Schema::table('licenses', function ($table) {
+                    $table->decimal('frais_reinscription', 10, 2)->nullable()->after('frais_inscription');
+                });
+            } catch (\Exception $e) {
+                unset($validated['frais_reinscription']);
+            }
+        }
+
         return response()->json(License::create($validated), 201);
     }
 
@@ -674,6 +685,17 @@ class AdminController extends Controller
             'frais_mensuel'     => 'required|numeric|min:0',
             'calcul_simple'     => 'sometimes|boolean',
         ]);
+
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('licenses', 'frais_reinscription')) {
+            try {
+                \Illuminate\Support\Facades\Schema::table('licenses', function ($table) {
+                    $table->decimal('frais_reinscription', 10, 2)->nullable()->after('frais_inscription');
+                });
+            } catch (\Exception $e) {
+                unset($validated['frais_reinscription']);
+            }
+        }
+
         $license->update($validated);
         return response()->json($license->fresh());
     }
