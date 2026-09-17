@@ -588,9 +588,21 @@ class CurriculumController extends Controller
         ]);
     }
 
-    public function telechargerMonBulletin(Request $request, $semestre, PDFService $pdfService, BulletinService $bulletinService)
+        public function telechargerMonBulletin(Request $request, $semestre, PDFService $pdfService, BulletinService $bulletinService)
     {
-        $student = Student::where('user_id', $request->user()->id)->with(['license', 'filiere'])->firstOrFail();
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Non authentifié'], 401);
+        }
+
+        $student = Student::where('user_id', $user->id)->with(['license', 'filiere'])->first()
+            ?? Student::where('email', $user->email)->with(['license', 'filiere'])->first()
+            ?? Student::whereRaw("LOWER(TRIM(email)) = ?", [strtolower(trim($user->email))])->with(['license', 'filiere'])->first();
+
+        if (!$student) {
+            return response()->json(['message' => 'Étudiant introuvable pour ce compte'], 404);
+        }
+
         $anneeScolaire = $request->query('annee_scolaire', $student->annee_scolaire ?? '2024-2025');
 
         // 1. Si le paramètre est un ID numérique de Semestre en base
@@ -621,8 +633,9 @@ class CurriculumController extends Controller
             'libelle'       => "Semestre {$semNum} ({$semKey})",
         ];
 
-        // Charger les données du bulletin via mesBulletins
-        $bulletinsData = $this->mesBulletins(new Request(['annee_scolaire' => $anneeScolaire]), $bulletinService)->getData(true);
+        // Charger les données du bulletin via mesBulletins en conservant la requête authentifiée
+        $request->merge(['annee_scolaire' => $anneeScolaire]);
+        $bulletinsData = $this->mesBulletins($request, $bulletinService)->getData(true);
         $targetBulletin = null;
         if (!empty($bulletinsData['bulletins'])) {
             foreach ($bulletinsData['bulletins'] as $b) {
@@ -651,7 +664,7 @@ class CurriculumController extends Controller
         return response()->json(['message' => 'Impossible de générer le bulletin pour ce semestre.'], 404);
     }
 
-    /** Grand tableau de d public function conseilClasse(Semestre $semestre, Request $request, BulletinService $bulletinService)
+    public function conseilClasse(Semestre $semestre, Request $request, BulletinService $bulletinService)
     {
         $anneeScolaire = $request->query('annee_scolaire', date('Y') . '-' . (date('Y') + 1));
         return response()->json($bulletinService->conseilClasse($semestre, $anneeScolaire));
