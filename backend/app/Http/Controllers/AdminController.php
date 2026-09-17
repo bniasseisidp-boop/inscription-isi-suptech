@@ -1240,24 +1240,39 @@ class AdminController extends Controller
             $id = $student->id;
             $name = strtolower(trim(($student->prenom ?? '') . ' ' . ($student->nom ?? '')));
 
+            $matchedRecords = [];
             foreach ($canonicalCache as $c) {
                 $cMat = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $c['matricule'] ?? ''));
-                if (!empty($mat) && $mat === $cMat) {
-                    $canonicalStudent = $c;
-                    break;
-                }
-                if ($idCc && isset($c['id_cc']) && intval($c['id_cc']) === intval($idCc)) {
-                    $canonicalStudent = $c;
-                    break;
-                }
-                if ($id && isset($c['id']) && intval($c['id']) === intval($id)) {
-                    $canonicalStudent = $c;
-                    break;
-                }
                 $cName = strtolower(trim(($c['prenom'] ?? '') . ' ' . ($c['nom'] ?? '')));
-                if (!empty($name) && $name === $cName) {
-                    $canonicalStudent = $c;
-                    break;
+                $isMatch = (!empty($mat) && $mat === $cMat) ||
+                           ($idCc && isset($c['id_cc']) && intval($c['id_cc']) === intval($idCc)) ||
+                           (!empty($name) && $name === $cName);
+                if ($isMatch) {
+                    $matchedRecords[] = $c;
+                }
+            }
+
+            $reqYear = request('annee_scolaire') ?? request('annee_universitaire') ?? request('annee');
+            if (!empty($matchedRecords)) {
+                if ($reqYear) {
+                    foreach ($matchedRecords as $r) {
+                        if (($r['annee'] ?? '') === $reqYear || ($r['annee_universitaire'] ?? '') === $reqYear) {
+                            $canonicalStudent = $r;
+                            break;
+                        }
+                    }
+                }
+                if (!$canonicalStudent) {
+                    // Pick the record with the most populated modules/grades, or latest record
+                    $bestWithModules = null;
+                    foreach ($matchedRecords as $r) {
+                        if (!empty($r['modules']) && count($r['modules']) > 0) {
+                            if (!$bestWithModules || count($r['modules']) > count($bestWithModules['modules'] ?? [])) {
+                                $bestWithModules = $r;
+                            }
+                        }
+                    }
+                    $canonicalStudent = $bestWithModules ?: end($matchedRecords);
                 }
             }
         }
