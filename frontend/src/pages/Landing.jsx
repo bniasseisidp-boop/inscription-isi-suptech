@@ -102,172 +102,60 @@ const CAMPUS_SHOTS = [
   { img:'/etudant_farda.jpeg',                  label:'Ateliers',     tag:'Pratique' },
 ]
 
-const WORDS = ['<html/>','{ }','01001','import','SELECT *','git push','TCP/IP','const =>','#!/bin/sh','docker run','0xFF','BASE64','ssh root@','VLAN 10','ping 8.8.8','npm run','def model()']
-
-// ─── Tech BG ─────────────────────────────────────────────────────────────────
-function TechBg({ isDark }) {
-  const items = useMemo(() => WORDS.map((w, i) => ({ w, x: 5 + (i * 47) % 90, y: 5 + (i * 31) % 88, dur: 4 + (i % 4), delay: i * 0.38 })), [])
+// ─── Subtle warm background (replaces robotic code-words TechBg) ─────────────
+function SubtleBg({ isDark }) {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-      <div style={{ backgroundImage:`radial-gradient(circle,${isDark?'rgba(139,92,246,0.18)':'rgba(99,102,241,0.18)'} 1px,transparent 1px)`,backgroundSize:'40px 40px' }} className="absolute inset-0"/>
-      <div className={`absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full blur-3xl ${isDark?'bg-brand-700/10':'bg-indigo-300/20'}`}/>
-      <div className={`absolute -bottom-48 -right-48 w-[700px] h-[700px] rounded-full blur-3xl ${isDark?'bg-cyan-800/8':'bg-blue-200/25'}`}/>
-      {items.map(({ w, x, y, dur, delay }, i) => (
-        <motion.span key={i} className={`absolute text-[11px] font-mono select-none ${isDark?'text-cyan-400/30':'text-brand-600/40'}`}
-          style={{ left:`${x}%`, top:`${y}%` }}
-          animate={{ y:[0,-16,0], opacity:[0.45,0.9,0.45] }}
-          transition={{ duration:dur, repeat:Infinity, delay, ease:'easeInOut' }}>
-          {w}
-        </motion.span>
-      ))}
+      <div style={{
+        backgroundImage: `radial-gradient(circle, ${isDark ? 'rgba(91,126,196,0.10)' : 'rgba(26,58,143,0.055)'} 1px, transparent 1px)`,
+        backgroundSize: '44px 44px'
+      }} className="absolute inset-0"/>
+      <div className={`absolute -top-48 -left-48 w-[700px] h-[700px] rounded-full blur-3xl ${isDark ? 'bg-brand-700/8' : 'bg-isiblue-100/55'}`}/>
+      <div className={`absolute -bottom-48 -right-48 w-[700px] h-[700px] rounded-full blur-3xl ${isDark ? 'bg-brand-800/6' : 'bg-isigold-100/45'}`}/>
+      <div className={`absolute top-1/3 right-1/4 w-[400px] h-[400px] rounded-full blur-3xl ${isDark ? 'bg-brand-900/5' : 'bg-isiblue-50/60'}`}/>
     </div>
   )
 }
 
-// ─── Filières animated background ─────────────────────────────────────────────
+// ─── Filières background — simple et humain ───────────────────────────────────
 function FilieresBg({ isDark }) {
-  const nodes = useMemo(() => Array.from({ length: 10 }, (_, i) => ({
-    x: 5 + (i * 83) % 88, y: 8 + (i * 61) % 82,
-    dur: 3 + (i % 3) * 1.5, delay: i * 0.45
-  })), [])
-  const links = [[0,3],[1,4],[2,5],[3,6],[4,7],[5,8],[6,9],[7,1],[8,2],[9,0]]
-
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       <div className={`absolute inset-0 ${isDark
         ? 'bg-gradient-to-br from-[#07071e] via-[#0a0a2e]/80 to-[#05050f]'
-        : 'bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/80'
+        : 'bg-gradient-to-br from-isiblue-50/70 via-white to-isigold-50/40'
       }`}/>
-      <svg className="absolute inset-0 w-full h-full" style={{ opacity: isDark ? 0.09 : 0.08 }}>
-        <defs>
-          <pattern id="hexfil" x="0" y="0" width="80" height="70" patternUnits="userSpaceOnUse">
-            <polygon points="40,2 74,20 74,56 40,70 6,56 6,20" fill="none"
-              stroke={isDark ? '#818cf8' : '#4f46e5'} strokeWidth="1"/>
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#hexfil)"/>
-      </svg>
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        {links.map(([a, b], i) => (
-          <motion.line key={i}
-            x1={`${nodes[a].x}%`} y1={`${nodes[a].y}%`}
-            x2={`${nodes[b].x}%`} y2={`${nodes[b].y}%`}
-            stroke={isDark ? 'rgba(99,102,241,0.22)' : 'rgba(79,70,229,0.15)'}
-            strokeWidth="1" strokeDasharray="4 8"
-            animate={{ opacity: [0, 0.9, 0.9, 0] }}
-            transition={{ duration: 5 + i * 0.3, repeat: Infinity, delay: i * 0.7, ease: 'easeInOut' }}
-          />
-        ))}
-      </svg>
-      {nodes.map((n, i) => (
-        <motion.div key={i} className={`absolute rounded-full ${isDark ? 'bg-brand-400' : 'bg-brand-500'}`}
-          style={{ left: `${n.x}%`, top: `${n.y}%`, width: 6, height: 6, marginLeft: -3, marginTop: -3 }}
-          animate={{ scale: [1, 2.2, 1], opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: n.dur, repeat: Infinity, delay: n.delay, ease: 'easeInOut' }}
-        />
-      ))}
-      <motion.div className={`absolute left-0 right-0 h-px ${isDark
-        ? 'bg-gradient-to-r from-transparent via-brand-500/25 to-transparent'
-        : 'bg-gradient-to-r from-transparent via-brand-400/20 to-transparent'
-      }`}
-        animate={{ top: ['0%', '100%'] }}
-        transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-      />
-      <div className={`absolute rounded-full blur-3xl ${isDark ? 'bg-brand-600/8' : 'bg-indigo-300/15'}`}
-        style={{ top: '-10%', right: '-5%', width: 600, height: 600, transform: 'translate(30%,-30%)' }}/>
-      <div className={`absolute rounded-full blur-3xl ${isDark ? 'bg-cyan-600/6' : 'bg-blue-300/12'}`}
-        style={{ bottom: '-10%', left: '-5%', width: 600, height: 600, transform: 'translate(-30%,30%)' }}/>
+      <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 ${isDark ? 'bg-brand-700/10' : 'bg-isiblue-100/60'}`}/>
+      <div className={`absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 ${isDark ? 'bg-brand-800/8' : 'bg-isigold-100/55'}`}/>
+      <div className={`absolute top-1/2 left-1/2 w-[300px] h-[300px] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 ${isDark ? 'bg-brand-700/5' : 'bg-isiblue-50/40'}`}/>
     </div>
   )
 }
 
-// ─── Formateurs animated background ──────────────────────────────────────────
+// ─── Formateurs background — propre et chaleureux ─────────────────────────────
 function FormateursBg({ isDark }) {
-  const particles = useMemo(() => Array.from({ length: 18 }, (_, i) => ({
-    x: 2 + (i * 53) % 96, y: 2 + (i * 41) % 96, sz: 3 + (i % 4),
-    dur: 3 + (i % 5) * 1.1, delay: i * 0.32
-  })), [])
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       <div className={`absolute inset-0 ${isDark
         ? 'bg-gradient-to-br from-[#080814] via-[#0b0a22]/90 to-[#060610]'
-        : 'bg-gradient-to-br from-slate-100/95 via-indigo-50/80 to-slate-50'
+        : 'bg-gradient-to-br from-slate-50 via-white to-isiblue-50/50'
       }`}/>
-      {/* Large glow orbs */}
-      <motion.div className={`absolute rounded-full blur-3xl ${isDark?'bg-brand-600/18':'bg-indigo-300/50'}`}
-        style={{top:'10%',left:'-5%',width:500,height:500}}
-        animate={{scale:[1,1.25,1],opacity:[0.5,1,0.5],y:[0,-20,0]}}
-        transition={{duration:8,repeat:Infinity,ease:'easeInOut'}}/>
-      <motion.div className={`absolute rounded-full blur-3xl ${isDark?'bg-cyan-600/14':'bg-cyan-200/60'}`}
-        style={{bottom:'5%',right:'-5%',width:420,height:420}}
-        animate={{scale:[1,1.3,1],opacity:[0.4,0.9,0.4],y:[0,15,0]}}
-        transition={{duration:9,repeat:Infinity,delay:2,ease:'easeInOut'}}/>
-      <motion.div className={`absolute rounded-full blur-3xl ${isDark?'bg-violet-600/10':'bg-violet-200/40'}`}
-        style={{top:'40%',left:'45%',width:300,height:300,marginLeft:-150,marginTop:-150}}
-        animate={{scale:[1,1.4,1],opacity:[0.3,0.7,0.3]}}
-        transition={{duration:7,repeat:Infinity,delay:1,ease:'easeInOut'}}/>
-      {/* Particles */}
-      {particles.map((p, i) => (
-        <motion.div key={i}
-          className={`absolute rounded-full ${isDark?'bg-brand-400/45':'bg-brand-500/25'}`}
-          style={{left:`${p.x}%`,top:`${p.y}%`,width:p.sz,height:p.sz,marginLeft:-p.sz/2,marginTop:-p.sz/2}}
-          animate={{scale:[1,3.5,1],opacity:[0.1,0.6,0.1]}}
-          transition={{duration:p.dur,repeat:Infinity,delay:p.delay,ease:'easeInOut'}}/>
-      ))}
-      {/* Scan line */}
-      <motion.div className={`absolute left-0 right-0 h-px ${isDark
-        ?'bg-gradient-to-r from-transparent via-brand-400/25 to-transparent'
-        :'bg-gradient-to-r from-transparent via-brand-400/18 to-transparent'
-      }`} animate={{top:['0%','100%']}} transition={{duration:12,repeat:Infinity,ease:'linear'}}/>
+      <div className={`absolute top-0 left-0 w-[500px] h-[500px] rounded-full blur-3xl -translate-y-1/4 -translate-x-1/4 ${isDark ? 'bg-brand-600/14' : 'bg-isiblue-100/70'}`}/>
+      <div className={`absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full blur-3xl translate-y-1/4 translate-x-1/4 ${isDark ? 'bg-brand-700/10' : 'bg-isigold-100/60'}`}/>
     </div>
   )
 }
 
-// ─── Membres animated background ─────────────────────────────────────────────
+// ─── Membres background — simple, humain ─────────────────────────────────────
 function MembresBg({ isDark }) {
-  const orbs = useMemo(() => Array.from({ length: 6 }, (_, i) => ({
-    x: 5 + (i * 67) % 88, y: 8 + (i * 43) % 82,
-    size: 220 + (i * 55) % 280, dur: 6 + (i % 4) * 2, delay: i * 0.8
-  })), [])
-  const dots = useMemo(() => Array.from({ length: 16 }, (_, i) => ({
-    x: 3 + (i * 59) % 94, y: 4 + (i * 71) % 92, dur: 3.5 + (i % 5), delay: i * 0.38
-  })), [])
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       <div className={`absolute inset-0 ${isDark
         ? 'bg-gradient-to-br from-[#050510] via-[#06061a] to-[#030308]'
         : 'bg-white'
       }`}/>
-      {/* Large animated orbs - much more visible */}
-      {orbs.map((o, i) => (
-        <motion.div key={i}
-          className={`absolute rounded-full blur-3xl ${isDark
-            ? i % 2 === 0 ? 'bg-cyan-500/20' : 'bg-brand-500/15'
-            : i % 2 === 0 ? 'bg-cyan-400/20' : 'bg-brand-400/15'
-          }`}
-          style={{ left:`${o.x}%`, top:`${o.y}%`, width:o.size, height:o.size, marginLeft:-o.size/2, marginTop:-o.size/2 }}
-          animate={{ scale:[1,1.4,1], opacity:[0.5,1,0.5], x:[0,20,-12,0], y:[0,-25,12,0] }}
-          transition={{ duration:o.dur, repeat:Infinity, delay:o.delay, ease:'easeInOut' }}
-        />
-      ))}
-      {/* Sparkle dots */}
-      {dots.map((n, i) => (
-        <motion.div key={i}
-          className={`absolute rounded-full ${isDark ? 'bg-cyan-300/50' : 'bg-cyan-600/30'}`}
-          style={{ left:`${n.x}%`, top:`${n.y}%`, width:4, height:4, marginLeft:-2, marginTop:-2 }}
-          animate={{ scale:[1,3.2,1], opacity:[0.15,0.7,0.15] }}
-          transition={{ duration:n.dur, repeat:Infinity, delay:n.delay, ease:'easeInOut' }}
-        />
-      ))}
-      {/* Scan line */}
-      <motion.div
-        className={`absolute left-0 right-0 h-[1px] ${isDark
-          ? 'bg-gradient-to-r from-transparent via-cyan-400/30 to-transparent'
-          : 'bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent'
-        }`}
-        animate={{ top:['0%','100%'] }}
-        transition={{ duration:14, repeat:Infinity, ease:'linear' }}
-      />
+      <div className={`absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-3xl -translate-y-1/4 translate-x-1/4 ${isDark ? 'bg-brand-700/10' : 'bg-isiblue-50/80'}`}/>
+      <div className={`absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full blur-3xl translate-y-1/4 -translate-x-1/4 ${isDark ? 'bg-brand-800/8' : 'bg-isigold-50/70'}`}/>
     </div>
   )
 }
@@ -392,7 +280,7 @@ function Counter({ target, suffix='', label, icon: Icon, isDark }) {
   }, [inView, target])
   return (
     <motion.div ref={ref} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="text-center group">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand-500/30 group-hover:scale-110 transition-transform duration-300">
+      <div className="w-14 h-14 rounded-2xl bg-brand-500 flex items-center justify-center mx-auto mb-4 shadow-md shadow-brand-500/20 group-hover:scale-110 transition-transform duration-300">
         <Icon size={24} className="text-white"/>
       </div>
       <div className={`text-4xl md:text-5xl font-black mb-1 ${isDark?'text-white':'text-slate-900'}`}>{n.toLocaleString()}{suffix}</div>
@@ -714,7 +602,7 @@ function DepartementsBrowser({ isDark: D }) {
           <button key={d.id} onClick={() => setActiveDept(d.id)}
             className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
               activeDept === d.id
-                ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-lg shadow-brand-500/25'
+                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
                 : D ? 'bg-white/5 text-white/60 hover:bg-white/10 border border-white/10' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
             }`}>
             {d.nom.replace('Département ', '')}
@@ -987,11 +875,11 @@ export default function Landing() {
     ? 'bg-white/5 border border-white/10 text-white placeholder-white/25 focus:border-brand-400/60 focus:bg-white/8'
     : 'bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:border-brand-400 shadow-sm'
   const hr  = D ? 'border-white/[0.08]':'border-slate-100'
-  const sec = D ? 'bg-white/[0.02]':'bg-slate-50/80'
+  const sec = D ? 'bg-white/[0.02]':'bg-isiblue-50/40'
 
   return (
-    <div className={`min-h-screen relative ${D?'bg-[#080812]':'bg-slate-50'}`}>
-      <TechBg isDark={D}/>
+    <div className={`min-h-screen relative ${D?'bg-[#080812]':'bg-white'}`}>
+      <SubtleBg isDark={D}/>
 
       {/* Theme toggle */}
       <motion.button whileTap={{scale:0.9}} onClick={()=>setDark(d=>!d)}
@@ -1010,9 +898,9 @@ export default function Landing() {
               <div className="w-2 h-2 rounded-full bg-isiblue-400 animate-pulse"/> {blocs.hero_badge || 'Inscriptions 2026-2027 ouvertes'}
             </motion.div>
             <motion.h1 initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.1}}
-              className={`text-5xl sm:text-6xl md:text-7xl font-black leading-[1.05] mb-6 ${tx}`}>
+              className={`text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.1] mb-6 ${tx}`}>
               {blocs.hero_titre_1 || 'Votre avenir'}<br/>
-              <span className={D?'gradient-text':'gradient-text-light'}>{blocs.hero_titre_accent || 'numérique'}</span><br/>
+              <span className={D?'text-isigold-400':'text-isiblue-600'}>{blocs.hero_titre_accent || 'numérique'}</span><br/>
               {blocs.hero_titre_2 || 'commence ici'}
             </motion.h1>
             <motion.p initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.2}}
@@ -1022,13 +910,31 @@ export default function Landing() {
                 <span className={D?'text-isiblue-300 font-bold':'text-isiblue-700 font-bold'}>Dakar, Sénégal.</span>
               </>)}
             </motion.p>
-            <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.3}} className="flex flex-col sm:flex-row gap-4 mb-12">
+            <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.7,delay:0.3}} className="flex flex-col sm:flex-row gap-4 mb-6">
               <Link to="/pre-inscription" className="btn-primary text-base px-8 py-4 flex items-center justify-center gap-2.5 rounded-2xl shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-shadow">
                 <GraduationCap size={20}/> Pré-inscription <ArrowRight size={18}/>
               </Link>
               <Link to="/connexion" className={`flex items-center justify-center gap-2 font-bold px-8 py-4 rounded-2xl border-2 transition-all ${D?'border-white/15 text-white hover:bg-white/6 hover:border-white/30':'border-slate-200 text-slate-700 bg-white hover:bg-slate-50 shadow-sm'}`}>
                 <Lock size={16}/> Espace étudiant
               </Link>
+            </motion.div>
+
+            {/* Social proof humain */}
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.5}} className="flex items-center gap-3 mb-8">
+              <div className="flex -space-x-2">
+                {['/etudant_farda.jpeg', '/cisse.jpeg', '/mr_robert.jpeg', '/junior.jpeg'].map((src,i) => (
+                  <div key={i} className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm">
+                    <img src={src} alt="" className="w-full h-full object-cover object-top"/>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className={`text-sm font-bold ${D?'text-white':'text-slate-800'}`}>Rejoignez +{siteStats.stat_etudiants} étudiants</div>
+                <div className="flex gap-0.5 mt-0.5">
+                  {[1,2,3,4,5].map(i=><Star key={i} size={11} className="text-isigold-400 fill-isigold-400"/>)}
+                  <span className={`text-xs ml-1 ${txm}`}>{siteStats.stat_insertion}% satisfaits</span>
+                </div>
+              </div>
             </motion.div>
             <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.7}}
               className={`flex flex-wrap gap-8 pt-8 border-t ${hr}`}>
@@ -1062,22 +968,22 @@ export default function Landing() {
       </section>
 
       {/* ── FILIÈRES ──────────────────────────────────────────────────────── */}
-      <section id="filieres" className={`relative z-10 py-20 px-4 overflow-hidden ${D?'bg-[#07071e]':'bg-gradient-to-br from-slate-50 via-indigo-50/60 to-white'}`}>
+      <section id="filieres" className={`relative z-10 py-20 px-4 overflow-hidden ${D?'bg-[#07071e]':'bg-slate-50/60'}`}>
         <FilieresBg isDark={D}/>
         <div className="max-w-6xl mx-auto relative z-10">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="text-center mb-14">
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400':'text-brand-600'}`}>
-              <Cpu size={14}/> Formations
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400/80':'text-brand-500/70'}`}>
+              <Cpu size={12}/> Formations
             </span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-4 ${tx}`}>Nos <span className={D?'gradient-text':'gradient-text-light'}>filières d'excellence</span></h2>
-            <p className={`max-w-xl mx-auto text-sm ${txs}`}>6 filières pro avec certifications reconnues. Cliquez pour voir les détails et les frais.</p>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-4 ${tx}`}>Nos <span className={D?'text-isigold-400':'text-isiblue-600'}>filières d'excellence</span></h2>
+            <p className={`max-w-xl mx-auto text-sm ${txs}`}>Choisissez la filière qui correspond à votre passion — chaque programme est conçu avec des professionnels du secteur.</p>
           </motion.div>
-          {/* ── Turbillon 3D circulaire ── */}
-          <CircleCarousel
-            items={filieres} isDark={D}
-            radius={420} duration={22} cardW={268} cardH={260} height={540}
-            renderItem={f => <FCardM f={f} openF={openF} D={D}/>}
-          />
+          {/* ── Grille lisible des filières ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filieres.map((f, i) => (
+              <FCard key={f.id || i} f={f} openF={openF} D={D}/>
+            ))}
+          </div>
 
           {/* ── Explorateur par département (BT / BTS / Licences / Masters / Ingénieur) ── */}
           <DepartementsBrowser isDark={D}/>
@@ -1090,9 +996,9 @@ export default function Landing() {
         {/* Header */}
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-12 text-center relative z-10">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}}>
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-cyan-400':'text-cyan-700'}`}><Users size={14}/> Notre équipe</span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-4 ${tx}`}>L'équipe <span className={D?'gradient-text':'gradient-text-light'}>ISI SUPTECH</span></h2>
-            <p className={`max-w-xl mx-auto text-sm ${txs}`}>L'équipe dédiée à votre réussite et à la bonne marche du campus.</p>
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 mb-3 ${D?'text-brand-300/80':'text-isiblue-500/70'}`}><Users size={12}/> Notre équipe</span>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-4 ${tx}`}>L'équipe <span className={D?'text-isigold-400':'text-isiblue-600'}>ISI SUPTECH</span></h2>
+            <p className={`max-w-xl mx-auto text-sm ${txs}`}>Des personnes passionnées qui s'investissent chaque jour pour vous accompagner et faire vivre notre campus.</p>
           </motion.div>
         </div>
         {/* Full-width photo cards like formateurs */}
@@ -1104,8 +1010,8 @@ export default function Landing() {
                 initial={{opacity:0,y:40}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.12}}
                 whileHover={{y:-6,transition:{type:'spring',stiffness:200,damping:20}}}
                 className={`relative h-[400px] lg:h-[460px] overflow-hidden group rounded-3xl shadow-2xl shadow-black/25 border-2 transition-all duration-500 ${D
-                  ?'border-white/8 hover:border-cyan-500/50 hover:shadow-cyan-500/15'
-                  :'border-slate-200/60 hover:border-cyan-300 hover:shadow-cyan-200/40'}`}>
+                  ?'border-white/8 hover:border-brand-400/50 hover:shadow-brand-400/15'
+                  :'border-slate-200/60 hover:border-isiblue-300 hover:shadow-isiblue-200/40'}`}>
                 <img src={m.photo} alt={m.nom}
                   className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"/>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/25 to-black/5"/>
@@ -1122,7 +1028,7 @@ export default function Landing() {
                 {/* Bottom content */}
                 <div className="absolute bottom-0 left-0 right-0 p-6">
                   <h4 className="text-xl font-black text-white mb-1">{m.nom}</h4>
-                  <p className="text-cyan-300 text-sm font-bold mb-0 group-hover:mb-3 transition-all duration-300">{m.specialite}</p>
+                  <p className="text-isigold-300 text-sm font-bold mb-0 group-hover:mb-3 transition-all duration-300">{m.specialite}</p>
                   <div className="max-h-0 overflow-hidden group-hover:max-h-44 transition-all duration-500">
                     <p className="text-white/55 text-xs leading-relaxed mb-3 pt-1">{m.desc}</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -1140,11 +1046,11 @@ export default function Landing() {
       <section className={`relative z-10 py-20 px-4 ${sec}`}>
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="text-center mb-14">
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400':'text-brand-600'}`}>
-              <Award size={14}/> Partenariat
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400/80':'text-brand-500/70'}`}>
+              <Award size={12}/> Partenaires
             </span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-4 ${tx}`}>Nos <span className={D?'gradient-text':'gradient-text-light'}>partenaires</span></h2>
-            <p className={`max-w-xl mx-auto text-sm ${txs}`}>Survolez chaque logo pour découvrir le partenariat.</p>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-4 ${tx}`}>Nos <span className={D?'text-isigold-400':'text-isiblue-600'}>partenaires</span></h2>
+            <p className={`max-w-xl mx-auto text-sm ${txs}`}>Des entreprises et institutions qui nous font confiance et ouvrent leurs portes à nos étudiants.</p>
           </motion.div>
           {/* ── Défilement horizontal infini ── */}
           <div className="space-y-4 -mx-4 sm:-mx-8 lg:-mx-12">
@@ -1160,8 +1066,8 @@ export default function Landing() {
       <section className="relative z-10 py-20 px-4">
         <div className="max-w-5xl mx-auto">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="text-center mb-14">
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400':'text-brand-600'}`}><Zap size={14}/> Processus</span>
-            <h2 className={`text-4xl md:text-5xl font-black ${tx}`}>Comment s'inscrire ?</h2>
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400/80':'text-brand-500/70'}`}><Zap size={12}/> Comment s'inscrire</span>
+            <h2 className={`text-2xl md:text-3xl font-bold ${tx}`}>Comment s'inscrire ?</h2>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
             {[
@@ -1178,7 +1084,7 @@ export default function Landing() {
                       ?'bg-white/[0.04] border-white/[0.08] hover:border-brand-500/35 hover:shadow-2xl hover:shadow-brand-500/10'
                       :'bg-white border-slate-200 shadow-[0_2px_16px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_40px_rgba(99,102,241,0.12)]'}`}>
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center text-white text-xs font-black shadow-lg shadow-brand-500/40">{s.n}</div>
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-brand-600 to-brand-400 flex items-center justify-center mb-4 mt-3 shadow-lg shadow-brand-500/30">
+                    <div className="w-14 h-14 mx-auto rounded-2xl bg-brand-500 flex items-center justify-center mb-4 mt-3 shadow-md shadow-brand-500/20">
                       <Icon size={22} className="text-white"/>
                     </div>
                     <h4 className={`font-black mb-2 ${tx}`}>{s.t}</h4>
@@ -1197,9 +1103,9 @@ export default function Landing() {
         {/* Header */}
         <div className="max-w-6xl mx-auto px-4 pt-20 pb-12 text-center relative z-10">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}}>
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400':'text-brand-600'}`}><Server size={14}/> Encadrement</span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-4 ${tx}`}>Nos <span className={D?'gradient-text':'gradient-text-light'}>formateurs</span></h2>
-            <p className={`max-w-xl mx-auto text-sm ${txs}`}>Des experts du terrain. Survolez chaque photo pour découvrir leurs compétences.</p>
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400/80':'text-brand-500/70'}`}><BookOpen size={12}/> Formateurs</span>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-4 ${tx}`}>Nos <span className={D?'text-isigold-400':'text-isiblue-600'}>formateurs</span></h2>
+            <p className={`max-w-xl mx-auto text-sm ${txs}`}>Nos formateurs viennent du monde professionnel — ils partagent leur expérience réelle pour vous préparer au marché du travail.</p>
           </motion.div>
         </div>
         {/* Full-width photo strip with proper card separation */}
@@ -1233,7 +1139,7 @@ export default function Landing() {
                 {/* Content bottom */}
                 <div className="absolute bottom-0 left-0 right-0 p-6">
                   <h4 className="text-2xl font-black text-white mb-1">{f.prenom} {f.nom}</h4>
-                  <p className="text-brand-300 text-sm font-bold mb-0 group-hover:mb-4 transition-all duration-300">{f.specialite}</p>
+                  <p className="text-isigold-300 text-sm font-bold mb-0 group-hover:mb-4 transition-all duration-300">{f.specialite}</p>
                   {/* Skills & desc — visible on hover */}
                   <div className="max-h-0 overflow-hidden group-hover:max-h-52 transition-all duration-500">
                     <p className="text-white/65 text-xs leading-relaxed mb-3 pt-1">{f.desc}</p>
@@ -1252,8 +1158,8 @@ export default function Landing() {
       <section id="campus" className={`relative z-10 py-20 overflow-hidden ${sec}`}>
         <div className="max-w-6xl mx-auto px-4">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="mb-12">
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center gap-2 mb-3 ${D?'text-brand-400':'text-brand-600'}`}><Camera size={14}/> Vie du campus</span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-3 ${tx}`}>Campus & <span className={D?'gradient-text':'gradient-text-light'}>Étudiants</span></h2>
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center gap-2 mb-3 ${D?'text-brand-400/80':'text-brand-500/70'}`}><Camera size={12}/> Vie du campus</span>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-3 ${tx}`}>La vie sur le <span className={D?'text-isigold-400':'text-isiblue-600'}>campus</span></h2>
             <p className={`text-sm ${txs}`}>Découvrez la vie à l'ISI SUPTECH — formations, soutenances et projets innovants.</p>
           </motion.div>
         </div>
@@ -1313,7 +1219,7 @@ export default function Landing() {
             <motion.div
               initial={{opacity:0,scale:0.88}} whileInView={{opacity:1,scale:1,transition:{delay:0.3,duration:0.6}}} viewport={{once:true}}
               whileHover={{scale:1.04,transition:{type:'spring',stiffness:200,damping:20}}}
-              className="hidden md:flex col-span-2 md:col-span-1 rounded-3xl bg-gradient-to-br from-brand-700 via-brand-600 to-cyan-700 flex-col items-center justify-center p-8 shadow-2xl shadow-brand-500/35 relative overflow-hidden cursor-pointer">
+              className="hidden md:flex col-span-2 md:col-span-1 rounded-3xl bg-isiblue-700 flex-col items-center justify-center p-8 shadow-xl shadow-isiblue-500/25 relative overflow-hidden cursor-pointer">
               <div className="absolute inset-0" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.12) 1px,transparent 1px)',backgroundSize:'22px 22px'}}/>
               <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 blur-2xl -translate-y-1/2 translate-x-1/2"/>
               <div className="relative z-10 grid grid-cols-3 gap-6 w-full">
@@ -1340,8 +1246,8 @@ export default function Landing() {
         <section className="relative z-10 py-20 px-4">
           <div className="max-w-6xl mx-auto">
             <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="text-center mb-14">
-              <span className={`text-sm font-black uppercase tracking-[0.3em] mb-3 block ${D?'text-brand-400':'text-brand-600'}`}>Témoignages</span>
-              <h2 className={`text-4xl font-black ${tx}`}>Ce que disent <span className={D?'gradient-text':'gradient-text-light'}>nos étudiants</span></h2>
+              <span className={`text-xs font-semibold uppercase tracking-widest mb-3 block ${D?'text-brand-400/80':'text-brand-500/70'}`}>Témoignages</span>
+              <h2 className={`text-2xl md:text-3xl font-bold ${tx}`}>Ce que disent <span className={D?'text-isigold-400':'text-isiblue-600'}>nos étudiants</span></h2>
             </motion.div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {temos.slice(0,6).map((t,i)=>(
@@ -1394,8 +1300,8 @@ export default function Landing() {
               <div className={`inline-flex items-center gap-2 border rounded-full px-4 py-1.5 text-xs font-bold mb-6 ${D?'bg-white/10 border-white/20 text-white/80':'bg-brand-50 border-brand-200 text-brand-700'}`}>
                 <Quote size={12}/> Témoignages étudiants
               </div>
-              <h2 className={`text-4xl md:text-5xl font-black mb-4 leading-tight ${D?'text-white':'text-slate-900'}`}>
-                Votre voix<br/><span className={D?'gradient-text':'gradient-text-light'}>compte ici</span>
+              <h2 className={`text-2xl md:text-3xl font-bold mb-4 leading-tight ${D?'text-white':'text-slate-900'}`}>
+                Votre voix<br/><span className={D?'text-isigold-400':'text-isiblue-600'}>compte ici</span>
               </h2>
               <p className={`leading-relaxed mb-8 text-base ${D?'text-white/60':'text-slate-500'}`}>
                 Chaque témoignage aide les futurs étudiants à trouver leur voie. Partagez votre vécu à l'ISI SUPTECH.
@@ -1426,13 +1332,13 @@ export default function Landing() {
                     <motion.div key={real?.id ?? 'exemple'}
                       initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:0.4}}
                       className={`border rounded-2xl p-5 relative overflow-hidden ${D?'bg-white/5 border-white/12':'bg-white border-slate-200 shadow-md'}`}>
-                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-isiblue-500 to-isigold-500"/>
+                      <div className={`absolute top-0 left-0 right-0 h-0.5 ${D?'bg-isiblue-500':'bg-isiblue-600'}`}/>
                       <Quote size={18} className={D?'text-isiblue-300 mb-3':'text-isiblue-500 mb-3'}/>
                       <p className={`text-sm leading-relaxed italic mb-4 ${D?'text-white/65':'text-slate-600'}`}>
                         "{shown.contenu}"
                       </p>
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-isiblue-500 to-isigold-500 flex items-center justify-center flex-shrink-0 text-white font-black text-sm">
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-isiblue-600 flex items-center justify-center flex-shrink-0 text-white font-bold text-sm">
                           {shown.photo ? <img src={shown.photo} alt={shown.nom} className="w-full h-full object-cover"/> : shown.nom[0]?.toUpperCase()}
                         </div>
                         <div>
@@ -1458,7 +1364,7 @@ export default function Landing() {
             <motion.div initial={{opacity:0,x:40}} whileInView={{opacity:1,x:0}} viewport={{once:true}} transition={{duration:0.7,delay:0.1}}
               className="lg:col-span-3">
               <div className={`relative rounded-3xl overflow-hidden shadow-2xl ${D?'shadow-black/40':'shadow-slate-200/80'}`}>
-                <div className="h-1.5 bg-gradient-to-r from-brand-500 via-cyan-500 to-violet-500"/>
+                <div className="h-1 bg-isiblue-600"/>
                 <div className={`p-8 border border-t-0 ${D?'bg-white/[0.05] backdrop-blur-xl border-white/10':'bg-white border-slate-200'}`}>
                   <div className="text-center mb-7">
                     <h3 className={`text-2xl font-black mb-1.5 ${D?'text-white':'text-slate-900'}`}>Partagez votre expérience</h3>
@@ -1467,7 +1373,7 @@ export default function Landing() {
                   {tOK ? (
                     <div className="text-center py-10">
                       <motion.div initial={{scale:0}} animate={{scale:1}} transition={{type:'spring',damping:12}}
-                        className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center mx-auto mb-5 shadow-2xl shadow-emerald-500/30">
+                        className="w-20 h-20 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-emerald-500/20">
                         <CheckCircle2 size={36} className="text-white"/>
                       </motion.div>
                       <h4 className={`font-black text-2xl mb-2 ${D?'text-white':'text-slate-900'}`}>Merci pour votre témoignage !</h4>
@@ -1535,7 +1441,7 @@ export default function Landing() {
           <motion.div initial={{opacity:0,scale:0.95}} whileInView={{opacity:1,scale:1}} viewport={{once:true}}
             className="relative rounded-3xl overflow-hidden">
             {/* BG */}
-            <div className="absolute inset-0 bg-gradient-to-br from-brand-800 via-brand-700 to-cyan-800"/>
+            <div className="absolute inset-0 bg-isiblue-800"/>
             <div className="absolute inset-0" style={{backgroundImage:'radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px)',backgroundSize:'28px 28px'}}/>
             <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 blur-3xl -translate-y-1/2 translate-x-1/2"/>
             <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white/5 blur-3xl translate-y-1/2 -translate-x-1/2"/>
@@ -1574,8 +1480,8 @@ export default function Landing() {
       <section className={`relative z-10 py-20 px-4 ${sec}`}>
         <div className="max-w-6xl mx-auto">
           <motion.div initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="text-center mb-14">
-            <span className={`text-sm font-black uppercase tracking-[0.3em] flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400':'text-brand-600'}`}><MapPin size={14}/> Localisation</span>
-            <h2 className={`text-4xl md:text-5xl font-black mb-3 ${tx}`}>Où nous <span className={D?'gradient-text':'gradient-text-light'}>trouver ?</span></h2>
+            <span className={`text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 mb-3 ${D?'text-brand-400/80':'text-brand-500/70'}`}><MapPin size={12}/> Localisation</span>
+            <h2 className={`text-2xl md:text-3xl font-bold mb-3 ${tx}`}>Où nous <span className={D?'text-isigold-400':'text-isiblue-600'}>trouver ?</span></h2>
             <p className={`max-w-xl mx-auto text-sm ${txs}`}>Sicap Liberté 3, Dakar — facile d'accès en transport ou en voiture.</p>
           </motion.div>
 
@@ -1584,9 +1490,9 @@ export default function Landing() {
             <motion.div initial={{opacity:0,x:-30}} whileInView={{opacity:1,x:0}} viewport={{once:true}} transition={{duration:0.6}} className="lg:col-span-2 space-y-4">
               <div className={`${card} rounded-2xl p-6`}>
                 <div className="flex items-center gap-3 mb-5">
-                  <motion.div animate={{y:[0,-5,0]}} transition={{duration:2.2,repeat:Infinity}} className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                  <div className="w-12 h-12 rounded-2xl bg-isiblue-700 flex items-center justify-center shadow-md shadow-isiblue-500/20">
                     <MapPin size={22} className="text-white"/>
-                  </motion.div>
+                  </div>
                   <div><h3 className={`font-black text-lg ${tx}`}>Campus ISI SUPTECH</h3><p className={`text-xs ${txm}`}>Siège principal — Dakar</p></div>
                 </div>
                 <div className="space-y-3">
@@ -1622,7 +1528,7 @@ export default function Landing() {
             {/* Map */}
             <motion.div initial={{opacity:0,x:30,scale:0.96}} whileInView={{opacity:1,x:0,scale:1}} viewport={{once:true}} transition={{duration:0.7}} className="lg:col-span-3">
               <div className="relative">
-                <motion.div animate={{scale:[1,1.015,1],opacity:[0.6,1,0.6]}} transition={{duration:3,repeat:Infinity}} className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-brand-500/20 via-cyan-500/10 to-brand-500/20 blur-xl"/>
+                <div className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-isiblue-100/60 via-transparent to-isigold-100/40 blur-xl"/>
                 <div className={`relative rounded-2xl overflow-hidden border-2 shadow-2xl ${D?'border-white/10 shadow-black/40':'border-slate-200 shadow-slate-300/40'}`}>
                   <iframe
                     title="ISI SUPTECH Dakar"
@@ -1631,7 +1537,7 @@ export default function Landing() {
                     style={{display:'block',border:'none',filter:D?'invert(90%) hue-rotate(180deg) brightness(0.85) contrast(0.9)':'none'}}
                     allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
                   />
-                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-black shadow-xl shadow-brand-500/40">
+                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-isiblue-700 text-white px-4 py-2 rounded-xl text-sm font-black shadow-xl shadow-isiblue-500/40">
                     <motion.div animate={{scale:[1,1.4,1]}} transition={{duration:1.4,repeat:Infinity}}><MapPin size={14}/></motion.div>
                     ISI SUPTECH — Dakar
                   </div>
@@ -1650,35 +1556,22 @@ export default function Landing() {
       <section className="relative z-10 py-24 px-4 overflow-hidden">
         <motion.div initial={{opacity:0,y:40}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{duration:0.7}}
           className={`max-w-5xl mx-auto relative overflow-hidden rounded-3xl shadow-2xl ${D?'shadow-blue-200/40':'shadow-brand-600/30'}`}>
-          {/* Backgrounds - inversés selon mode */}
+          {/* Backgrounds */}
           {D ? (
             <>
-              <div className="absolute inset-0 bg-gradient-to-br from-white via-blue-50/80 to-indigo-50"/>
-              <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-brand-400/25 to-cyan-400/15 blur-3xl"/>
-              <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-indigo-400/20 to-blue-400/25 blur-3xl"/>
+              <div className="absolute inset-0 bg-gradient-to-br from-isiblue-50 via-white to-isigold-50/50"/>
+              <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-isiblue-100/60 blur-3xl"/>
+              <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-isigold-100/40 blur-3xl"/>
             </>
           ) : (
             <>
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-brand-900/90 to-slate-950"/>
-              <div className="absolute inset-0" style={{backgroundImage:'radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.3) 0%, transparent 60%)'}}/>
-              <div className="absolute inset-0" style={{backgroundImage:'radial-gradient(ellipse at 80% 50%, rgba(6,182,212,0.2) 0%, transparent 60%)'}}/>
+              <div className="absolute inset-0 bg-gradient-to-br from-isiblue-900 via-isiblue-800 to-isiblue-950"/>
+              <div className="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-isiblue-600/20 blur-3xl"/>
+              <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-isigold-600/15 blur-3xl"/>
             </>
           )}
-          {/* Dot pattern */}
-          <div className="absolute inset-0" style={{backgroundImage:`radial-gradient(circle,${D?'rgba(99,102,241,0.12)':'rgba(255,255,255,0.05)'} 1px,transparent 1px)`,backgroundSize:'24px 24px'}}/>
-          {/* Floating tech icons */}
-          {[
-            {Icon:Code2,x:'6%',y:'15%'},{Icon:Shield,x:'88%',y:'12%'},
-            {Icon:Network,x:'8%',y:'72%'},{Icon:Brain,x:'85%',y:'68%'},
-            {Icon:Database,x:'50%',y:'4%'},{Icon:Cpu,x:'47%',y:'88%'},
-          ].map(({Icon,x,y},i)=>(
-            <motion.div key={i} className={`absolute w-11 h-11 rounded-2xl flex items-center justify-center pointer-events-none ${D?'bg-brand-100/80 text-brand-500':'bg-white/6 text-white/20'}`}
-              style={{left:x,top:y}}
-              animate={{y:[0,-14,0],rotate:[0,6,-6,0]}}
-              transition={{duration:3.5+i*0.6,repeat:Infinity,delay:i*0.5,ease:'easeInOut'}}>
-              <Icon size={18}/>
-            </motion.div>
-          ))}
+          {/* Dot pattern subtil */}
+          <div className="absolute inset-0" style={{backgroundImage:`radial-gradient(circle,${D?'rgba(26,58,143,0.08)':'rgba(255,255,255,0.06)'} 1px,transparent 1px)`,backgroundSize:'28px 28px'}}/>
 
           <div className="relative z-10 px-8 py-14 md:px-16 md:py-20">
             <div className="max-w-2xl mx-auto text-center">
@@ -1686,23 +1579,22 @@ export default function Landing() {
               <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black mb-6 border ${D?'bg-brand-50 border-brand-200 text-brand-700':'bg-white/10 border-white/20 text-white/80'}`}>
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/> Inscriptions 2026-2027 ouvertes
               </div>
-              {/* Animated icon */}
-              <motion.div className={`w-20 h-20 rounded-2xl mx-auto mb-7 flex items-center justify-center shadow-2xl ${D?'bg-gradient-to-br from-brand-600 to-cyan-600 shadow-brand-400/40':'bg-white/10 border-2 border-white/20'}`}
-                animate={{rotate:[0,6,-6,0]}} transition={{duration:5,repeat:Infinity,ease:'easeInOut'}}>
+              {/* Icon statique — chaleureux */}
+              <div className={`w-20 h-20 rounded-2xl mx-auto mb-7 flex items-center justify-center shadow-lg ${D?'bg-isiblue-700 shadow-isiblue-500/30':'bg-white/10 border-2 border-white/20'}`}>
                 <GraduationCap size={36} className="text-white"/>
-              </motion.div>
-              <h2 className={`text-4xl md:text-5xl font-black mb-4 leading-tight ${D?'text-slate-900':'text-white'}`}>
-                Prêt à rejoindre<br/><span className={D?'gradient-text-light':'gradient-text'}>l'excellence ?</span>
+              </div>
+              <h2 className={`text-2xl md:text-3xl font-bold mb-4 leading-tight ${D?'text-slate-900':'text-white'}`}>
+                Prêt à nous rejoindre ?
               </h2>
-              <p className={`mb-8 text-base max-w-lg mx-auto leading-relaxed ${D?'text-slate-500':'text-white/60'}`}>
-                Déposez votre dossier en quelques minutes.<br/>Réponse garantie sous <strong className={D?'text-brand-600':'text-cyan-300'}>48h ouvrées</strong>.
+              <p className={`mb-8 text-base max-w-lg mx-auto leading-relaxed ${D?'text-slate-500':'text-white/70'}`}>
+                Déposez votre dossier en quelques minutes.<br/>Réponse garantie sous <strong className={D?'text-isiblue-600':'text-isigold-300'}>48h ouvrées</strong>.
               </p>
               {/* Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center mb-10">
                 <motion.div whileHover={{scale:1.05}} whileTap={{scale:0.97}}>
                   <Link to="/pre-inscription" className={`inline-flex items-center gap-3 font-black text-lg px-10 py-4 rounded-2xl transition-all shadow-xl ${D
-                    ?'bg-gradient-to-r from-brand-600 to-cyan-600 text-white shadow-brand-500/40 hover:shadow-brand-500/60'
-                    :'bg-white text-slate-900 hover:bg-brand-50 shadow-white/20'}`}>
+                    ?'bg-isiblue-600 text-white shadow-isiblue-500/40 hover:bg-isiblue-700'
+                    :'bg-white text-isiblue-900 hover:bg-isiblue-50 shadow-white/20'}`}>
                     <GraduationCap size={22}/> Pré-inscription <ArrowRight size={18}/>
                   </Link>
                 </motion.div>
@@ -1730,7 +1622,7 @@ export default function Landing() {
       {/* ── FOOTER ────────────────────────────────────────────────────────── */}
       <footer className="relative z-10 bg-white">
         {/* Gradient accent top bar */}
-        <div className="h-1 bg-gradient-to-r from-brand-600 via-cyan-500 to-violet-600"/>
+        <div className="h-px bg-isiblue-200"/>
 
         <div className="py-14 px-4 border-t border-slate-100">
           <div className="max-w-6xl mx-auto">
@@ -1826,7 +1718,7 @@ export default function Landing() {
 
             {/* Partners strip */}
             <div className="py-8 border-t border-b border-slate-100">
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-center mb-6 text-slate-400">Partenaires officiels</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-center mb-6 text-slate-400/80">Partenaires officiels</p>
               <div className="flex flex-wrap justify-center items-center gap-8">
                 {PARTENAIRES.map((p,i)=>(
                   <img key={i} src={p.logo} alt={p.nom}
